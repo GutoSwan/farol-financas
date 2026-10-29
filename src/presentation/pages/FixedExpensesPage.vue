@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import MoneyInput from '../components/MoneyInput.vue'
+import UiIcon from '../components/UiIcon.vue'
 import { useFixedExpenses } from '../composables/useFixedExpenses'
 import { activeWorkspaceId } from '../composables/useWorkspaces'
 import { fixedExpenseSummary, fixedExpensesForMonth } from '../../domain/services/fixedExpenseAnalytics'
@@ -75,7 +76,7 @@ watch(activeWorkspaceId, () => {
   </div>
 
   <div class="transaction-stats">
-    <article class="stat"><span>Gastos fixos previstos</span><strong>{{ formatBRL(summary.totalCents) }}</strong><small>{{ summary.count }} cobrança(s) em {{ formatYearMonth(month) }}</small></article>
+    <article class="stat"><span>Gastos fixos previstos</span><strong class="expense-text">{{ formatBRL(summary.totalCents) }}</strong><small>{{ summary.count }} cobrança(s) em {{ formatYearMonth(month) }}</small></article>
     <article class="stat"><span>Já pagos</span><strong class="down">{{ formatBRL(summary.paidCents) }}</strong><small>Marcados como pagos neste mês</small></article>
     <article class="stat"><span>Ainda pendentes</span><strong class="up">{{ formatBRL(summary.pendingCents) }}</strong><small>Aguardando confirmação do pagamento</small></article>
   </div>
@@ -88,7 +89,7 @@ watch(activeWorkspaceId, () => {
         <label>Valor mensal<MoneyInput v-model="amount" required placeholder="R$ 120,00" /></label>
         <label>Dia de vencimento<input v-model.number="dueDay" type="number" min="1" max="31" required /></label>
         <label>Início da cobrança<input v-model="startMonth" type="month" required /></label>
-        <button type="submit" class="primary">+ Cadastrar gasto fixo</button>
+        <button type="submit" class="primary"><UiIcon name="plus" :size="16" /> Cadastrar gasto fixo</button>
       </form>
       <p v-if="feedback" class="success" role="status">{{ feedback }}</p>
       <p v-if="formError || error" class="error" role="alert">{{ formError || error }}</p>
@@ -106,9 +107,9 @@ watch(activeWorkspaceId, () => {
           </div>
           <div class="fixed-expense-actions">
             <button type="button" :class="item.paidMonths.includes(month) ? 'secondary-action' : 'primary'" @click="changePaid(item)">
-              {{ item.paidMonths.includes(month) ? 'Desmarcar pagamento' : 'Marcar pago' }}
+              <UiIcon :name="item.paidMonths.includes(month) ? 'restore' : 'check'" :size="15" /> {{ item.paidMonths.includes(month) ? 'Desmarcar pagamento' : 'Marcar pago' }}
             </button>
-            <button v-if="!item.endBeforeMonth" class="archive-action" type="button" @click="archive(item)" title="Encerrar recorrência após o mês selecionado">Encerrar</button>
+            <button v-if="!item.endBeforeMonth" class="archive-action" type="button" @click="archive(item)" title="Encerrar recorrência após o mês selecionado"><UiIcon name="archive" :size="15" /> Encerrar</button>
           </div>
         </article>
       </div>
