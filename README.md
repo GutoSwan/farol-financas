@@ -121,3 +121,34 @@ npm run dev
 ```
 
 Teste manual: registre uma despesa de `500` na categoria personalizada `Pets`, registre uma conta mensal de `200` e confirme **R$ 700,00** em Gastos totais (no mesmo mês e espaço).
+
+## Contas mensais, gastos fixos e relatórios
+
+### Três tipos de despesas
+
+- **Contas mensais**: água, energia e outras despesas cujo valor muda a cada mês. O cadastro permanece, e o valor é registrado em cada mês.
+- **Gastos fixos**: aluguel, Netflix, academia e serviços com valor recorrente. Cadastre o valor, vencimento e mês inicial uma vez. O custo passa a aparecer automaticamente nos meses em que a cobrança estiver ativa. Marcar como pago só altera o status do mês, sem duplicar a despesa. O botão **Encerrar** mantém o histórico até o mês selecionado, sem projetar cobranças a partir do mês seguinte.
+- **Lançamentos**: compras avulsas, como mercado, combustível e farmácia, e também receitas.
+
+Cada despesa deve ser cadastrada em **um único módulo** para evitar dupla contagem.
+
+### Exclusão de registro no histórico
+
+Na tela de **Contas mensais**, cada linha do histórico tem uma lixeira vermelha. Ela pede confirmação e remove **somente o registro daquele mês**, preservando o cadastro e todos os outros períodos. A exclusão do protótipo é definitiva, sem lixeira de recuperação.
+
+### Relatórios
+
+A aba **Relatórios** agora concentra o gráfico geral de 12 meses, a composição dos gastos (contas mensais, gastos fixos e avulsos), despesas por categoria e uma tabela comparativa. A **Visão Geral** foi simplificada para destacar o total, três subtotais e cobranças pendentes.
+
+As contas mensais pendentes e os gastos fixos previstos entram em **gastos totais**. Portanto, este valor representa despesas e compromissos registrados, **não** exclusivamente dinheiro que saiu do banco.
+
+### Testar
+
+```bash
+git pull
+npm run test
+npm run build
+npm run dev
+```
+
+Verifique: exclusão de um mês, cobranças fixas recorrentes, mudança de espaço financeiro e totais em Relatórios.
