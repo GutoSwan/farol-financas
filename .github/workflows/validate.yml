@@ -39,6 +39,20 @@ jobs:
 
   validar-backend:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: farol
+          POSTGRES_PASSWORD: ci_password
+          POSTGRES_DB: farol
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U farol -d farol"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 8
     env:
       DATABASE_URL: postgresql://farol:ci_password@localhost:5433/farol?schema=public
       SUPABASE_URL: https://example.supabase.co
@@ -53,9 +67,12 @@ jobs:
       - name: Validar modelo Prisma
         working-directory: backend
         run: npx prisma validate
-      - name: Prisma SQL base (temporário para criar a migração inicial)
+      - name: Aplicar migração inicial em PostgreSQL temporário
         working-directory: backend
-        run: npx prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script
+        run: npx prisma migrate deploy
+      - name: Verificar RLS em todas as tabelas
+        working-directory: backend
+        run: npx tsx scripts/check-rls.ts
       - name: Testes da API
         working-directory: backend
         run: npm run test
