@@ -200,3 +200,39 @@ Checklist manual recomendado:
 6. Confira os gráficos de 6 e 12 meses e os filtros de categoria nos relatórios.
 
 Não utilize dados financeiros sensíveis neste protótipo sem login, banco e backup seguro.
+
+## Versão 0.3: Orçamentos de projetos e comparação de cotações
+
+**Orçamentos** agora é o controle de projetos e propostas de profissionais/lojas. Não é o antigo planejamento de limite mensal por categoria.
+
+### Exemplo: reforma do banheiro
+
+1. Crie o projeto `Reforma do banheiro` com o limite desejado de `R$ 3.000,00`.
+2. Adicione itens como `Pedreiro`, `Piso` e `Argamassa`. Cada item pode ter um limite próprio opcional.
+3. No item `Pedreiro`, registre as propostas de diferentes profissionais com preço, prazo, indicação de material incluso e observações.
+4. Escolha uma proposta; cada item permite **uma seleção ativa**, reversível.
+5. Acompanhe o valor aprovado e a diferença em relação à meta.
+6. Registre o que de fato foi pago, ou **vincule uma despesa já existente** da aba Lançamentos ao item.
+7. Se houver erro, use **Desvincular**; a despesa original continuará em Lançamentos.
+
+### Regras financeiras e escopo
+
+- **Propostas e valores aprovados não são gastos realizados.** O total gasto do projeto soma somente despesas financeiras com vínculo ao projeto.
+- A transação vinculada mantém seu único registro na aba Lançamentos. O Dashboard e os relatórios continuam somando essa transação **uma única vez**, sem criar um pagamento duplicado.
+- Receitas não podem ser vinculadas como gastos do projeto.
+- Cada espaço financeiro possui sua própria lista de projetos e cotações. Excluir um espaço personalizado também apaga seus projetos locais.
+- A situação do projeto pode ser Planejando, Recebendo propostas, Aprovado, Em andamento ou Concluído.
+- Nesta primeira versão, fotos/PDFs dos orçamentos, login, sincronização, backup automático e parcelamento não estão disponíveis.
+
+### Testar no computador
+
+```bash
+git fetch origin
+git switch feat/v0.3-orcamentos-projetos-cotacoes
+npm install
+npm run test
+npm run build
+npm run dev
+```
+
+Crie um projeto de R$ 3.000 e um item Pedreiro, registre propostas de R$ 3.500 e R$ 2.700 e escolha a segunda. Depois registre a entrada de R$ 1.000 no projeto e confirme a soma de **R$ 1.000 em gasto real**, distinta de **R$ 2.700 em orçamento aprovado**. A mesma despesa aparecerá em Lançamentos, sem duplicação no total.
