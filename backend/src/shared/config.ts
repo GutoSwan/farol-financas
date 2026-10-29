@@ -17,5 +17,8 @@ export function readConfig(env: NodeJS.ProcessEnv): AppConfig {
     const names = parsed.error.issues.map((issue) => issue.path.join('.')).join(', ')
     throw new Error(`Configuração inválida ou ausente: ${names}. Confira backend/.env.`)
   }
+  if (parsed.data.NODE_ENV === 'production' && !parsed.data.CORS_ORIGIN.startsWith('https://')) {
+    throw new Error('Configuração inválida ou ausente: CORS_ORIGIN. Em produção, use a URL HTTPS real do frontend.')
+  }
   return parsed.data
 }
