@@ -4,9 +4,10 @@ on:
     branches:
       - feat/estrutura-base-clean-architecture
       - feat/v0.2-ux-contas-espacos-relatorios
+      - feat/v0.3-orcamentos-projetos-cotacoes
       - main
   pull_request:
-    branches: [main, feat/estrutura-base-clean-architecture]
+    branches: [main, feat/estrutura-base-clean-architecture, feat/v0.2-ux-contas-espacos-relatorios]
 
 permissions:
   contents: read
