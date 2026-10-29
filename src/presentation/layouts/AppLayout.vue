@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import UiIcon from '../components/UiIcon.vue'
 import { useTheme } from '../composables/useTheme'
@@ -17,7 +17,66 @@ const profileError = ref('')
 const { isDark, toggleTheme } = useTheme()
 const { workspaces, activeWorkspaceId, error: workspaceError, selectWorkspace, createWorkspace, deleteWorkspace } = useWorkspaces()
 const managing = ref(false)
-const morePagesOpen = ref(false)
+const mobileMenuOpen = ref(false)
+const mobileMenuButton = ref<HTMLButtonElement | null>(null)
+const mobileCloseButton = ref<HTMLButtonElement | null>(null)
+const sidebarRef = ref<HTMLElement | null>(null)
+let originalOverflow = ''
+
+function openMobileMenu(): void {
+  mobileMenuOpen.value = true
+}
+
+function closeMobileMenu(restoreFocus = false): void {
+  if (!mobileMenuOpen.value) return
+  mobileMenuOpen.value = false
+  if (restoreFocus) void nextTick(() => mobileMenuButton.value?.focus())
+}
+
+function handleSidebarTab(event: KeyboardEvent): void {
+  if (!mobileMenuOpen.value || event.key !== 'Tab') return
+  const focusable = Array.from(
+    sidebarRef.value?.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled])',
+    ) ?? [],
+  ).filter((element) => element.getClientRects().length > 0)
+  if (!focusable.length) return
+  const first = focusable[0]
+  const last = focusable[focusable.length - 1]
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault()
+    last.focus()
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault()
+    first.focus()
+  }
+}
+
+function onViewportResize(): void {
+  if (window.innerWidth > 700) closeMobileMenu()
+}
+
+function selectAndCloseWorkspace(event: Event): void {
+  selectWorkspace((event.target as HTMLSelectElement).value)
+  closeMobileMenu(true)
+}
+
+watch(mobileMenuOpen, async (open) => {
+  if (open) {
+    originalOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    await nextTick()
+    mobileCloseButton.value?.focus()
+  } else {
+    document.body.style.overflow = originalOverflow
+  }
+})
+
+onMounted(() => window.addEventListener('resize', onViewportResize))
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', onViewportResize)
+  if (mobileMenuOpen.value) document.body.style.overflow = originalOverflow
+})
 const newName = ref('')
 const notice = ref('')
 
@@ -32,13 +91,12 @@ const links = [
 ]
 
 watch(() => route.fullPath, () => {
-  morePagesOpen.value = false
+  closeMobileMenu(true)
   profileMenuOpen.value = false
   managing.value = false
 })
 
 function closeSidebarMenus(): void {
-  morePagesOpen.value = false
   profileMenuOpen.value = false
   managing.value = false
 }
@@ -80,44 +138,31 @@ function removeWorkspace(space: FinancialWorkspace): void {
 
 <template>
   <div class="shell">
-    <aside class="sidebar" aria-label="Barra lateral do Farol" @keydown.esc="closeSidebarMenus">
+    <aside id="farol-sidebar" ref="sidebarRef" class="sidebar" :class="{ 'sidebar--open': mobileMenuOpen }"
+      aria-label="Barra lateral do Farol" :role="mobileMenuOpen ? 'dialog' : undefined"
+      :aria-modal="mobileMenuOpen ? 'true' : undefined"
+      @keydown.esc.stop="closeSidebarMenus(); closeMobileMenu(true)" @keydown.tab="handleSidebarTab">
       <div class="sidebar-top">
-      <RouterLink to="/" class="brand">◈ Farol <span>Finanças</span></RouterLink>
+      <div class="sidebar-mobile-heading">
+        <RouterLink to="/" class="brand" @click="closeMobileMenu(true)">◈ Farol <span>Finanças</span></RouterLink>
+        <button ref="mobileCloseButton" type="button" class="sidebar-mobile-close" aria-label="Fechar menu"
+          @click="closeSidebarMenus(); closeMobileMenu(true)"><span aria-hidden="true">×</span></button>
+      </div>
       <p class="section-label">SEU CONTROLE FINANCEIRO</p>
       <nav aria-label="Menu principal">
-        <RouterLink v-for="(link, index) in links" :key="link.to" :to="link.to"
-          class="side-nav-link"
-          :class="{ active: route.path === link.to, 'sidebar-secondary-link': index >= 4 }"
-          @click="morePagesOpen = false">
+        <RouterLink v-for="link in links" :key="link.to" :to="link.to"
+          class="side-nav-link" :class="{ active: route.path === link.to }"
+          @click="closeMobileMenu(true)">
           <UiIcon :name="link.icon" :size="17" />
           <span>{{ link.label }}</span>
         </RouterLink>
-
-        <div class="sidebar-more">
-          <button type="button" class="sidebar-more-button"
-            :class="{ active: links.slice(4).some(link => route.path === link.to) }"
-            :aria-expanded="morePagesOpen" aria-controls="sidebar-more-links"
-            @click="morePagesOpen = !morePagesOpen">
-            <UiIcon name="folder" :size="17" />
-            <span>Mais páginas</span>
-            <UiIcon name="arrow" :size="14" />
-          </button>
-          <div v-if="morePagesOpen" id="sidebar-more-links" class="sidebar-more-popup">
-            <p>OUTRAS PÁGINAS</p>
-            <RouterLink v-for="link in links.slice(4)" :key="link.to" :to="link.to"
-              :class="{ active: route.path === link.to }" @click="morePagesOpen = false">
-              <UiIcon :name="link.icon" :size="17" />
-              <span>{{ link.label }}</span>
-            </RouterLink>
-          </div>
-        </div>
       </nav>
       </div>
       <div class="sidebar-bottom">
       <div class="sidebar-workspace">
         <p class="sidebar-workspace-label">SEUS ESPAÇOS</p>
         <label class="sr-only" for="workspace-select">Trocar espaço financeiro</label>
-        <select id="workspace-select" class="workspace-select" :value="activeWorkspaceId" @change="selectWorkspace(($event.target as HTMLSelectElement).value)">
+        <select id="workspace-select" class="workspace-select" :value="activeWorkspaceId" @change="selectAndCloseWorkspace">
           <option v-for="space in workspaces" :key="space.id" :value="space.id">{{ space.name }}</option>
         </select>
         <button class="workspace-add" type="button" :aria-expanded="managing" @click="managing = !managing">
@@ -173,8 +218,15 @@ function removeWorkspace(space: FinancialWorkspace): void {
       </div>
     </aside>
 
+    <button v-if="mobileMenuOpen" type="button" class="mobile-drawer-backdrop" aria-label="Fechar menu"
+      @click="closeSidebarMenus(); closeMobileMenu(true)"></button>
+
     <div class="main">
       <header class="topbar">
+        <button ref="mobileMenuButton" type="button" class="mobile-menu-toggle" aria-label="Abrir menu"
+          aria-controls="farol-sidebar" :aria-expanded="mobileMenuOpen" @click="openMobileMenu">
+          <span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span>
+        </button>
         <b>Farol Finanças</b>
         <div class="topbar-actions">
           <span class="page-context">{{ route.meta.title ?? 'Visão geral' }}</span>
