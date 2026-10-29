@@ -1,0 +1,21 @@
+/* Identidade confirmada pelo backend e espaços online, separados do localStorage. */
+.online-workspaces-panel { margin: 25px 0 18px; border-top: 1px solid var(--farol-border); padding-top: 24px; }
+.online-workspaces-heading { display: grid; gap: 9px; margin-bottom: 14px; }
+.online-workspaces-heading h2 { font-size: 17px; margin: 0 0 6px; color: var(--farol-text); }
+.online-workspaces-heading p { font-size: 12px; line-height: 1.5; margin: 0; color: var(--farol-muted); }
+.online-status { justify-self: start; display: inline-flex; gap: 6px; align-items: center; border-radius: 99px; border: 1px solid var(--farol-border); color: var(--farol-muted); font-size: 11px; font-weight: 700; padding: 7px 11px; }
+.online-status.active { border-color: var(--farol-positive); color: var(--farol-positive); background: var(--farol-positive-soft); }
+.online-workspaces-warning { display: flex; gap: 8px; padding: 12px; align-items: start; border-radius: 10px; border: 1px solid var(--farol-border); background: var(--farol-card-muted); color: var(--farol-muted); font-size: 12px; line-height: 1.5; }
+.online-workspaces-warning svg { color: var(--farol-wine); flex-shrink: 0; }
+.online-workspaces-warning strong { color: var(--farol-text); }
+.online-refresh { display: inline-flex; gap: 7px; align-items: center; width: 100%; justify-content: center; margin: 3px 0 17px; }
+.online-workspaces-panel h3 { font-size: 14px; color: var(--farol-text); margin: 13px 0 10px; }
+.online-spaces-list { display: grid; gap: 9px; }
+.online-space-item { display: flex; gap: 11px; align-items: center; border: 1px solid var(--farol-border); border-radius: 10px; background: var(--farol-card-muted); padding: 12px; }
+.online-space-icon { flex: 0 0 37px; height: 37px; display: grid; place-items: center; color: #fff; background: #8e4058; border-radius: 10px; }
+.online-space-item div { display: grid; gap: 4px; min-width: 0; }
+.online-space-item strong { font-size: 13px; color: var(--farol-text); overflow-wrap: anywhere; }
+.online-space-item small { font-size: 11px; color: var(--farol-muted); }
+.online-space-form { margin-top: 17px; display: grid; gap: 10px; padding-top: 13px; border-top: 1px solid var(--farol-border); }
+.online-space-form label { font-size: 12px; font-weight: 700; color: var(--farol-text); display: grid; gap: 7px; }
+.online-space-form input { width: 100%; }
