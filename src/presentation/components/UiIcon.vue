@@ -1,5 +1,5 @@
 <script setup lang="ts">
-type IconName = 'dashboard' | 'receipt' | 'repeat' | 'wallet' | 'card' | 'target' | 'chart' | 'trash' | 'edit' | 'archive' | 'restore' | 'plus' | 'users' | 'sun' | 'moon' | 'check' | 'folder' | 'arrow' | 'info' | 'settings'
+type IconName = 'dashboard' | 'receipt' | 'repeat' | 'wallet' | 'card' | 'target' | 'chart' | 'trash' | 'edit' | 'archive' | 'restore' | 'plus' | 'users' | 'sun' | 'moon' | 'check' | 'folder' | 'arrow' | 'info' | 'settings' | 'user' | 'star' | 'heart' | 'rocket' | 'cat' | 'leaf' | 'log-out'
 
 withDefaults(defineProps<{ name: IconName; size?: number }>(), { size: 18 })
 
@@ -24,6 +24,13 @@ const paths: Record<IconName, string[]> = {
   arrow: ['M5 12h14', 'M13 6l6 6-6 6'],
   info: ['M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z', 'M12 11v6', 'M12 7h.01'],
   settings: ['M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z', 'M4 13v-2l2-1 1-2-1-2 2-2 2 1 2-1 1-2h2l1 2 2 1 2-1 2 2-1 2 1 2 2 1v2l-2 1-1 2 1 2-2 2-2-1-2 1-1 2h-2l-1-2-2-1-2 1-2-2 1-2-1-2z'],
+  user: ['M20 21v-2a6 6 0 0 0-6-6h-4a6 6 0 0 0-6 6v2', 'M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z'],
+  star: ['M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8-6.2-3.3L5.8 21 7 14.2 2 9.3l6.9-1z'],
+  heart: ['M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8z'],
+  rocket: ['M4.5 15.5c-1.3-3.4-.2-6.7 2.6-9.5 3.3-3.3 8-4.4 13.9-4-0.1 5.9-1.5 10.5-4.8 13.8-2.8 2.8-6.3 3.7-9.6 2.5z', 'M13 11a2 2 0 1 0 4 0 2 2 0 0 0-4 0z', 'M6 18l-3 3', 'M7 7l-4 1v4', 'M17 17l-1 4h-4'],
+  cat: ['M4 10V4l4 3a9 9 0 0 1 8 0l4-3v6a8 8 0 1 1-16 0z', 'M8 13h.01', 'M16 13h.01', 'M10 17c1 1 3 1 4 0'],
+  leaf: ['M20 4c-11 0-16 4-16 11a5 5 0 0 0 5 5c7 0 11-5 11-16z', 'M4 20c2-5 6-8 12-11'],
+  'log-out': ['M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4', 'M16 17l5-5-5-5', 'M21 12H9'],
 }
 </script>
 <template>

@@ -310,3 +310,9 @@ O `backend/.env` deve conter a **mesma SUPABASE_URL** do Vue e o `DATABASE_URL` 
 ### Limite desta etapa
 
 **O login é real, mas não protege nem separa os dados financeiros do navegador!** O Farol ainda guarda contas, gastos e orçamentos no `localStorage`, que é compartilhado entre sessões e usuários do mesmo perfil do navegador. Não use dados sensíveis reais com expectativa de isolamento. Não há migração automática, backup, associação entre espaços locais e usuários ou sincronização. Entrar/sair não apaga os dados existentes. No próximo módulo, implementaremos a migração assistida e a autorização de todas as operações financeiras no servidor, antes de exigir login para usar as telas.
+
+## Versão 0.6: confirmação por código e perfil
+
+O cadastro agora aceita nome e confirmação por código de e-mail na própria página; a conta pode personalizar um ícone vetorial e editar o nome. A identidade é mostrada no canto inferior esquerdo. A mudança obrigatória do template **Confirm signup** no painel do Supabase, com `{{ .Token }}`, e os passos de teste estão em [docs/supabase-otp-perfil.md](docs/supabase-otp-perfil.md).
+
+Até a migração financeira para o backend, os dados locais **não** ficam isolados por login.
