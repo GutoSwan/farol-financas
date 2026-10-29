@@ -54,3 +54,21 @@ O painel não representa saldo bancário, e marcar uma conta como paga não efet
 Implementar lançamentos, contas bancárias e cartões com prevenção de dupla contagem; depois relatórios, orçamentos, autenticação, banco e aplicativo mobile.
 
 **Status da validação:** arquivos publicados como proposta; build e testes devem ser executados no ambiente de desenvolvimento antes de mesclar a PR.
+
+## Aparência e espaços financeiros (protótipo)
+
+- O ícone de sol/lua no cabeçalho alterna entre modo claro e escuro. A preferência é guardada no navegador.
+- O seletor do cabeçalho alterna entre espaços financeiros locais, começando por **Gustavo e Ana**.
+- **+ Espaço** cria outro ambiente de dados no mesmo navegador, como “Finanças do João”. Cada espaço possui seu próprio cadastro e histórico de contas mensais.
+- O espaço padrão continua lendo a chave de armazenamento antiga `farol-financas:dev:v1`; os registros anteriores não são apagados.
+
+**Atenção à privacidade:** espaços locais não são contas de usuário. Qualquer pessoa com acesso ao mesmo navegador pode selecionar outro espaço, e espaços de outro computador/celular não ficam sincronizados. Para permitir que um amigo crie login próprio e acesse o Farol em qualquer dispositivo, será necessário implementar autenticação e um backend com autorização por espaço (ex.: usuários, membros e permissões protegidos por RLS no banco).
+
+### Validação rápida
+
+1. Rode `npm install`, `npm run typecheck`, `npm run test` e `npm run build`.
+2. Confirme que sol/lua troca o tema sem afetar os valores e que a preferência permanece após recarregar.
+3. Cadastre uma conta no espaço “Gustavo e Ana” e outra em um novo espaço.
+4. Troque entre eles; as contas devem aparecer apenas no espaço correspondente.
+5. Recarregue a página e verifique se o espaço ativo e o tema foram mantidos.
+
