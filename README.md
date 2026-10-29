@@ -336,3 +336,7 @@ A barra lateral agora é fixa durante a rolagem da página, com **Espaços** e *
 ## v0.10: todas as páginas no desktop, menu hambúrguer no celular
 
 A navegação desktop volta a mostrar os **sete links**, incluindo em **892 × 576**, sem o botão `Mais páginas`. Em telas de até 700px de largura, um botão de **três linhas** abre um menu lateral deslizante, com fundo escurecido, fechamento por ×/Esc/toque fora e acessos a espaços e perfil. [Guia de teste com resoluções e teclado](docs/mobile-drawer-v0.10.md).
+
+## v0.11: barra lateral clara e preparação para Vercel Hobby
+
+A barra lateral, inclusive o drawer mobile, acompanha o modo claro ou escuro: fundo e textos adaptativos, seletor de espaços e menu de perfil legíveis. Foi criado `vercel.json` para o frontend Vite, com fallback SPA apenas nas rotas do Vue, sem transformar URLs `/api` em HTML. O painel da API mostra um aviso na demo estática, já que Fastify e PostgreSQL permanecem locais. **Nenhum deploy foi realizado.** Veja [as instruções para conectar o GitHub à Vercel e testar a branch correta](docs/tema-e-vercel-v0.11.md).
