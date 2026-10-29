@@ -12,7 +12,7 @@ export interface TransactionInput {
   occurredOn: string
   budgetProjectId?: string | null
   budgetItemId?: string | null
-
+}
 
 export function normalizeCategory(input: string, existingCategories: string[] = []): string {
   const normalized = input.trim().replace(/\s+/g, ' ')
