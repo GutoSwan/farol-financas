@@ -103,3 +103,21 @@ O seletor de espaço, botão “+ Novo espaço” e o recurso futuro de adiciona
 3. Cadastre outro gasto de categoria diferente, altere um valor usando **Editar** e confira o recálculo.
 4. Troque o mês e o espaço financeiro, verificando que os registros não aparecem no local errado.
 5. No terminal, execute `npm run test` e `npm run build`. A rotina do GitHub Actions também tentará validá-los automaticamente quando estiver habilitada.
+
+## Atualização: categorias personalizadas, reais e gastos totais
+
+- Em **Lançamentos**, o campo Categoria agora aceita texto livre (ex.: `Pets`, `Ração`, `Presentes`) e mostra sugestões de categorias existentes. Diferenças de maiúsculas/minúsculas são normalizadas no cadastro.
+- O valor é formatado em reais durante a digitação. Ao escrever `500`, aparece `R$ 500`; ao sair do campo, `R$ 500,00`. Para centavos, use vírgula: `500,50`. A formatação também está disponível em **Contas mensais**.
+- Na **Visão Geral**, o destaque passou a ser **Gastos totais**, somando contas mensais registradas (pagas e pendentes) com despesas avulsas. O gráfico mostra seis meses e separa visualmente as duas origens do valor.
+- As receitas ficam fora do somatório dos gastos. Uma conta recorrente lançada novamente como despesa avulsa será contada duas vezes, por isso não duplique o cadastro.
+- A soma inclui valores pendentes: não é um extrato bancário, nem indica o valor já efetivamente pago.
+
+Para validar:
+
+```bash
+npm run test
+npm run build
+npm run dev
+```
+
+Teste manual: registre uma despesa de `500` na categoria personalizada `Pets`, registre uma conta mensal de `200` e confirme **R$ 700,00** em Gastos totais (no mesmo mês e espaço).
