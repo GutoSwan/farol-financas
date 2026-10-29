@@ -346,3 +346,9 @@ A barra lateral, inclusive o drawer mobile, acompanha o modo claro ou escuro: fu
 Após autenticar em `/entrar`, o Farol redireciona para `/` (Dashboard), mostrando a barra lateral com o perfil e os espaços. Se a sessão do Supabase já estiver ativa, abrir `/entrar` ou `/cadastro` também leva ao Dashboard. Recuperação e redefinição de senha não são redirecionadas.
 
 **Limite de segurança atual:** isso melhora apenas a navegação. A Visão geral e os registros locais continuam acessíveis sem login, e o `localStorage` **não é separado por usuário**. Isolamento e autenticação obrigatória serão ativados somente após migrarmos os dados para o backend com permissões.
+
+## v0.13: preparar o backend Fastify com Supabase PostgreSQL
+
+Além do frontend Vercel, o repositório agora suporta um **segundo projeto Vercel com Root Directory `backend`**, com entrada Fastify serverless, CORS restrito e PostgreSQL gerenciado pelo Supabase. A primeira migração Prisma está versionada e habilita RLS nas 11 tabelas. A Vercel do frontend só habilita espaços online após configurar `VITE_API_BASE_URL`.
+
+**Nenhum projeto API foi criado e nenhuma migração foi aplicada ao Supabase do usuário automaticamente**. O backend requer variáveis privadas e configuração manual. Os lançamentos financeiros do Dashboard continuam locais e sem isolamento entre logins. Leia o [guia completo v0.13](docs/api-postgres-nuvem-v0.13.md) antes de realizar qualquer ação no banco online.
