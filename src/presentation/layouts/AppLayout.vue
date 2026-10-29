@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import UiIcon from '../components/UiIcon.vue'
 import { useTheme } from '../composables/useTheme'
@@ -17,6 +17,7 @@ const profileError = ref('')
 const { isDark, toggleTheme } = useTheme()
 const { workspaces, currentWorkspace, activeWorkspaceId, error: workspaceError, selectWorkspace, createWorkspace, deleteWorkspace } = useWorkspaces()
 const managing = ref(false)
+const morePagesOpen = ref(false)
 const newName = ref('')
 const notice = ref('')
 
@@ -29,6 +30,18 @@ const links = [
   { to: '/orcamentos', label: 'Orçamentos', icon: 'target' as const },
   { to: '/relatorios', label: 'Relatórios', icon: 'chart' as const },
 ]
+
+watch(() => route.fullPath, () => {
+  morePagesOpen.value = false
+  profileMenuOpen.value = false
+  managing.value = false
+})
+
+function closeSidebarMenus(): void {
+  morePagesOpen.value = false
+  profileMenuOpen.value = false
+  managing.value = false
+}
 
 async function logoutFromSidebar(): Promise<void> {
   if (profileBusy.value) return
@@ -67,21 +80,42 @@ function removeWorkspace(space: FinancialWorkspace): void {
 
 <template>
   <div class="shell">
-    <aside class="sidebar" aria-label="Barra lateral do Farol">
+    <aside class="sidebar" aria-label="Barra lateral do Farol" @keydown.esc="closeSidebarMenus">
       <div class="sidebar-top">
       <RouterLink to="/" class="brand">◈ Farol <span>Finanças</span></RouterLink>
       <p class="section-label">SEU CONTROLE FINANCEIRO</p>
       <nav aria-label="Menu principal">
-        <RouterLink v-for="link in links" :key="link.to" :to="link.to" class="side-nav-link" :class="{ active: route.path === link.to }">
+        <RouterLink v-for="(link, index) in links" :key="link.to" :to="link.to"
+          class="side-nav-link"
+          :class="{ active: route.path === link.to, 'sidebar-secondary-link': index >= 4 }"
+          @click="morePagesOpen = false">
           <UiIcon :name="link.icon" :size="17" />
           <span>{{ link.label }}</span>
         </RouterLink>
+
+        <div class="sidebar-more">
+          <button type="button" class="sidebar-more-button"
+            :class="{ active: links.slice(4).some(link => route.path === link.to) }"
+            :aria-expanded="morePagesOpen" aria-controls="sidebar-more-links"
+            @click="morePagesOpen = !morePagesOpen">
+            <UiIcon name="folder" :size="17" />
+            <span>Mais páginas</span>
+            <UiIcon name="arrow" :size="14" />
+          </button>
+          <div v-if="morePagesOpen" id="sidebar-more-links" class="sidebar-more-popup">
+            <p>OUTRAS PÁGINAS</p>
+            <RouterLink v-for="link in links.slice(4)" :key="link.to" :to="link.to"
+              :class="{ active: route.path === link.to }" @click="morePagesOpen = false">
+              <UiIcon :name="link.icon" :size="17" />
+              <span>{{ link.label }}</span>
+            </RouterLink>
+          </div>
+        </div>
       </nav>
       </div>
       <div class="sidebar-bottom">
       <div class="sidebar-workspace">
-        <p class="sidebar-workspace-label">ESPAÇO FINANCEIRO</p>
-        <p class="sidebar-workspace-name"><UiIcon name="users" :size="17" /> {{ currentWorkspace?.name ?? 'Gustavo e Ana' }}</p>
+        <p class="sidebar-workspace-label">SEUS ESPAÇOS</p>
         <label class="sr-only" for="workspace-select">Trocar espaço financeiro</label>
         <select id="workspace-select" class="workspace-select" :value="activeWorkspaceId" @change="selectWorkspace(($event.target as HTMLSelectElement).value)">
           <option v-for="space in workspaces" :key="space.id" :value="space.id">{{ space.name }}</option>
@@ -109,10 +143,6 @@ function removeWorkspace(space: FinancialWorkspace): void {
           <p v-if="notice" class="success" role="status">{{ notice }}</p>
           <button class="secondary-action close-spaces" type="button" @click="managing = false">Fechar</button>
         </div>
-        <button class="invite-disabled" type="button" disabled title="Disponível com autenticação e convites">
-          <UiIcon name="users" :size="15" /> Adicionar pessoa (em breve)
-        </button>
-        <p class="sidebar-foot">Protótipo · dados locais</p>
       </div>
 
       <div class="sidebar-profile">
