@@ -6,14 +6,14 @@ import { DEFAULT_WORKSPACE_ID } from '../../domain/entities/FinancialWorkspace'
 type Snapshot = { bills: RecurringBill[]; entries: MonthlyBillEntry[] }
 const LEGACY_KEY = 'farol-financas:dev:v1'
 
-/** Mantém os registros antigos dentro do espaço padrão, sem migração destrutiva. */
+/** Preserva os registros existentes do espaço padrão. */
 export function billsStorageKey(workspaceId: string): string {
   if (workspaceId === DEFAULT_WORKSPACE_ID) return LEGACY_KEY
   if (!/^[a-zA-Z0-9-]{1,90}$/.test(workspaceId)) throw new Error('Identificador de espaço inválido.')
   return `${LEGACY_KEY}:workspace:${workspaceId}`
 }
 
-/** Persistência provisória; não é controle de acesso nem isolamento seguro. */
+/** Persistência provisória; não fornece controle de acesso real. */
 export class BrowserBillRepository implements RecurringBillRepository {
   constructor(private readonly workspaceId = DEFAULT_WORKSPACE_ID) {}
 
@@ -52,10 +52,16 @@ export class BrowserBillRepository implements RecurringBillRepository {
 
   upsertEntry(entry: MonthlyBillEntry): void {
     const data = this.read()
-    const index = data.entries.findIndex((item) =>
-      item.billId === entry.billId && item.yearMonth === entry.yearMonth)
+    const index = data.entries.findIndex((item) => item.billId === entry.billId && item.yearMonth === entry.yearMonth)
     if (index < 0) data.entries.push(entry)
     else data.entries[index] = entry
+    this.write(data)
+  }
+
+  removeEntry(id: string): void {
+    const data = this.read()
+    if (!data.entries.some((entry) => entry.id === id)) throw new Error('Registro mensal não encontrado.')
+    data.entries = data.entries.filter((entry) => entry.id !== id)
     this.write(data)
   }
 }
