@@ -1,0 +1,75 @@
+/* Cabeçalho enxuto; contas e pessoas ficam no rodapé da sidebar. */
+.sidebar-workspace {
+  position: relative;
+  margin-top: auto;
+  padding: 22px 4px 0;
+  border-top: 1px solid rgba(207, 223, 243, .17);
+  display: grid;
+  gap: 10px;
+}
+.sidebar-workspace-label {
+  color: #94adc9;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  margin: 0;
+}
+.sidebar-workspace-name {
+  color: #f4f8fd;
+  font-size: 15px;
+  font-weight: 800;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.sidebar-workspace .workspace-select {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  color: #ecf2fb;
+  background: #263b57;
+  border-color: #38506d;
+}
+.sidebar-workspace .workspace-add {
+  width: 100%;
+  background: #25543c;
+  color: #c6f7da;
+  border-color: #367953;
+}
+.sidebar-workspace .workspace-add:hover { background: #306448; }
+.invite-disabled {
+  display: block;
+  min-height: 38px;
+  text-align: left;
+  color: #b6c7d9;
+  background: transparent;
+  font-size: 11px;
+  border: 1px dashed #53677f;
+  border-radius: 8px;
+  padding: 7px 9px;
+  opacity: .72;
+}
+.sidebar-workspace .sidebar-foot { margin: 4px 0 0; padding: 0; color: #8da4c0; }
+.sidebar-workspace .workspace-popover {
+  left: calc(100% + 14px);
+  right: auto;
+  bottom: 0;
+  top: auto;
+  width: 315px;
+}
+:root[data-theme="dark"] .sidebar-workspace .workspace-select { color: #e5edf8; background: #263b57; border-color: #38506d; }
+:root[data-theme="dark"] .sidebar-workspace .workspace-add { background: #25543c; color: #c6f7da; }
+:root[data-theme="dark"] .sidebar-workspace .sidebar-foot { color: #8da4c0; }
+@media(max-width:700px) {
+  .sidebar-workspace {
+    margin-top: 13px;
+    border-top-color: rgba(207,223,243,.17);
+    display: grid;
+    grid-template-columns: minmax(0,1fr) auto;
+    gap: 8px;
+  }
+  .sidebar-workspace-label, .sidebar-workspace-name { grid-column: 1/-1; }
+  .sidebar-workspace .workspace-select { grid-column:1; }
+  .sidebar-workspace .workspace-add { grid-column:2; width:auto; }
+  .invite-disabled, .sidebar-workspace .sidebar-foot { grid-column:1/-1; }
+  .sidebar-workspace .workspace-popover { left: 0; bottom: calc(100% + 10px); max-width: 100%; }
+}
