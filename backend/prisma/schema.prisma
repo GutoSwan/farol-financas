@@ -1,0 +1,169 @@
+// Modelo inicial do domínio Farol: valores monetários são inteiros em CENTAVOS.
+// A base de autorização é a associação User <-> WorkspaceMember <-> Workspace.
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum WorkspaceRole {
+  OWNER
+  EDITOR
+  VIEWER
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+}
+
+enum TransactionKind {
+  EXPENSE
+  INCOME
+}
+
+enum BudgetProjectStatus {
+  PLANNING
+  QUOTING
+  APPROVED
+  IN_PROGRESS
+  COMPLETED
+}
+
+model User {
+  id          String            @id @db.Uuid // Supabase Auth user.id, nunca fornecido pelo cliente
+  email       String?
+  createdAt   DateTime          @default(now())
+  memberships WorkspaceMember[]
+}
+
+model Workspace {
+  id          String            @id @default(uuid()) @db.Uuid
+  name        String            @db.VarChar(60)
+  createdAt   DateTime          @default(now())
+  memberships WorkspaceMember[]
+  bills       RecurringBill[]
+  fixed       FixedExpense[]
+  transactions Transaction[]
+  projects    BudgetProject[]
+}
+
+model WorkspaceMember {
+  userId      String        @db.Uuid
+  workspaceId String        @db.Uuid
+  role        WorkspaceRole @default(VIEWER)
+  createdAt   DateTime      @default(now())
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  @@id([userId, workspaceId])
+  @@index([workspaceId])
+}
+
+model RecurringBill {
+  id          String             @id @default(uuid()) @db.Uuid
+  workspaceId String             @db.Uuid
+  name        String             @db.VarChar(80)
+  dueDay      Int
+  active      Boolean            @default(true)
+  createdAt   DateTime           @default(now())
+  workspace   Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  entries     MonthlyBillEntry[]
+  @@index([workspaceId])
+}
+
+model MonthlyBillEntry {
+  id          String         @id @default(uuid()) @db.Uuid
+  billId      String         @db.Uuid
+  yearMonth   String         @db.VarChar(7)
+  amountCents Int
+  status      PaymentStatus  @default(PENDING)
+  paidAt      DateTime?
+  bill        RecurringBill  @relation(fields: [billId], references: [id], onDelete: Cascade)
+  @@unique([billId, yearMonth])
+  @@index([yearMonth])
+}
+
+model FixedExpense {
+  id             String                @id @default(uuid()) @db.Uuid
+  workspaceId    String                @db.Uuid
+  name           String                @db.VarChar(80)
+  amountCents    Int
+  dueDay         Int
+  startMonth     String                @db.VarChar(7)
+  endBeforeMonth String?               @db.VarChar(7)
+  createdAt      DateTime              @default(now())
+  workspace      Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  payments       FixedExpensePayment[]
+  @@index([workspaceId])
+}
+
+model FixedExpensePayment {
+  id             String        @id @default(uuid()) @db.Uuid
+  fixedExpenseId String        @db.Uuid
+  yearMonth      String        @db.VarChar(7)
+  paidAt         DateTime      @default(now())
+  fixedExpense   FixedExpense  @relation(fields: [fixedExpenseId], references: [id], onDelete: Cascade)
+  @@unique([fixedExpenseId, yearMonth])
+}
+
+model Transaction {
+  id              String          @id @default(uuid()) @db.Uuid
+  workspaceId     String          @db.Uuid
+  description     String          @db.VarChar(120)
+  category        String          @db.VarChar(40)
+  amountCents     Int
+  kind            TransactionKind
+  occurredOn      DateTime        @db.Date
+  createdAt       DateTime        @default(now())
+  budgetProjectId String?         @db.Uuid
+  budgetItemId    String?         @db.Uuid
+  workspace       Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  budgetProject   BudgetProject?  @relation(fields: [budgetProjectId], references: [id], onDelete: SetNull)
+  budgetItem      BudgetItem?     @relation(fields: [budgetItemId], references: [id], onDelete: SetNull)
+  @@index([workspaceId, occurredOn])
+  @@index([budgetProjectId])
+}
+
+model BudgetProject {
+  id          String              @id @default(uuid()) @db.Uuid
+  workspaceId String              @db.Uuid
+  title       String              @db.VarChar(120)
+  category    String              @db.VarChar(40)
+  targetCents Int
+  status      BudgetProjectStatus @default(PLANNING)
+  notes       String              @default("")
+  createdAt   DateTime            @default(now())
+  workspace   Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  items       BudgetItem[]
+  transactions Transaction[]
+  @@index([workspaceId])
+}
+
+model BudgetItem {
+  id          String         @id @default(uuid()) @db.Uuid
+  projectId   String         @db.Uuid
+  title       String         @db.VarChar(120)
+  plannedCents Int?
+  createdAt   DateTime       @default(now())
+  project     BudgetProject  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  quotes      BudgetQuote[]
+  transactions Transaction[]
+  @@index([projectId])
+}
+
+model BudgetQuote {
+  id                String      @id @default(uuid()) @db.Uuid
+  itemId            String      @db.Uuid
+  provider          String      @db.VarChar(120)
+  amountCents       Int
+  estimatedDays     Int?
+  materialsIncluded Boolean     @default(false)
+  notes             String      @default("")
+  selected          Boolean     @default(false)
+  createdAt         DateTime    @default(now())
+  item              BudgetItem  @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  @@index([itemId])
+}
