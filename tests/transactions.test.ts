@@ -51,3 +51,31 @@ describe('Lançamentos avulsos', () => {
     expect(() => saveTransaction(repo, { description: 'Mercado', amountCents: 100, category: 'Mercado', kind: 'expense', occurredOn: '2026-02-31' })).toThrow()
   })
 })
+
+describe('Categorias personalizadas', () => {
+  it('permite uma categoria criada pelo usuário', () => {
+    const repo = new BrowserTransactionRepository('household-default')
+    const entry = saveTransaction(repo, {
+      description: 'Ração de cachorro',
+      amountCents: 9000,
+      category: 'Pets',
+      kind: 'expense',
+      occurredOn: '2026-10-29',
+    })
+    expect(entry.category).toBe('Pets')
+    expect(expensesByCategory(repo.list())).toEqual([{ category: 'Pets', amountCents: 9000 }])
+  })
+
+  it('reaproveita a grafia de uma categoria existente', () => {
+    const repo = new BrowserTransactionRepository('household-default')
+    saveTransaction(repo, { description: 'Primeira compra', amountCents: 1000, category: 'Mercado', kind: 'expense', occurredOn: '2026-10-29' })
+    const next = saveTransaction(repo, { description: 'Segunda compra', amountCents: 2000, category: 'mercado', kind: 'expense', occurredOn: '2026-10-29' })
+    expect(next.category).toBe('Mercado')
+    expect(expensesByCategory(repo.list())).toEqual([{ category: 'Mercado', amountCents: 3000 }])
+  })
+
+  it('recusa uma categoria vazia', () => {
+    const repo = new BrowserTransactionRepository('household-default')
+    expect(() => saveTransaction(repo, { description: 'Compra mercado', amountCents: 9000, category: ' ', kind: 'expense', occurredOn: '2026-10-29' })).toThrow()
+  })
+})
