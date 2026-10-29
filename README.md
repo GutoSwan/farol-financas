@@ -328,3 +328,7 @@ Em **Meu perfil**, o Farol agora valida a sessão com `GET /api/v1/me` e lista/c
 No desktop, o menu esquerdo acompanha a rolagem do Dashboard e mantém o gerenciamento de espaços e o perfil acessíveis. A rolagem de menus em telas baixas ocorre dentro da lateral, sem afetar o conteúdo principal. Em celulares, a navegação continua responsiva.
 
 A análise de domínio gratuito recomenda **Cloudflare Pages** (`.pages.dev`) para testes e homologação do **frontend Vue**. Este endereço **não é um domínio próprio para autenticação de remetente Brevo**, não hospeda o backend Fastify nem torna o aplicativo financeiro pronto para produção. [Leia os cuidados e o teste da v0.8](docs/sidebar-dominio-v0.8.md).
+
+## v0.9: barra lateral sem rolagens e hospedagem pessoal
+
+A barra lateral agora é fixa durante a rolagem da página, com **Espaços** e **Perfil** no rodapé. Para janelas baixas, um menu **Mais páginas** agrupa os três últimos destinos, eliminando a dupla rolagem interna. A interface mobile permanece adaptada. Para este estágio **pessoal e não comercial**, a plataforma de hospedagem recomendada é **Vercel Hobby**, apenas para o frontend de teste, sem deploy automático nesta versão. [Guia e limitações](docs/sidebar-hospedagem-v0.9.md).
