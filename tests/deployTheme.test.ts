@@ -1,14 +1,14 @@
-import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
+import vercelJson from '../vercel.json?raw'
+import sidebar from '../src/assets/styles/sidebar-theme.css?raw'
+import main from '../src/main.ts?raw'
 
-const config = JSON.parse(readFileSync(new URL('../vercel.json', import.meta.url), 'utf8')) as {
+const config = JSON.parse(vercelJson) as {
   framework: string
   outputDirectory: string
   buildCommand: string
   rewrites: Array<{source: string; destination: string}>
 }
-const sidebar = readFileSync(new URL('../src/assets/styles/sidebar-theme.css', import.meta.url), 'utf8')
-const main = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8')
 
 describe('Preparação do Farol para Vercel', () => {
   it('gera frontend Vite na pasta dist', () => {
