@@ -3,6 +3,7 @@ import type { FinancialWorkspace } from '../../domain/entities/FinancialWorkspac
 import type { WorkspaceRepository } from '../../domain/repositories/WorkspaceRepository'
 import { billsStorageKey } from './BrowserBillRepository'
 import { transactionStorageKey } from './BrowserTransactionRepository'
+import { budgetStorageKey } from './BrowserBudgetRepository'
 
 const WORKSPACES_KEY = 'farol-financas:workspaces:v1'
 const ACTIVE_KEY = 'farol-financas:active-workspace:v1'
@@ -75,6 +76,7 @@ export class BrowserWorkspaceRepository implements WorkspaceRepository {
       localStorage.removeItem(billsStorageKey(id))
       localStorage.removeItem(billsStorageKey(id) + ':fixed-expenses:v1')
       localStorage.removeItem(transactionStorageKey(id))
+      localStorage.removeItem(budgetStorageKey(id))
       localStorage.setItem(WORKSPACES_KEY, JSON.stringify(rest))
       if (previous === id) localStorage.setItem(ACTIVE_KEY, DEFAULT_WORKSPACE_ID)
     } catch {
