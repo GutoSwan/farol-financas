@@ -2,6 +2,7 @@ import { computed, ref, watch } from 'vue'
 import { BrowserBillRepository } from '../../infrastructure/persistence/BrowserBillRepository'
 import { createRecurringBill } from '../../application/use-cases/createRecurringBill'
 import { registerMonthlyBill } from '../../application/use-cases/registerMonthlyBill'
+import { deleteMonthlyBillEntry } from '../../application/use-cases/deleteMonthlyBillEntry'
 import { activeWorkspaceId } from './useWorkspaces'
 import type { RecurringBill } from '../../domain/entities/RecurringBill'
 import type { MonthlyBillEntry } from '../../domain/entities/MonthlyBillEntry'
@@ -15,7 +16,6 @@ function repository(): BrowserBillRepository {
 }
 
 function refresh(): void {
-  // Sempre descartar dados do espaço anterior antes de carregar o próximo.
   bills.value = []
   entries.value = []
   try {
@@ -52,11 +52,23 @@ export function useBills() {
     }
   }
 
+  function deleteEntry(id: string): boolean {
+    try {
+      deleteMonthlyBillEntry(repository(), id)
+      refresh()
+      return true
+    } catch (cause) {
+      error.value = cause instanceof Error ? cause.message : 'Erro ao excluir o mês.'
+      return false
+    }
+  }
+
   return {
     bills: computed(() => bills.value),
     entries: computed(() => entries.value),
     error,
     addBill,
     saveEntry,
+    deleteEntry,
   }
 }
