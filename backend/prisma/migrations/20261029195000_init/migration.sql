@@ -217,24 +217,28 @@ ALTER TABLE "BudgetQuote" ADD CONSTRAINT "BudgetQuote_itemId_fkey" FOREIGN KEY (
 -- Segurança do Supabase: bloquear acesso direto ao Data API público.
 -- Autorização dos membros é feita exclusivamente pelo backend Fastify após JWT.
 ALTER TABLE "public"."User" ENABLE ROW LEVEL SECURITY;
-REVOKE ALL ON TABLE "public"."User" FROM anon, authenticated;
 ALTER TABLE "public"."Workspace" ENABLE ROW LEVEL SECURITY;
-REVOKE ALL ON TABLE "public"."Workspace" FROM anon, authenticated;
 ALTER TABLE "public"."WorkspaceMember" ENABLE ROW LEVEL SECURITY;
-REVOKE ALL ON TABLE "public"."WorkspaceMember" FROM anon, authenticated;
 ALTER TABLE "public"."RecurringBill" ENABLE ROW LEVEL SECURITY;
-REVOKE ALL ON TABLE "public"."RecurringBill" FROM anon, authenticated;
 ALTER TABLE "public"."MonthlyBillEntry" ENABLE ROW LEVEL SECURITY;
-REVOKE ALL ON TABLE "public"."MonthlyBillEntry" FROM anon, authenticated;
 ALTER TABLE "public"."FixedExpense" ENABLE ROW LEVEL SECURITY;
-REVOKE ALL ON TABLE "public"."FixedExpense" FROM anon, authenticated;
 ALTER TABLE "public"."FixedExpensePayment" ENABLE ROW LEVEL SECURITY;
-REVOKE ALL ON TABLE "public"."FixedExpensePayment" FROM anon, authenticated;
 ALTER TABLE "public"."Transaction" ENABLE ROW LEVEL SECURITY;
-REVOKE ALL ON TABLE "public"."Transaction" FROM anon, authenticated;
 ALTER TABLE "public"."BudgetProject" ENABLE ROW LEVEL SECURITY;
-REVOKE ALL ON TABLE "public"."BudgetProject" FROM anon, authenticated;
 ALTER TABLE "public"."BudgetItem" ENABLE ROW LEVEL SECURITY;
-REVOKE ALL ON TABLE "public"."BudgetItem" FROM anon, authenticated;
 ALTER TABLE "public"."BudgetQuote" ENABLE ROW LEVEL SECURITY;
-REVOKE ALL ON TABLE "public"."BudgetQuote" FROM anon, authenticated;
+
+-- Revoke default Data API grants only on hosted Supabase; roles do not exist in
+-- plain local PostgreSQL (Docker). RLS remains enabled in both environments.
+DO $$
+DECLARE table_name text;
+DECLARE db_role text;
+BEGIN
+  FOREACH db_role IN ARRAY ARRAY['anon', 'authenticated'] LOOP
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = db_role) THEN
+      FOREACH table_name IN ARRAY ARRAY['User', 'Workspace', 'WorkspaceMember', 'RecurringBill', 'MonthlyBillEntry', 'FixedExpense', 'FixedExpensePayment', 'Transaction', 'BudgetProject', 'BudgetItem', 'BudgetQuote'] LOOP
+        EXECUTE format('REVOKE ALL ON TABLE public.%I FROM %I', table_name, db_role);
+      END LOOP;
+    END IF;
+  END LOOP;
+END $$;
