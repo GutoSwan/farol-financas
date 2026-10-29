@@ -1,0 +1,98 @@
+/* Farol v0.8
+   A barra lateral acompanha a janela no desktop. O corpo principal continua
+   rolando normalmente; navegação e rodapé têm rolagem independente apenas
+   quando a altura da janela é pequena. */
+@media (min-width: 701px) {
+  .shell { align-items: flex-start; }
+  .sidebar {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
+    padding: 23px 14px 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow: visible;
+    z-index: 20;
+  }
+  .sidebar-top {
+    display: flex;
+    flex: 1 1 auto;
+    min-height: 105px;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .sidebar-top .brand { flex: 0 0 auto; padding: 3px 5px; font-size: 23px; }
+  .sidebar-top .section-label { flex: 0 0 auto; margin: 25px 5px 13px; }
+  .sidebar-top nav {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: #536c8a transparent;
+  }
+  .sidebar-top nav a { padding: 11px 12px; }
+  .sidebar-bottom {
+    display: flex;
+    flex: 0 1 auto;
+    flex-direction: column;
+    min-height: 0;
+    max-height: min(62dvh, 465px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: #536c8a transparent;
+    overscroll-behavior: contain;
+  }
+  .sidebar-workspace { margin-top: 0; padding: 15px 5px 0; gap: 8px; }
+  .sidebar-workspace .sidebar-workspace-name { font-size: 13px; }
+  .sidebar-workspace .workspace-add { justify-content: flex-start; }
+  .sidebar-workspace .sidebar-foot { margin: 0; }
+  .sidebar-profile { margin-top: 10px; padding: 10px 4px 0; flex: 0 0 auto; }
+
+  /* Menus flutuantes escapam do painel inferior rolável. */
+  .sidebar-workspace .workspace-popover {
+    position: fixed;
+    left: 265px;
+    top: auto;
+    right: auto;
+    bottom: 16px;
+    width: 335px;
+    max-width: calc(100vw - 285px);
+    max-height: calc(100dvh - 32px);
+    overflow-y: auto;
+    z-index: 90;
+  }
+  .sidebar-profile .sidebar-profile-menu {
+    position: fixed;
+    left: 16px;
+    right: auto;
+    bottom: 83px;
+    width: 218px;
+    max-height: calc(100dvh - 100px);
+    overflow-y: auto;
+    z-index: 90;
+  }
+  .main { align-self: stretch; min-height: 100dvh; }
+}
+@media (max-width: 700px) {
+  /* Evita que um menu lateral de 100vh tome a tela toda no celular. */
+  .sidebar { position: static; height: auto; min-height: 0; overflow: visible; }
+  .sidebar-top { display: block; min-height: 0; overflow: visible; }
+  .sidebar-top nav { overflow-x: auto; overflow-y: hidden; }
+  .sidebar-bottom { display: flex; flex-direction: column; gap: 0; max-height: none; overflow: visible; }
+  .sidebar-workspace { margin-top: 12px; }
+  .sidebar-profile { margin-top: 12px; }
+  .sidebar-workspace .workspace-popover { position: absolute; left: 0; bottom: calc(100% + 10px); top: auto; right: auto; width: min(315px, 100%); max-height: min(75dvh, 520px); overflow-y: auto; }
+  .sidebar-profile .sidebar-profile-menu { position: absolute; left: 0; right: 0; bottom: calc(100% + 8px); width: auto; max-height: 65dvh; overflow-y: auto; }
+}
+/* Rolagem de teclado e visualização de foco para usuários sem mouse. */
+.sidebar-top nav a:focus-visible,
+.sidebar-profile-trigger:focus-visible,
+.sidebar-workspace .workspace-add:focus-visible {
+  outline: 2px solid #efb3c5;
+  outline-offset: -2px;
+}
