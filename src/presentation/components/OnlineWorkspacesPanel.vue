@@ -14,6 +14,7 @@ const successMessage = ref('')
 
 async function load(): Promise<void> {
   checking.value = true
+  authenticatedWithApi.value = false
   errorMessage.value = ''
   successMessage.value = ''
   try {
@@ -21,6 +22,7 @@ async function load(): Promise<void> {
     authenticatedWithApi.value = true
     onlineSpaces.value = await listOnlineWorkspaces()
   } catch (cause) {
+    onlineSpaces.value = []
     errorMessage.value = cause instanceof Error ? cause.message : 'Não foi possível acessar o backend.'
   } finally {
     checking.value = false
@@ -61,7 +63,7 @@ onMounted(() => { void load() })
     </div>
 
     <p class="online-workspaces-warning"><UiIcon name="info" :size="16" />
-      **Espaços online são separados dos espaços locais.** Criar um espaço aqui não copia nem publica suas contas, despesas ou orçamentos do navegador.
+      <strong>Espaços online são separados dos espaços locais.</strong> Criar um espaço aqui não copia nem publica suas contas, despesas ou orçamentos do navegador.
     </p>
 
     <button type="button" class="secondary-action online-refresh" :disabled="checking || creating" @click="load">
