@@ -236,3 +236,17 @@ npm run dev
 ```
 
 Crie um projeto de R$ 3.000 e um item Pedreiro, registre propostas de R$ 3.500 e R$ 2.700 e escolha a segunda. Depois registre a entrada de R$ 1.000 no projeto e confirme a soma de **R$ 1.000 em gasto real**, distinta de **R$ 2.700 em orçamento aprovado**. A mesma despesa aparecerá em Lançamentos, sem duplicação no total.
+
+## Backend em desenvolvimento · v0.4
+
+A versão 0.4 adiciona uma **API independente em `backend/`** (Fastify + TypeScript + PostgreSQL + Prisma + verificação de JWT Supabase).
+
+- [Guia de instalação e rotas do backend](backend/README.md).
+- O frontend Vue atual **continua usando o armazenamento local**; nenhuma informação existente é migrada ou apagada nesta versão.
+- As primeiras rotas disponibilizadas são `GET /api/v1/health`, `GET /api/v1/ready`, `GET /api/v1/workspaces` e `POST /api/v1/workspaces`.
+- `/api/v1/workspaces` exige um JWT legítimo do Supabase Auth. O navegador ainda não tem tela de login.
+- Prisma prepara a modelagem relacional de todos os módulos financeiros, mas os respectivos endpoints ainda precisam ser implementados.
+
+Para começar, veja `backend/README.md`. A automação no GitHub testa frontend e backend em tarefas separadas.
+
+**Não apague o localStorage durante esta fase.** A importação para o banco será desenvolvida em etapas.
