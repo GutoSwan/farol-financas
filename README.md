@@ -332,3 +332,7 @@ A análise de domínio gratuito recomenda **Cloudflare Pages** (`.pages.dev`) pa
 ## v0.9: barra lateral sem rolagens e hospedagem pessoal
 
 A barra lateral agora é fixa durante a rolagem da página, com **Espaços** e **Perfil** no rodapé. Para janelas baixas, um menu **Mais páginas** agrupa os três últimos destinos, eliminando a dupla rolagem interna. A interface mobile permanece adaptada. Para este estágio **pessoal e não comercial**, a plataforma de hospedagem recomendada é **Vercel Hobby**, apenas para o frontend de teste, sem deploy automático nesta versão. [Guia e limitações](docs/sidebar-hospedagem-v0.9.md).
+
+## v0.10: todas as páginas no desktop, menu hambúrguer no celular
+
+A navegação desktop volta a mostrar os **sete links**, incluindo em **892 × 576**, sem o botão `Mais páginas`. Em telas de até 700px de largura, um botão de **três linhas** abre um menu lateral deslizante, com fundo escurecido, fechamento por ×/Esc/toque fora e acessos a espaços e perfil. [Guia de teste com resoluções e teclado](docs/mobile-drawer-v0.10.md).
