@@ -72,3 +72,34 @@ Implementar lançamentos, contas bancárias e cartões com prevenção de dupla 
 4. Troque entre eles; as contas devem aparecer apenas no espaço correspondente.
 5. Recarregue a página e verifique se o espaço ativo e o tema foram mantidos.
 
+
+## Lançamentos avulsos, planilha e gráficos
+
+Acesse **Lançamentos** para registrar compras, despesas e receitas que não são contas recorrentes.
+
+Exemplo:
+- Descrição: `Compra no mercado`
+- Valor: `90,00`
+- Tipo: `Despesa`
+- Categoria: `Mercado`
+- Data: escolha o dia da compra
+
+A mesma tela exibe:
+- Resumo do mês com entradas e saídas avulsas.
+- Gráfico de despesas por categoria.
+- Evolução dos gastos avulsos nos seis meses anteriores, incluindo o mês escolhido.
+- Tabela mensal com opções de editar e excluir lançamentos.
+
+O Dashboard também mostra um gráfico e um resumo dos lançamentos avulsos, **separadamente das contas mensais**. Por enquanto, despesas avulsas não são pagamentos de contas recorrentes nem compras parceladas/cartão.
+
+### Navegação e tema
+
+O seletor de espaço, botão “+ Novo espaço” e o recurso futuro de adicionar pessoas ficam na parte inferior da barra lateral esquerda. O botão sol/lua permanece no cabeçalho.
+
+### Teste manual
+
+1. Acesse **Lançamentos** e cadastre “Compra no mercado” por `90,00`.
+2. Confira se a categoria Mercado apareceu no gráfico e se a linha apareceu na tabela.
+3. Cadastre outro gasto de categoria diferente, altere um valor usando **Editar** e confira o recálculo.
+4. Troque o mês e o espaço financeiro, verificando que os registros não aparecem no local errado.
+5. No terminal, execute `npm run test` e `npm run build`. A rotina do GitHub Actions também tentará validá-los automaticamente quando estiver habilitada.
