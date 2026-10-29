@@ -16,7 +16,7 @@ export interface AppDependencies {
 export function buildApp(deps: AppDependencies) {
   const app = Fastify({ logger: false, bodyLimit: 100_000 })
 
-  app.get('/api/v1/health', async () => ({ status: 'ok', service: 'farol-api', version: '0.4.0' }))
+  app.get('/api/v1/health', async () => ({ status: 'ok', service: 'farol-api', version: '0.7.0' }))
 
   app.get('/api/v1/ready', async (_request, reply) => {
     try {
@@ -39,6 +39,13 @@ export function buildApp(deps: AppDependencies) {
       return null
     }
   }
+
+  // Identidade derivada exclusivamente de um JWT assinado e validado pelo servidor.
+  app.get('/api/v1/me', async (request, reply) => {
+    const identity = await authorized(request, reply)
+    if (!identity) return
+    return { data: { id: identity.userId } }
+  })
 
   app.get('/api/v1/workspaces', async (request, reply) => {
     const identity = await authorized(request, reply)
