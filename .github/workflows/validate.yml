@@ -9,9 +9,10 @@ on:
       - feat/v0.5-auth-frontend-supabase
       - feat/v0.6-email-otp-perfil
       - feat/v0.7-auth-api-espacos-online
+      - feat/v0.8-sidebar-fixa-responsiva
       - main
   pull_request:
-    branches: [main, feat/estrutura-base-clean-architecture, feat/v0.2-ux-contas-espacos-relatorios, feat/v0.3-orcamentos-projetos-cotacoes, feat/v0.4-backend-foundation, feat/v0.5-auth-frontend-supabase, feat/v0.6-email-otp-perfil]
+    branches: [main, feat/estrutura-base-clean-architecture, feat/v0.2-ux-contas-espacos-relatorios, feat/v0.3-orcamentos-projetos-cotacoes, feat/v0.4-backend-foundation, feat/v0.5-auth-frontend-supabase, feat/v0.6-email-otp-perfil, feat/v0.7-auth-api-espacos-online]
 
 permissions:
   contents: read

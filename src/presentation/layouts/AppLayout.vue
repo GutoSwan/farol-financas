@@ -67,7 +67,8 @@ function removeWorkspace(space: FinancialWorkspace): void {
 
 <template>
   <div class="shell">
-    <aside class="sidebar">
+    <aside class="sidebar" aria-label="Barra lateral do Farol">
+      <div class="sidebar-top">
       <RouterLink to="/" class="brand">◈ Farol <span>Finanças</span></RouterLink>
       <p class="section-label">SEU CONTROLE FINANCEIRO</p>
       <nav aria-label="Menu principal">
@@ -76,6 +77,8 @@ function removeWorkspace(space: FinancialWorkspace): void {
           <span>{{ link.label }}</span>
         </RouterLink>
       </nav>
+      </div>
+      <div class="sidebar-bottom">
       <div class="sidebar-workspace">
         <p class="sidebar-workspace-label">ESPAÇO FINANCEIRO</p>
         <p class="sidebar-workspace-name"><UiIcon name="users" :size="17" /> {{ currentWorkspace?.name ?? 'Gustavo e Ana' }}</p>
@@ -136,6 +139,7 @@ function removeWorkspace(space: FinancialWorkspace): void {
           <p>Os dados financeiros ainda ficam armazenados neste navegador.</p>
         </div>
         <p v-if="profileError" class="sidebar-profile-error" role="alert">{{ profileError }}</p>
+      </div>
       </div>
     </aside>
 
