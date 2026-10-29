@@ -58,7 +58,7 @@ function onViewportResize(): void {
 
 function selectAndCloseWorkspace(event: Event): void {
   selectWorkspace((event.target as HTMLSelectElement).value)
-  closeMobileMenu()
+  closeMobileMenu(true)
 }
 
 watch(mobileMenuOpen, async (open) => {
@@ -91,7 +91,7 @@ const links = [
 ]
 
 watch(() => route.fullPath, () => {
-  closeMobileMenu()
+  closeMobileMenu(true)
   profileMenuOpen.value = false
   managing.value = false
 })
@@ -144,7 +144,7 @@ function removeWorkspace(space: FinancialWorkspace): void {
       @keydown.esc.stop="closeSidebarMenus(); closeMobileMenu(true)" @keydown.tab="handleSidebarTab">
       <div class="sidebar-top">
       <div class="sidebar-mobile-heading">
-        <RouterLink to="/" class="brand" @click="closeMobileMenu()">◈ Farol <span>Finanças</span></RouterLink>
+        <RouterLink to="/" class="brand" @click="closeMobileMenu(true)">◈ Farol <span>Finanças</span></RouterLink>
         <button ref="mobileCloseButton" type="button" class="sidebar-mobile-close" aria-label="Fechar menu"
           @click="closeSidebarMenus(); closeMobileMenu(true)"><span aria-hidden="true">×</span></button>
       </div>
@@ -152,7 +152,7 @@ function removeWorkspace(space: FinancialWorkspace): void {
       <nav aria-label="Menu principal">
         <RouterLink v-for="link in links" :key="link.to" :to="link.to"
           class="side-nav-link" :class="{ active: route.path === link.to }"
-          @click="closeMobileMenu()">
+          @click="closeMobileMenu(true)">
           <UiIcon :name="link.icon" :size="17" />
           <span>{{ link.label }}</span>
         </RouterLink>
