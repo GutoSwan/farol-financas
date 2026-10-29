@@ -13,6 +13,8 @@ const { transactions, error: transactionError } = useTransactions()
 const { fixedExpenses, error: fixedError } = useFixedExpenses()
 const month = ref(currentYearMonth())
 const monthCount = ref(6)
+const typeFilter = ref<'all' | 'recurring' | 'fixed' | 'oneoff'>('all')
+const categoryFilter = ref('all')
 
 const monthly = computed(() => expenseOverviewForMonth(entries.value, transactions.value, month.value, fixedExpenses.value))
 const income = computed(() => transactionSummary(transactionsInMonth(transactions.value, month.value)).incomeCents)
@@ -47,9 +49,19 @@ const chartData = computed(() => {
     }
   })
 })
-const maxTotal = computed(() => Math.max(1, ...chartData.value.map((item) => item.value.totalCents)))
+function filteredAmount(result: ReturnType<typeof expenseOverviewForMonth>): number {
+  switch (typeFilter.value) {
+    case 'recurring': return result.recurringCents
+    case 'fixed': return result.fixedCents
+    case 'oneoff': return result.oneOffCents
+    default: return result.totalCents
+  }
+}
+const maxTotal = computed(() => Math.max(1, ...chartData.value.map((item) => filteredAmount(item.value))))
 const categories = computed(() => expensesByCategory(transactionsInMonth(transactions.value, month.value)))
-const categoryMax = computed(() => Math.max(1, ...categories.value.map((item) => item.amountCents)))
+const visibleCategories = computed(() => categoryFilter.value === 'all'
+  ? categories.value : categories.value.filter((item) => item.category === categoryFilter.value))
+const categoryMax = computed(() => Math.max(1, ...visibleCategories.value.map((item) => item.amountCents)))
 </script>
 
 <template>
@@ -78,17 +90,25 @@ const categoryMax = computed(() => Math.max(1, ...categories.value.map((item) =>
     <section class="panel">
       <div class="panel-title">
         <div><h2>Quanto gastou em cada mês?</h2><p>Uma barra representa o total de gastos de um mês. Quanto maior, maior a despesa.</p></div>
-        <label class="period-select">Período
-          <select v-model.number="monthCount"><option :value="6">6 meses</option><option :value="12">12 meses</option></select>
-        </label>
+        <div class="report-filters">
+          <label class="period-select">Tipo
+            <select v-model="typeFilter">
+              <option value="all">Gastos totais</option><option value="recurring">Contas mensais</option>
+              <option value="fixed">Gastos fixos</option><option value="oneoff">Despesas avulsas</option>
+            </select>
+          </label>
+          <label class="period-select">Período
+            <select v-model.number="monthCount"><option :value="6">6 meses</option><option :value="12">12 meses</option></select>
+          </label>
+        </div>
       </div>
       <div class="simple-chart-scroll">
         <div class="simple-chart" :style="{ gridTemplateColumns: 'repeat(' + monthCount + ', minmax(90px, 1fr))' }"
-          role="img" :aria-label="'Gastos por mês: ' + chartData.map((item) => formatYearMonth(item.period) + ' ' + formatBRL(item.value.totalCents)).join('; ')">
+          role="img" :aria-label="'Gastos por mês no filtro escolhido: ' + chartData.map((item) => formatYearMonth(item.period) + ' ' + formatBRL(filteredAmount(item.value))).join('; ')">
           <div v-for="item in chartData" :key="item.period" class="simple-chart-column" :class="{ current: item.period === month }">
-            <strong>{{ formatBRL(item.value.totalCents) }}</strong>
+            <strong>{{ formatBRL(filteredAmount(item.value)) }}</strong>
             <div class="simple-chart-background">
-              <div class="simple-chart-bar" :style="{ height: (item.value.totalCents / maxTotal * 100) + '%' }"></div>
+              <div class="simple-chart-bar" :style="{ height: (filteredAmount(item.value) / maxTotal * 100) + '%' }"></div>
             </div>
             <span>{{ item.label }}</span>
           </div>
@@ -113,10 +133,18 @@ const categoryMax = computed(() => Math.max(1, ...categories.value.map((item) =>
     </section>
 
     <section class="panel">
-      <div class="panel-title"><div><h2>Compras por categoria</h2><p>Apenas despesas cadastradas em Lançamentos.</p></div></div>
-      <div v-if="!categories.length" class="empty">Nenhuma compra avulsa neste mês.</div>
+      <div class="panel-title">
+        <div><h2>Compras por categoria</h2><p>Apenas despesas cadastradas em Lançamentos.</p></div>
+        <label class="period-select">Categoria
+          <select v-model="categoryFilter">
+            <option value="all">Todas</option>
+            <option v-for="item in categories" :key="item.category" :value="item.category">{{ item.category }}</option>
+          </select>
+        </label>
+      </div>
+      <div v-if="!visibleCategories.length" class="empty">Nenhuma compra avulsa neste mês ou categoria.</div>
       <div v-else class="category-chart">
-        <div v-for="part in categories" :key="part.category" class="category-chart-row">
+        <div v-for="part in visibleCategories" :key="part.category" class="category-chart-row">
           <div class="chart-row-heading"><span>{{ part.category }}</span><strong>{{ formatBRL(part.amountCents) }}</strong></div>
           <div class="chart-track"><div class="chart-fill" :style="{ width: (part.amountCents / categoryMax * 100) + '%' }"></div></div>
         </div>
