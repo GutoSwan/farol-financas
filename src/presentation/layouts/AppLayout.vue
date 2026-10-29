@@ -13,6 +13,7 @@ const newName = ref('')
 const links = [
   ['/', 'Visão geral'],
   ['/contas-mensais', 'Contas mensais'],
+  ['/gastos-fixos', 'Gastos fixos'],
   ['/lancamentos', 'Lançamentos'],
   ['/cartoes', 'Cartões de crédito'],
   ['/orcamentos', 'Orçamentos'],
