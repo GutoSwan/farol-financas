@@ -322,3 +322,9 @@ Até a migração financeira para o backend, os dados locais **não** ficam isol
 Em **Meu perfil**, o Farol agora valida a sessão com `GET /api/v1/me` e lista/cria espaços online com `GET/POST /api/v1/workspaces`. Os espaços são gravados em PostgreSQL, com permissões de usuário aplicadas no backend. Eles permanecem **separados dos espaços locais** até a migração assistida dos lançamentos e contas. O login ainda não protege os dados financeiros em `localStorage`.
 
 [Guia completo de autenticação, Supabase SMTP/Brevo e primeiros espaços online](docs/autenticacao-v0.7.md).
+
+## v0.8: barra lateral que acompanha a página
+
+No desktop, o menu esquerdo acompanha a rolagem do Dashboard e mantém o gerenciamento de espaços e o perfil acessíveis. A rolagem de menus em telas baixas ocorre dentro da lateral, sem afetar o conteúdo principal. Em celulares, a navegação continua responsiva.
+
+A análise de domínio gratuito recomenda **Cloudflare Pages** (`.pages.dev`) para testes e homologação do **frontend Vue**. Este endereço **não é um domínio próprio para autenticação de remetente Brevo**, não hospeda o backend Fastify nem torna o aplicativo financeiro pronto para produção. [Leia os cuidados e o teste da v0.8](docs/sidebar-dominio-v0.8.md).
