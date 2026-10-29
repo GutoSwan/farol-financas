@@ -174,6 +174,10 @@ function compare(a: number, b: number): string {
         <label>Situação
           <select v-model="status" :disabled="!selected?.active"><option value="pending">Pendente</option><option value="paid">Pago</option></select>
         </label>
+        <button v-if="previous && !current && selected?.active" type="button" class="secondary-action copy-previous"
+          @click="amount = formatBRL(previous.amountCents)">
+          <UiIcon name="restore" :size="16" /> Usar valor de {{ formatYearMonth(previous.yearMonth) }}
+        </button>
         <button type="submit" class="primary" :disabled="!selected?.active">{{ current ? 'Atualizar registro' : 'Registrar valor' }}</button>
       </form>
       <p v-if="selected && !selected.active" class="notice">Conta arquivada: reative-a para cadastrar novos valores. O histórico permanece abaixo.</p>
