@@ -13,6 +13,7 @@ on:
       - feat/v0.9-sidebar-limpa-sem-scroll
       - feat/v0.10-menu-completo-mobile-drawer
       - feat/v0.11-tema-claro-preparacao-vercel
+      - feat/v0.13-api-postgres-nuvem
       - feat/v0.12-login-redireciona-dashboard
       - main
   pull_request:
@@ -52,6 +53,9 @@ jobs:
       - name: Validar modelo Prisma
         working-directory: backend
         run: npx prisma validate
+      - name: Prisma SQL base (temporário para criar a migração inicial)
+        working-directory: backend
+        run: npx prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script
       - name: Testes da API
         working-directory: backend
         run: npm run test
