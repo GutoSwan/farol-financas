@@ -1,0 +1,61 @@
+/* Farol 0.3 • Projetos e cotações. Mesma linguagem visual da v0.2. */
+.budget-form { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; align-items: end; max-width: 850px; }
+.budget-form label { display: grid; align-content: start; gap: 7px; min-width: 0; font-size: 12px; font-weight: 700; color: var(--farol-text); }
+.budget-form textarea { min-height: 72px; width: 100%; resize: vertical; border: 1px solid var(--farol-border); border-radius: 8px; padding: 12px; background: var(--farol-card-muted); color: var(--farol-text); font: inherit; }
+.budget-form-wide { grid-column: 1/-1; }
+.budget-form button { display: inline-flex; gap: 8px; align-items: center; }
+.budget-form .budget-check { display: flex; flex-direction: row; gap: 9px; align-items: center; align-self: center; }
+.budget-check input { width: 16px; height: 16px; min-height: 0; accent-color: #94445b; }
+.budget-form-edit { background: var(--farol-card-muted); border: 1px solid var(--farol-border); border-radius: 12px; padding: 16px; margin-bottom: 22px; }
+.budget-project-list { display: grid; gap: 10px; border-top: 1px solid var(--farol-border); margin-top: 22px; padding-top: 18px; }
+.budget-project-choice { width: 100%; display: flex; gap: 12px; align-items: center; justify-content: space-between; text-align: left; padding: 16px; background: var(--farol-card-muted); border: 1px solid var(--farol-border); border-radius: 11px; color: var(--farol-text); }
+.budget-project-choice.active, .budget-item.active { border-color: var(--farol-wine); box-shadow: inset 3px 0 var(--farol-wine); }
+.budget-project-choice > span:first-child { display: grid; gap: 6px; }
+.budget-project-choice strong { color: var(--farol-text); font-size: 14px; }
+.budget-project-choice small { color: var(--farol-muted); font-size: 11px; }
+.budget-project-choice > span:last-child { font-weight: 750; font-size: 14px; white-space: nowrap; }
+.budget-project-notes { color: var(--farol-muted); font-size: 13px; line-height: 1.6; }
+.budget-summary-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; }
+.budget-summary-grid > div { border: 1px solid var(--farol-border); background: var(--farol-card-muted); border-radius: 11px; padding: 18px; display: grid; gap: 8px; }
+.budget-summary-grid span, .budget-summary-grid small { color: var(--farol-muted); font-size: 12px; }
+.budget-summary-grid strong { color: var(--farol-text); font-size: clamp(18px,2.3vw,26px); overflow-wrap: anywhere; }
+.budget-disclaimer { color: var(--farol-muted); font-size: 11px; line-height: 1.6; margin: 15px 0 0; }
+.budget-items { display: grid; gap: 10px; margin-top: 18px; }
+.budget-item { display: flex; gap: 12px; align-items: center; justify-content: space-between; padding: 14px 17px; border: 1px solid var(--farol-border); background: var(--farol-card-muted); border-radius: 10px; color: var(--farol-text); text-align: left; }
+.budget-item > span { display: grid; gap: 6px; }
+.budget-item strong { color: var(--farol-text); font-size: 14px; }
+.budget-item small { color: var(--farol-muted); font-size: 11px; }
+.budget-item svg { color: var(--farol-wine); }
+.budget-quote-list { border-top: 1px solid var(--farol-border); margin-top: 24px; padding-top: 18px; display: grid; gap: 13px; }
+.budget-quote { padding: 18px; border: 1px solid var(--farol-border); background: var(--farol-card-muted); border-radius: 12px; }
+.budget-quote.chosen { border-color: var(--farol-positive); box-shadow: inset 3px 0 var(--farol-positive); }
+.budget-quote-head { display: flex; justify-content: space-between; gap: 12px; align-items: start; }
+.budget-quote-head > div { display: grid; gap: 7px; }
+.budget-quote-head > div strong { font-size: 15px; color: var(--farol-text); }
+.budget-quote-head small { font-size: 11px; color: var(--farol-muted); }
+.budget-quote-head > strong { font-size: 19px; white-space: nowrap; }
+.budget-quote p { color: var(--farol-muted); font-size: 12px; line-height: 1.6; margin: 14px 0; }
+.budget-quote-foot { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+.budget-quote-foot .primary, .budget-quote-foot .secondary-action { display: inline-flex; align-items: center; gap: 6px; min-height: 35px; }
+.budget-quote-foot .icon-action { margin-left: auto; }
+.budget-best { font-size: 11px; font-weight: 700; color: var(--farol-positive); padding: 7px 11px; border-radius: 20px; background: var(--farol-positive-soft); }
+.budget-quote-foot > span:not(.budget-best) { font-size: 11px; font-weight: 750; }
+.budget-existing-link, .budget-payment-list { border-top: 1px solid var(--farol-border); margin-top: 26px; padding-top: 20px; }
+.budget-existing-link h3, .budget-payment-list h3 { color: var(--farol-text); font-size: 15px; margin: 0 0 13px; }
+.budget-existing-link form { display: grid; gap: 12px; max-width: 850px; }
+.budget-existing-link label { display: grid; gap: 8px; font-size: 12px; color: var(--farol-text); font-weight: 650; }
+.budget-existing-link .secondary-action { justify-self: start; }
+.budget-payment-list .scroll td, .budget-payment-list .scroll th { white-space: nowrap; }
+.budget-payment-list .scroll td:nth-child(2) { white-space: normal; }
+.budget-payment-list .secondary-action { font-size: 11px; }
+:root[data-theme="dark"] .budget-form textarea { background: var(--farol-card-muted); border-color: var(--farol-border); color: var(--farol-text); }
+:root[data-theme="dark"] .budget-item, :root[data-theme="dark"] .budget-quote, :root[data-theme="dark"] .budget-project-choice, :root[data-theme="dark"] .budget-summary-grid > div, :root[data-theme="dark"] .budget-form-edit { background: var(--farol-card-muted); border-color: var(--farol-border); color: var(--farol-text); }
+:root[data-theme="dark"] .budget-project-choice.active, :root[data-theme="dark"] .budget-item.active { border-color: var(--farol-wine); }
+:root[data-theme="dark"] .budget-quote.chosen { border-color: var(--farol-positive); }
+@media (max-width:760px) {
+  .budget-form, .budget-summary-grid { grid-template-columns: 1fr; }
+  .budget-project-choice, .budget-quote-head { flex-wrap: wrap; }
+  .budget-quote-head > strong { white-space: normal; }
+  .budget-project-choice > span:last-child { white-space: normal; }
+  .budget-quote-foot .icon-action { margin-left: 0; }
+}

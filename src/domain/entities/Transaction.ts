@@ -17,4 +17,7 @@ export interface Transaction {
   kind: TransactionKind
   occurredOn: string // YYYY-MM-DD no horário local
   createdAt: string
+  /** Vínculo opcional com projeto de orçamento: não cria despesa adicional. */
+  budgetProjectId?: string
+  budgetItemId?: string
 }

@@ -10,6 +10,8 @@ export interface TransactionInput {
   category: TransactionCategory
   kind: TransactionKind
   occurredOn: string
+  budgetProjectId?: string | null
+  budgetItemId?: string | null
 }
 
 export function normalizeCategory(input: string, existingCategories: string[] = []): string {
@@ -39,6 +41,11 @@ export function saveTransaction(repository: TransactionRepository, input: Transa
   }
   const prior = input.id ? existing.find((item) => item.id === input.id) : undefined
   if (input.id && !prior) throw new Error('Lançamento não encontrado.')
+  // undefined mantém o vínculo ao editar; null permite desvincular expressamente.
+  const projectId = input.budgetProjectId === undefined ? prior?.budgetProjectId : input.budgetProjectId
+  const itemId = input.budgetItemId === undefined ? prior?.budgetItemId : input.budgetItemId
+  if (Boolean(projectId) !== Boolean(itemId)) throw new Error('É necessário informar projeto e item juntos.')
+  if (projectId && input.kind !== 'expense') throw new Error('Apenas despesas podem ser vinculadas a projetos.')
   const transaction: Transaction = {
     id: prior?.id ?? crypto.randomUUID(),
     createdAt: prior?.createdAt ?? new Date().toISOString(),
@@ -47,6 +54,7 @@ export function saveTransaction(repository: TransactionRepository, input: Transa
     category,
     kind: input.kind,
     occurredOn: input.occurredOn,
+    ...(projectId && itemId ? { budgetProjectId: projectId, budgetItemId: itemId } : {}),
   }
   repository.save(transaction)
   return transaction
