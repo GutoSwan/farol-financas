@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { useTransactions } from '../composables/useTransactions'
 import { activeWorkspaceId } from '../composables/useWorkspaces'
 import { TRANSACTION_CATEGORIES } from '../../domain/entities/Transaction'
+import MoneyInput from '../components/MoneyInput.vue'
 import type { TransactionCategory, TransactionKind, Transaction } from '../../domain/entities/Transaction'
 import { parseBRLToCents, formatBRL } from '../../domain/value-objects/Money'
 import { expensesByCategory, transactionsInMonth, transactionSummary } from '../../domain/services/transactionAnalytics'
@@ -28,6 +29,7 @@ const visible = computed(() => transactionsInMonth(transactions.value, month.val
 const summary = computed(() => transactionSummary(visible.value))
 const categories = computed(() => expensesByCategory(visible.value))
 const highest = computed(() => Math.max(1, ...categories.value.map((item) => item.amountCents)))
+const categorySuggestions = computed(() => Array.from(new Set([...TRANSACTION_CATEGORIES, ...transactions.value.map((item) => item.category)])))
 const previousMonths = computed(() => {
   const [year, selectedMonth] = month.value.split('-').map(Number)
   return Array.from({ length: 6 }, (_, index) => {
@@ -73,7 +75,7 @@ function submit(): void {
 function edit(item: Transaction): void {
   editingId.value = item.id
   description.value = item.description
-  amount.value = (item.amountCents / 100).toFixed(2).replace('.', ',')
+  amount.value = formatBRL(item.amountCents)
   category.value = item.category
   kind.value = item.kind
   occurredOn.value = item.occurredOn
@@ -103,15 +105,15 @@ watch(activeWorkspaceId, () => { resetForm(); feedback.value = '' })
     </div>
     <label>Mês de referência <input v-model="month" type="month" aria-label="Mês para consultar lançamentos" /></label>
   </div>
-  <div class="notice">Exemplo: Mercado, R$ 90,00. Contas recorrentes são controladas separadamente para evitar valores duplicados.</div>
+  <div class="notice">Exemplo: Compra no mercado, R$ 90,00. Você pode criar categorias próprias. Não registre novamente aqui uma conta que já está cadastrada em Contas Mensais, para não somar duas vezes.</div>
 
   <section class="panel">
     <div class="panel-title"><div><h2>{{ editingId ? 'Editar lançamento' : '+ Novo lançamento' }}</h2><p>Adicione gastos e entradas do dia a dia.</p></div></div>
     <form class="transaction-form" @submit.prevent="submit">
       <label class="transaction-description">Descrição <input v-model="description" required minlength="2" maxlength="120" placeholder="Ex.: Compra no mercado" /></label>
-      <label>Valor (R$) <input v-model="amount" inputmode="decimal" placeholder="90,00" required /></label>
+      <label>Valor (R$) <MoneyInput v-model="amount" placeholder="R$ 500,00" required /></label>
       <label>Tipo <select v-model="kind"><option value="expense">Despesa</option><option value="income">Receita</option></select></label>
-      <label>Categoria <select v-model="category"><option v-for="item in TRANSACTION_CATEGORIES" :key="item" :value="item">{{ item }}</option></select></label>
+      <label>Categoria <input v-model="category" list="transaction-categories" minlength="2" maxlength="40" required placeholder="Digite ou escolha" /><datalist id="transaction-categories"><option v-for="item in categorySuggestions" :key="item" :value="item" /></datalist></label>
       <label>Data <input v-model="occurredOn" type="date" required /></label>
       <div class="transaction-actions"><button type="submit" class="primary">{{ editingId ? 'Salvar alterações' : '+ Adicionar' }}</button><button v-if="editingId" type="button" class="secondary-action" @click="resetForm">Cancelar</button></div>
     </form>
