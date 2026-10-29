@@ -4,10 +4,12 @@ import { useRoute } from 'vue-router'
 import UiIcon from '../components/UiIcon.vue'
 import { useTheme } from '../composables/useTheme'
 import { useWorkspaces } from '../composables/useWorkspaces'
+import { useAuth } from '../composables/useAuth'
 import { DEFAULT_WORKSPACE_ID } from '../../domain/entities/FinancialWorkspace'
 import type { FinancialWorkspace } from '../../domain/entities/FinancialWorkspace'
 
 const route = useRoute()
+const { isLoggedIn, user } = useAuth()
 const { isDark, toggleTheme } = useTheme()
 const { workspaces, currentWorkspace, activeWorkspaceId, error: workspaceError, selectWorkspace, createWorkspace, deleteWorkspace } = useWorkspaces()
 const managing = ref(false)
@@ -97,6 +99,10 @@ function removeWorkspace(space: FinancialWorkspace): void {
         <b>Farol Finanças</b>
         <div class="topbar-actions">
           <span class="page-context">{{ route.meta.title ?? 'Visão geral' }}</span>
+          <RouterLink class="header-auth-link" :to="isLoggedIn ? '/conta' : '/entrar'">
+            <UiIcon name="users" :size="17" />
+            <span>{{ isLoggedIn ? (user?.email ?? 'Minha conta') : 'Entrar' }}</span>
+          </RouterLink>
           <button class="theme-toggle" type="button"
             :aria-label="isDark ? 'Ativar modo claro' : 'Ativar modo escuro'"
             :title="isDark ? 'Ativar modo claro' : 'Ativar modo escuro'"
