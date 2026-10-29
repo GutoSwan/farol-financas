@@ -264,6 +264,10 @@ async function testApi(): Promise<void> {
         <h1>Confirme seu e-mail</h1>
         <p class="auth-subtitle">Enviamos um código para <strong>{{ verificationEmail }}</strong>. Digite o código recebido aqui. Você continuará nesta página.</p>
         <form class="auth-form" @submit.prevent="confirmEmail">
+          <label>E-mail que recebeu o código
+            <input v-model.trim="verificationEmail" type="email" autocomplete="email"
+              required maxlength="254" :disabled="busy" placeholder="voce@exemplo.com" />
+          </label>
           <label>Código recebido por e-mail
             <input v-model.trim="code" type="text" inputmode="numeric" autocomplete="one-time-code"
               pattern="[0-9]{6,8}" minlength="6" maxlength="8" required
