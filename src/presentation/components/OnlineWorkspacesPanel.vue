@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import UiIcon from './UiIcon.vue'
+import { apiConfigured } from '../../infrastructure/api/apiEndpoint'
 import { getOnlineIdentity, listOnlineWorkspaces, createOnlineWorkspace } from '../../infrastructure/api/onlineWorkspaces'
 import type { OnlineWorkspace } from '../../infrastructure/api/onlineWorkspaces'
 
 // Na Vercel v0.11 somente o frontend Vite é publicado. Não solicitar /api sem Fastify online.
-const backendDisponivel = import.meta.env.DEV
+const backendDisponivel = apiConfigured
 const checking = ref(false)
 const creating = ref(false)
 const authenticatedWithApi = ref(false)
@@ -70,7 +71,7 @@ onMounted(() => { if (backendDisponivel) void load() })
 
     <p v-if="!backendDisponivel" class="online-workspaces-warning" role="status">
       <UiIcon name="info" :size="16" />
-      A API Fastify e o PostgreSQL ainda estão locais. Na versão publicada para demonstração, a conexão com os espaços online fica desativada até hospedarmos o backend com segurança.
+      A API online ainda não foi vinculada a esta versão do Farol. Configure VITE_API_BASE_URL na Vercel depois de publicar o backend e aplicar as migrações.
     </p>
 
     <button v-if="backendDisponivel" type="button" class="secondary-action online-refresh" :disabled="checking || creating" @click="load">
