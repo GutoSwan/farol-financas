@@ -316,3 +316,9 @@ O `backend/.env` deve conter a **mesma SUPABASE_URL** do Vue e o `DATABASE_URL` 
 O cadastro agora aceita nome e confirmação por código de e-mail na própria página; a conta pode personalizar um ícone vetorial e editar o nome. A identidade é mostrada no canto inferior esquerdo. A mudança obrigatória do template **Confirm signup** no painel do Supabase, com `{{ .Token }}`, e os passos de teste estão em [docs/supabase-otp-perfil.md](docs/supabase-otp-perfil.md).
 
 Até a migração financeira para o backend, os dados locais **não** ficam isolados por login.
+
+## v0.7: sessão Supabase validada na API e espaços online
+
+Em **Meu perfil**, o Farol agora valida a sessão com `GET /api/v1/me` e lista/cria espaços online com `GET/POST /api/v1/workspaces`. Os espaços são gravados em PostgreSQL, com permissões de usuário aplicadas no backend. Eles permanecem **separados dos espaços locais** até a migração assistida dos lançamentos e contas. O login ainda não protege os dados financeiros em `localStorage`.
+
+[Guia completo de autenticação, Supabase SMTP/Brevo e primeiros espaços online](docs/autenticacao-v0.7.md).

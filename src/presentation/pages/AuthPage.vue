@@ -2,6 +2,7 @@
 import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import UiIcon from '../components/UiIcon.vue'
+import OnlineWorkspacesPanel from '../components/OnlineWorkspacesPanel.vue'
 import { useAuth } from '../composables/useAuth'
 import { PROFILE_ICONS } from '../../domain/profile/profile'
 import type { ProfileIcon } from '../../domain/profile/profile'
@@ -12,7 +13,7 @@ const props = defineProps<{ mode: AuthMode }>()
 const router = useRouter()
 const {
   configured, ready, user, profile, isLoggedIn, signIn, signUp, verifySignupCode, resendSignupCode,
-  updateProfile, signOut, requestPasswordReset, updatePassword, checkApiAuth,
+  updateProfile, signOut, requestPasswordReset, updatePassword,
 } = useAuth()
 
 const email = ref('')
@@ -23,7 +24,6 @@ const showPassword = ref(false)
 const busy = ref(false)
 const message = ref('')
 const errorText = ref('')
-const workspaceCount = ref<number | null>(null)
 const signupStep = ref<SignupStep>('form')
 const verificationEmail = ref('')
 const code = ref('')
@@ -39,7 +39,6 @@ watch(() => props.mode, () => {
   signupStep.value = 'form'
   message.value = ''
   errorText.value = ''
-  workspaceCount.value = null
   editingProfile.value = false
 })
 watch(profile, (current) => {
@@ -169,19 +168,6 @@ async function logout(): Promise<void> {
   }
 }
 
-async function testApi(): Promise<void> {
-  busy.value = true
-  resetMessages()
-  workspaceCount.value = null
-  try {
-    workspaceCount.value = await checkApiAuth()
-    message.value = 'Autenticação validada pela API do Farol!'
-  } catch (cause) {
-    errorText.value = errorMessage(cause)
-  } finally {
-    busy.value = false
-  }
-}
 </script>
 
 <template>
@@ -235,10 +221,7 @@ async function testApi(): Promise<void> {
             <UiIcon name="info" :size="19" />
             <span>Seu perfil é salvo no Supabase, mas os espaços financeiros e lançamentos continuam neste navegador. O login ainda não protege nem sincroniza esses dados.</span>
           </div>
-          <button type="button" class="secondary-action auth-full-button" :disabled="busy" @click="testApi">
-            <UiIcon name="check" :size="16" /> {{ busy ? 'Verificando...' : 'Testar acesso à API protegida' }}
-          </button>
-          <p v-if="workspaceCount !== null" class="auth-muted">Espaços encontrados no banco da API: {{ workspaceCount }}. Os espaços locais são independentes.</p>
+          <OnlineWorkspacesPanel />
           <button type="button" class="secondary-action auth-full-button" :disabled="busy" @click="logout">
             <UiIcon name="log-out" :size="16" /> Sair da conta
           </button>

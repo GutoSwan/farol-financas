@@ -23,8 +23,9 @@ function fixtures() {
   }
   const auth: AuthVerifier = {
     async verifyAccessToken(token) {
-      if (token !== 'valid-for-test') throw new Error('invalid')
-      return { userId }
+      if (token === 'valid-for-test') return { userId }
+      if (token === 'other-user-test') return { userId: '823e4567-e89b-42d3-a456-426614174999' }
+      throw new Error('invalid')
     },
   }
   const app = buildApp({ auth, workspaceService: new WorkspaceService(repository), checkDatabase: async () => true })
@@ -74,6 +75,36 @@ describe('Farol API v0.4', () => {
     expect(created.json().data).toMatchObject({ role: 'OWNER', name: 'Casa e família' })
     const listed = await app.inject({ method: 'GET', url: '/api/v1/workspaces', headers })
     expect(listed.json().data).toHaveLength(1)
+    await app.close()
+  })
+
+  it('retorna a identidade validada pelo backend sem confiar no cliente', async () => {
+    const { app } = fixtures()
+    const noToken = await app.inject({ method: 'GET', url: '/api/v1/me' })
+    expect(noToken.statusCode).toBe(401)
+    const invalidToken = await app.inject({ method: 'GET', url: '/api/v1/me', headers: { authorization: 'Bearer invalid' } })
+    expect(invalidToken.statusCode).toBe(401)
+    const valid = await app.inject({ method: 'GET', url: '/api/v1/me', headers: { authorization: 'Bearer valid-for-test' } })
+    expect(valid.statusCode).toBe(200)
+    expect(valid.json()).toEqual({ data: { id: userId } })
+    expect(valid.body).not.toContain('access_token')
+    await app.close()
+  })
+
+  it('não revela espaços de uma conta para outra conta autenticada', async () => {
+    const { app } = fixtures()
+    const headers = { authorization: 'Bearer valid-for-test' }
+    const created = await app.inject({
+      method: 'POST', url: '/api/v1/workspaces', headers,
+      payload: { name: 'Casa e família' },
+    })
+    expect(created.statusCode).toBe(201)
+    const other = await app.inject({
+      method: 'GET', url: '/api/v1/workspaces',
+      headers: { authorization: 'Bearer other-user-test' },
+    })
+    expect(other.statusCode).toBe(200)
+    expect(other.json()).toEqual({ data: [] })
     await app.close()
   })
 

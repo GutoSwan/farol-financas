@@ -103,3 +103,11 @@ Inclui tabelas para `User`, `Workspace`, `WorkspaceMember`, contas mensais e his
 ## Próxima etapa
 
 Adicionar login na interface, fluxo de criação e convites com papéis, endpoints de contas e lançamentos e **exportação/importação assistida** de dados do `localStorage`. Não apague os dados locais enquanto essa migração não estiver implementada. Em produção, configurar armazenamento seguro, backups, monitoração, CORS restritivo, rate limiting e revisão de permissões.
+
+## v0.7: identidade autenticada
+
+- `GET /api/v1/me` exige `Authorization: Bearer <access_token>` e retorna `{ "data": { "id": "<uuid validado>" } }`.
+- `GET /api/v1/workspaces` lista somente os espaços do usuário autenticado.
+- `POST /api/v1/workspaces` cria um espaço PostgreSQL e vincula esse usuário como `OWNER`.
+
+A validação da assinatura do JWT acontece no Fastify. O frontend não manda `userId` no corpo, e dados locais ainda não são importados nem protegidos pelo login.
