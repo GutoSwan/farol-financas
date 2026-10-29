@@ -46,7 +46,9 @@ export class BrowserBillRepository implements RecurringBillRepository {
 
   saveBill(bill: RecurringBill): void {
     const data = this.read()
-    data.bills.push(bill)
+    const index = data.bills.findIndex((item) => item.id === bill.id)
+    if (index < 0) data.bills.push(bill)
+    else data.bills[index] = bill
     this.write(data)
   }
 
@@ -62,6 +64,14 @@ export class BrowserBillRepository implements RecurringBillRepository {
     const data = this.read()
     if (!data.entries.some((entry) => entry.id === id)) throw new Error('Registro mensal não encontrado.')
     data.entries = data.entries.filter((entry) => entry.id !== id)
+    this.write(data)
+  }
+
+  deleteBillAndEntries(id: string): void {
+    const data = this.read()
+    if (!data.bills.some((bill) => bill.id === id)) throw new Error('Conta mensal não encontrada.')
+    data.bills = data.bills.filter((bill) => bill.id !== id)
+    data.entries = data.entries.filter((entry) => entry.billId !== id)
     this.write(data)
   }
 }
