@@ -340,3 +340,9 @@ A navegação desktop volta a mostrar os **sete links**, incluindo em **892 × 5
 ## v0.11: barra lateral clara e preparação para Vercel Hobby
 
 A barra lateral, inclusive o drawer mobile, acompanha o modo claro ou escuro: fundo e textos adaptativos, seletor de espaços e menu de perfil legíveis. Foi criado `vercel.json` para o frontend Vite, com fallback SPA apenas nas rotas do Vue, sem transformar URLs `/api` em HTML. O painel da API mostra um aviso na demo estática, já que Fastify e PostgreSQL permanecem locais. **Nenhum deploy foi realizado.** Veja [as instruções para conectar o GitHub à Vercel e testar a branch correta](docs/tema-e-vercel-v0.11.md).
+
+## v0.12: entrar leva à Visão geral
+
+Após autenticar em `/entrar`, o Farol redireciona para `/` (Dashboard), mostrando a barra lateral com o perfil e os espaços. Se a sessão do Supabase já estiver ativa, abrir `/entrar` ou `/cadastro` também leva ao Dashboard. Recuperação e redefinição de senha não são redirecionadas.
+
+**Limite de segurança atual:** isso melhora apenas a navegação. A Visão geral e os registros locais continuam acessíveis sem login, e o `localStorage` **não é separado por usuário**. Isolamento e autenticação obrigatória serão ativados somente após migrarmos os dados para o backend com permissões.
