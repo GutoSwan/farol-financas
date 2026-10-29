@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import UiIcon from '../components/UiIcon.vue'
 import { useTheme } from '../composables/useTheme'
 import { useWorkspaces } from '../composables/useWorkspaces'
@@ -9,7 +9,11 @@ import { DEFAULT_WORKSPACE_ID } from '../../domain/entities/FinancialWorkspace'
 import type { FinancialWorkspace } from '../../domain/entities/FinancialWorkspace'
 
 const route = useRoute()
-const { isLoggedIn, user } = useAuth()
+const router = useRouter()
+const { isLoggedIn, user, profile, signOut } = useAuth()
+const profileMenuOpen = ref(false)
+const profileBusy = ref(false)
+const profileError = ref('')
 const { isDark, toggleTheme } = useTheme()
 const { workspaces, currentWorkspace, activeWorkspaceId, error: workspaceError, selectWorkspace, createWorkspace, deleteWorkspace } = useWorkspaces()
 const managing = ref(false)
@@ -25,6 +29,21 @@ const links = [
   { to: '/orcamentos', label: 'Orçamentos', icon: 'target' as const },
   { to: '/relatorios', label: 'Relatórios', icon: 'chart' as const },
 ]
+
+async function logoutFromSidebar(): Promise<void> {
+  if (profileBusy.value) return
+  profileBusy.value = true
+  profileError.value = ''
+  try {
+    await signOut()
+    profileMenuOpen.value = false
+    await router.push('/entrar')
+  } catch (cause) {
+    profileError.value = cause instanceof Error ? cause.message : 'Não foi possível sair.'
+  } finally {
+    profileBusy.value = false
+  }
+}
 
 function submitWorkspace(): void {
   notice.value = ''
@@ -92,6 +111,32 @@ function removeWorkspace(space: FinancialWorkspace): void {
         </button>
         <p class="sidebar-foot">Protótipo · dados locais</p>
       </div>
+
+      <div class="sidebar-profile">
+        <button type="button" class="sidebar-profile-trigger" :aria-expanded="profileMenuOpen"
+          aria-label="Abrir opções da minha conta" @click="profileMenuOpen = !profileMenuOpen">
+          <span class="sidebar-profile-avatar"><UiIcon :name="isLoggedIn ? profile.avatarIcon : 'user'" :size="23" /></span>
+          <span class="sidebar-profile-identification">
+            <strong>{{ isLoggedIn ? profile.displayName : 'Minha conta' }}</strong>
+            <small>{{ isLoggedIn ? user?.email : 'Entrar ou criar conta' }}</small>
+          </span>
+          <UiIcon name="settings" :size="17" />
+        </button>
+        <div v-if="profileMenuOpen" class="sidebar-profile-menu">
+          <RouterLink :to="isLoggedIn ? '/conta' : '/entrar'" @click="profileMenuOpen = false">
+            <UiIcon :name="isLoggedIn ? 'edit' : 'user'" :size="16" />
+            {{ isLoggedIn ? 'Editar nome e ícone' : 'Entrar no Farol' }}
+          </RouterLink>
+          <RouterLink v-if="!isLoggedIn" to="/cadastro" @click="profileMenuOpen = false">
+            <UiIcon name="plus" :size="16" /> Criar conta
+          </RouterLink>
+          <button v-if="isLoggedIn" type="button" :disabled="profileBusy" @click="logoutFromSidebar">
+            <UiIcon name="log-out" :size="16" /> {{ profileBusy ? 'Saindo...' : 'Sair da conta' }}
+          </button>
+          <p>Os dados financeiros ainda ficam armazenados neste navegador.</p>
+        </div>
+        <p v-if="profileError" class="sidebar-profile-error" role="alert">{{ profileError }}</p>
+      </div>
     </aside>
 
     <div class="main">
@@ -99,10 +144,6 @@ function removeWorkspace(space: FinancialWorkspace): void {
         <b>Farol Finanças</b>
         <div class="topbar-actions">
           <span class="page-context">{{ route.meta.title ?? 'Visão geral' }}</span>
-          <RouterLink class="header-auth-link" :to="isLoggedIn ? '/conta' : '/entrar'">
-            <UiIcon name="users" :size="17" />
-            <span>{{ isLoggedIn ? (user?.email ?? 'Minha conta') : 'Entrar' }}</span>
-          </RouterLink>
           <button class="theme-toggle" type="button"
             :aria-label="isDark ? 'Ativar modo claro' : 'Ativar modo escuro'"
             :title="isDark ? 'Ativar modo claro' : 'Ativar modo escuro'"
