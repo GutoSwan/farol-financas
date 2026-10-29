@@ -111,3 +111,14 @@ Adicionar login na interface, fluxo de criação e convites com papéis, endpoin
 - `POST /api/v1/workspaces` cria um espaço PostgreSQL e vincula esse usuário como `OWNER`.
 
 A validação da assinatura do JWT acontece no Fastify. O frontend não manda `userId` no corpo, e dados locais ainda não são importados nem protegidos pelo login.
+
+## v0.13: hospedagem independente do frontend
+
+- `src/app.ts` exporta a aplicação Fastify para Vercel Functions; `src/server.ts` continua sendo a entrada local com `npm run dev`.
+- `CORS_ORIGIN` autoriza somente a origem HTTPS exata do frontend. O backend continua exigindo JWT nas rotas protegidas.
+- `prisma/migrations/20261029195000_init/migration.sql` cria as 11 tabelas e ativa RLS, revogando acesso direto de `anon` e `authenticated` quando esses papéis existem.
+- O CI sobe PostgreSQL 16 temporário, aplica `prisma migrate deploy`, confere RLS e executa testes/builds.
+- Em Supabase serverless, `DATABASE_URL` usa o **Transaction pooler 6543** com `pgbouncer=true&connection_limit=1`. Para migrações no terminal, use temporariamente **Session pooler 5432**. Nunca rode migrações no build público.
+- Todos os endereços e segredos devem ser configurados no projeto **backend** da Vercel, nunca no frontend `VITE_*`.
+
+Passo a passo detalhado no [guia v0.13](../docs/api-postgres-nuvem-v0.13.md). Nenhuma migração ou deploy em conta externa foi executado automaticamente.
