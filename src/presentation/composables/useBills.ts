@@ -3,6 +3,7 @@ import { BrowserBillRepository } from '../../infrastructure/persistence/BrowserB
 import { createRecurringBill } from '../../application/use-cases/createRecurringBill'
 import { registerMonthlyBill } from '../../application/use-cases/registerMonthlyBill'
 import { deleteMonthlyBillEntry } from '../../application/use-cases/deleteMonthlyBillEntry'
+import { updateRecurringBill, setRecurringBillActive, deleteRecurringBill } from '../../application/use-cases/manageRecurringBill'
 import { activeWorkspaceId } from './useWorkspaces'
 import type { RecurringBill } from '../../domain/entities/RecurringBill'
 import type { MonthlyBillEntry } from '../../domain/entities/MonthlyBillEntry'
@@ -63,6 +64,21 @@ export function useBills() {
     }
   }
 
+  function updateBill(id: string, name: string, day: number): boolean {
+    try { updateRecurringBill(repository(), id, name, day); refresh(); return true }
+    catch (cause) { error.value = cause instanceof Error ? cause.message : 'Erro ao editar a conta.'; return false }
+  }
+
+  function setBillActive(id: string, active: boolean): boolean {
+    try { setRecurringBillActive(repository(), id, active); refresh(); return true }
+    catch (cause) { error.value = cause instanceof Error ? cause.message : 'Erro ao alterar a conta.'; return false }
+  }
+
+  function removeBill(id: string): boolean {
+    try { deleteRecurringBill(repository(), id); refresh(); return true }
+    catch (cause) { error.value = cause instanceof Error ? cause.message : 'Erro ao excluir a conta.'; return false }
+  }
+
   return {
     bills: computed(() => bills.value),
     entries: computed(() => entries.value),
@@ -70,5 +86,8 @@ export function useBills() {
     addBill,
     saveEntry,
     deleteEntry,
+    updateBill,
+    setBillActive,
+    removeBill,
   }
 }
