@@ -1,0 +1,71 @@
+/* Controles do cabeçalho. O modo claro preserva a identidade visual anterior. */
+.topbar-actions { display: flex; align-items: center; justify-content: flex-end; gap: 16px; min-width: 0; }
+.page-context { white-space: nowrap; color: #75869a; }
+.workspace-switcher { position: relative; display: flex; align-items: center; gap: 8px; min-width: 0; }
+.workspace-select { min-height: 38px; width: auto; max-width: 235px; min-width: 150px; padding: 6px 27px 6px 10px; border-color: #dce4ed; font-size: 12px; font-weight: 600; }
+.workspace-add { white-space: nowrap; min-height: 38px; padding: 8px 11px; border-radius: 9px; border: 1px solid #cce6d8; color: #2d8664; background: #eff9f3; font-size: 12px; font-weight: 700; }
+.workspace-add:hover { background: #e4f5ec; }
+.theme-toggle { width: 39px; height: 39px; flex: 0 0 39px; border-radius: 10px; border: 1px solid #dce4ed; background: #fff; color: #35526f; display: grid; place-items: center; padding: 0; }
+.theme-toggle:hover { background: #edf6f1; }
+.theme-toggle:focus-visible, .workspace-add:focus-visible, .workspace-select:focus-visible { outline: 3px solid #7ed7ad; outline-offset: 2px; }
+.workspace-popover { position: absolute; z-index: 30; right: 0; top: calc(100% + 12px); width: 325px; max-width: calc(100vw - 24px); background: #fff; border: 1px solid #dce4ed; border-radius: 13px; padding: 20px; box-shadow: 0 16px 45px rgba(11, 23, 43, .18); color: #23354a; }
+.workspace-popover form { display: grid; gap: 10px; }
+.workspace-popover strong { font-size: 15px; }
+.workspace-popover label { font-size: 12px; font-weight: 700; }
+.workspace-popover p { color: #728399; line-height: 1.6; font-size: 12px; margin: 0; }
+.popover-actions { display: flex; align-items: center; justify-content: flex-end; gap: 9px; }
+.secondary-action { color: #52647b; background: #eef2f7; border: 0; border-radius: 8px; padding: 11px 14px; }
+.workspace-error { margin: 12px 28px 0; background: #fff0f1; color: #a42b3c; border-radius: 8px; padding: 12px; font-size: 12px; }
+.local-workspace-note { color: #8997aa; font-size: 11px; padding: 0 42px 24px; margin: 0; }
+.sr-only { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important; }
+
+/* Tema escuro. Estilos limitados ao elemento raiz com data-theme=dark. */
+:root[data-theme="dark"] { background: #0f1727; color: #e7edf7; color-scheme: dark; }
+:root[data-theme="dark"] body, :root[data-theme="dark"] .main { background: #0f1727; color: #e7edf7; }
+:root[data-theme="dark"] .sidebar { background: #0b1323; color: #b8c9dc; }
+:root[data-theme="dark"] .sidebar nav a:hover, :root[data-theme="dark"] .sidebar nav a.active { background: #273a55; }
+:root[data-theme="dark"] .topbar { background: #17243a; color: #a4b5ca; border-bottom-color: #2b3d55; }
+:root[data-theme="dark"] .topbar b { color: #ecf2fb; }
+:root[data-theme="dark"] .page-context { color: #b0bed0; }
+:root[data-theme="dark"] .stat, :root[data-theme="dark"] .panel { background: #1a283e; border-color: #2b405a; }
+:root[data-theme="dark"] .stat strong, :root[data-theme="dark"] .panel h2, :root[data-theme="dark"] .heading h1 { color: #f0f5fc; }
+:root[data-theme="dark"] .heading p, :root[data-theme="dark"] .panel-title p, :root[data-theme="dark"] .stat span, :root[data-theme="dark"] .stat small { color: #a5b4c8; }
+:root[data-theme="dark"] .notice { background: #173729; color: #b1e8cc; border-color: #27553f; }
+:root[data-theme="dark"] input, :root[data-theme="dark"] select { background: #142239; color: #e6eef9; border-color: #38506d; }
+:root[data-theme="dark"] input::placeholder { color: #8d9eb4; }
+:root[data-theme="dark"] .form label, :root[data-theme="dark"] .heading label { color: #b8c8db; }
+:root[data-theme="dark"] .bill-list button { background: #23334b; color: #e7eef7; }
+:root[data-theme="dark"] .bill-list button small { color: #a5b4c8; }
+:root[data-theme="dark"] .bill-list button.selected { background: #1f483a; border-color: #31795c; }
+:root[data-theme="dark"] th { background: #23334d; color: #bbccdc; border-bottom-color: #344760; }
+:root[data-theme="dark"] td { color: #dce7f6; border-bottom-color: #31445c; }
+:root[data-theme="dark"] .empty { color: #aabbd0; }
+:root[data-theme="dark"] .comparison { background: #1d3540; border-color: #345b58; }
+:root[data-theme="dark"] .up { color: #f0a588 !important; }
+:root[data-theme="dark"] .down { color: #79dab0 !important; }
+:root[data-theme="dark"] .workspace-select, :root[data-theme="dark"] .theme-toggle { background: #21324b; border-color: #3a536f; color: #e5edf8; }
+:root[data-theme="dark"] .theme-toggle:hover { background: #2e425f; }
+:root[data-theme="dark"] .workspace-add { background: #244a3c; border-color: #376b55; color: #b4f1d1; }
+:root[data-theme="dark"] .workspace-add:hover { background: #2d5a49; }
+:root[data-theme="dark"] .workspace-popover { background: #1c2c43; border-color: #3b5270; color: #edf3fc; box-shadow: 0 16px 45px rgba(0,0,0,.45); }
+:root[data-theme="dark"] .workspace-popover p { color: #a4b8cd; }
+:root[data-theme="dark"] .secondary-action { background: #30435c; color: #e3ecf8; }
+:root[data-theme="dark"] .local-workspace-note { color: #98aabf; }
+:root[data-theme="dark"] .success { background: #173e2d; color: #a2e3bd; }
+:root[data-theme="dark"] .error, :root[data-theme="dark"] .workspace-error { background: #4b2833; color: #ffc1cb; }
+
+@media(max-width: 1100px) {
+  .page-context { display: none; }
+}
+@media(max-width: 700px) {
+  .topbar { gap: 8px; }
+  .topbar-actions { gap: 8px; }
+  .workspace-select { min-width: 116px; max-width: 165px; }
+  .workspace-add { padding: 8px 9px; }
+  .local-workspace-note { padding: 0 20px 20px; }
+}
+@media(max-width: 500px) {
+  .topbar > b { display: none; }
+  .topbar-actions { width: 100%; }
+  .workspace-switcher { margin-left: auto; }
+}
