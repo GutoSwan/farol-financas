@@ -14,6 +14,7 @@ on:
       - feat/v0.10-menu-completo-mobile-drawer
       - feat/v0.11-tema-claro-preparacao-vercel
       - feat/v0.13-api-postgres-nuvem
+      - fix/v0.13-vercel-fastify-entry
       - feat/v0.12-login-redireciona-dashboard
       - main
   pull_request:
