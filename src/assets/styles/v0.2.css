@@ -163,3 +163,19 @@
   .account-row { flex-wrap: wrap; }
   .account-actions { width: 100%; justify-content: flex-end; }
 }
+
+/* Polimento de ações e filtros: espaçamento e foco acessível. */
+.report-filters { display: flex; gap: 11px; flex-wrap: wrap; align-items: end; }
+.report-filters .period-select select { width: min(225px, 100%); }
+.copy-previous { display: flex; align-items: center; justify-content: center; gap: 7px; }
+.copy-previous svg { color: var(--farol-wine); }
+.fixed-expense-actions .secondary-action svg, .fixed-expense-actions .primary svg,
+.row-actions button svg { vertical-align: middle; margin-right: 5px; }
+.report-metric .positive-text, .income-summary .positive-text { color: var(--farol-positive); }
+.report-metric .expense-text, .income-summary .expense-text { color: var(--farol-wine); }
+:root[data-theme="dark"] .report-metric { color: var(--farol-text); }
+@media(max-width:500px) {
+  .report-filters { width: 100%; }
+  .report-filters .period-select { flex: 1; }
+  .report-filters .period-select select { width: 100%; }
+}
