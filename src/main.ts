@@ -6,5 +6,6 @@ import './assets/styles/themes.css'
 import './assets/styles/layout-improvements.css'
 import './assets/styles/transactions.css'
 import './assets/styles/finance-improvements.css'
+import './assets/styles/v0.2.css'
 
 createApp(App).use(router).mount('#app')
