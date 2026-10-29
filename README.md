@@ -250,3 +250,63 @@ A versão 0.4 adiciona uma **API independente em `backend/`** (Fastify + TypeScr
 Para começar, veja `backend/README.md`. A automação no GitHub testa frontend e backend em tarefas separadas.
 
 **Não apague o localStorage durante esta fase.** A importação para o banco será desenvolvida em etapas.
+
+## v0.5 · Autenticação Supabase no frontend (em desenvolvimento)
+
+### O que foi incluído
+
+- Rotas Vue `/entrar`, `/cadastro`, `/recuperar-senha`, `/redefinir-senha` e `/conta`.
+- Cadastro com confirmação de e-mail (se habilitada no Supabase), login e saída usando `@supabase/supabase-js`.
+- Recuperação por e-mail e atualização de senha pelo link recebido.
+- Sessão reativa e botão de acesso na barra superior do Farol.
+- Em `/conta`, botão **Testar acesso à API protegida**, que usa o JWT da sessão para consultar `GET /api/v1/workspaces` do backend.
+- Proxy **somente de desenvolvimento** em Vite (`/api` para `http://127.0.0.1:3333`), evitando depender de CORS enquanto ambos estão no PC.
+
+### Configuração do Vue (Windows / PowerShell)
+
+Na **raiz do projeto**, ao lado do `package.json` do Vue (não dentro de `backend/`):
+
+```powershell
+Copy-Item .env.example .env.local
+```
+
+Abra `.env.local` e substitua os exemplos pela **Project URL** e pela **publishable key** de **Supabase > Connect > Vue**:
+
+```dotenv
+VITE_SUPABASE_URL="https://SEU-PROJETO.supabase.co"
+VITE_SUPABASE_PUBLISHABLE_KEY="sb_publishable_SUA_CHAVE_PUBLICA"
+```
+
+Use somente a chave pública `sb_publishable_...` no navegador. **Nunca** coloque uma `sb_secret_...`, `service_role`, JWT secret ou senha do banco em variáveis `VITE_`.
+
+Em **Supabase > Authentication > URL Configuration**, configure o **Site URL** para `http://localhost:5173` e adicione `http://localhost:5173/**` às URLs de redirecionamento autorizadas. Mantenha o login por e-mail habilitado. O Supabase precisa enviar e-mails de confirmação/recuperação; o serviço padrão tem limites para uso público.
+
+### Iniciar no VS Code
+
+Use dois terminais, na branch `feat/v0.5-auth-frontend-supabase`:
+
+**Terminal da raiz do Vue:**
+
+```powershell
+npm install
+npm run dev
+```
+
+**Terminal da pasta backend:**
+
+```powershell
+cd backend
+npm install
+npm run dev
+```
+
+O `backend/.env` deve conter a **mesma SUPABASE_URL** do Vue e o `DATABASE_URL` do Postgres local. Configure o banco e as migrações de acordo com `backend/README.md`.
+
+1. Entre em `http://localhost:5173/cadastro` e cadastre um e-mail seu de teste.
+2. Confirme o e-mail recebido, se necessário, e abra `/entrar`.
+3. Vá para `/conta` e clique em **Testar acesso à API protegida**. Esse teste consulta apenas a associação de espaços do usuário na **API**, não os espaços locais.
+4. Confira também o fluxo `/recuperar-senha`. Não compartilhe links de recuperação, senhas ou tokens.
+
+### Limite desta etapa
+
+**O login é real, mas não protege nem separa os dados financeiros do navegador!** O Farol ainda guarda contas, gastos e orçamentos no `localStorage`, que é compartilhado entre sessões e usuários do mesmo perfil do navegador. Não use dados sensíveis reais com expectativa de isolamento. Não há migração automática, backup, associação entre espaços locais e usuários ou sincronização. Entrar/sair não apaga os dados existentes. No próximo módulo, implementaremos a migração assistida e a autorização de todas as operações financeiras no servidor, antes de exigir login para usar as telas.

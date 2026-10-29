@@ -10,3 +10,5 @@ import './assets/styles/v0.2.css'
 import './assets/styles/budgets.css'
 
 createApp(App).use(router).mount('#app')
+
+import './assets/styles/auth.css'
