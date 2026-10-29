@@ -47,6 +47,19 @@ export function useWorkspaces() {
     }
   }
 
+  function deleteWorkspace(id: string): boolean {
+    try {
+      repository.delete(id)
+      items.value = repository.list()
+      activeWorkspaceId.value = repository.getActiveId()
+      error.value = ''
+      return true
+    } catch (cause) {
+      error.value = cause instanceof Error ? cause.message : 'Não foi possível excluir o espaço.'
+      return false
+    }
+  }
+
   return {
     workspaces: computed(() => items.value),
     currentWorkspace: computed(() => items.value.find((item) => item.id === activeWorkspaceId.value)),
@@ -54,5 +67,6 @@ export function useWorkspaces() {
     error,
     selectWorkspace,
     createWorkspace,
+    deleteWorkspace,
   }
 }
