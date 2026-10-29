@@ -21,6 +21,9 @@ describe('Visão geral de gastos', () => {
       paidRecurringCents: 21000,
       pendingRecurringCents: 8000,
       oneOffCents: 9000,
+      fixedCents: 0,
+      fixedPaidCents: 0,
+      fixedPendingCents: 0,
       totalCents: 38000,
     })
   })
