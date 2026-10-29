@@ -3,9 +3,10 @@ on:
   push:
     branches:
       - feat/estrutura-base-clean-architecture
+      - feat/v0.2-ux-contas-espacos-relatorios
       - main
   pull_request:
-    branches: [main]
+    branches: [main, feat/estrutura-base-clean-architecture]
 
 permissions:
   contents: read

@@ -7,4 +7,5 @@ export interface RecurringBillRepository {
   saveBill(bill: RecurringBill): void
   upsertEntry(entry: MonthlyBillEntry): void
   removeEntry(id: string): void
+  deleteBillAndEntries(id: string): void
 }

@@ -1,6 +1,8 @@
 import { DEFAULT_WORKSPACE, DEFAULT_WORKSPACE_ID } from '../../domain/entities/FinancialWorkspace'
 import type { FinancialWorkspace } from '../../domain/entities/FinancialWorkspace'
 import type { WorkspaceRepository } from '../../domain/repositories/WorkspaceRepository'
+import { billsStorageKey } from './BrowserBillRepository'
+import { transactionStorageKey } from './BrowserTransactionRepository'
 
 const WORKSPACES_KEY = 'farol-financas:workspaces:v1'
 const ACTIVE_KEY = 'farol-financas:active-workspace:v1'
@@ -58,6 +60,25 @@ export class BrowserWorkspaceRepository implements WorkspaceRepository {
       localStorage.setItem(ACTIVE_KEY, id)
     } catch {
       throw new Error('Não foi possível alterar o espaço ativo.')
+    }
+  }
+
+  delete(id: string): void {
+    if (id === DEFAULT_WORKSPACE_ID) throw new Error('O espaço inicial está protegido para preservar os registros originais.')
+    const existing = this.list()
+    if (!existing.some((item) => item.id === id)) throw new Error('Espaço não encontrado.')
+    const rest = existing.filter((item) => item.id !== DEFAULT_WORKSPACE_ID && item.id !== id)
+    const previous = this.getActiveId()
+
+    try {
+      // A exclusão de dados vem antes da retirada do espaço da lista.
+      localStorage.removeItem(billsStorageKey(id))
+      localStorage.removeItem(billsStorageKey(id) + ':fixed-expenses:v1')
+      localStorage.removeItem(transactionStorageKey(id))
+      localStorage.setItem(WORKSPACES_KEY, JSON.stringify(rest))
+      if (previous === id) localStorage.setItem(ACTIVE_KEY, DEFAULT_WORKSPACE_ID)
+    } catch {
+      throw new Error('Falha ao excluir espaço ou seus registros. Confira os dados locais antes de tentar novamente.')
     }
   }
 }

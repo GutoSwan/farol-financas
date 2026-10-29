@@ -152,3 +152,51 @@ npm run dev
 ```
 
 Verifique: exclusão de um mês, cobranças fixas recorrentes, mudança de espaço financeiro e totais em Relatórios.
+
+## Versão 0.2: gerenciamento e identidade visual
+
+### Contas mensais
+
+- Cada cadastro apresenta botões de **editar**, **arquivar/reativar** e **excluir** (ícones consistentes em bordô).
+- **Excluir conta** exige digitar exatamente seu nome e remove o cadastro e todo o histórico associado, em uma única escrita no armazenamento.
+- **Arquivar conta** mantém os registros anteriores e bloqueia novos registros até ser reativada.
+- A lixeira dentro da tabela continua excluindo **somente o mês escolhido**.
+- Para um mês ainda não preenchido, o botão **Usar valor de mês anterior** copia o último valor cadastrado.
+
+### Espaços financeiros
+
+- Na parte inferior da barra lateral, **Gerenciar espaços** permite criar novos espaços e excluir espaços personalizados.
+- Excluir exige digitar exatamente o nome do espaço; são removidas as contas mensais, despesas fixas e transações locais vinculadas. A operação é **definitiva**, sem backup ou botão de desfazer.
+- **Gustavo e Ana** é o espaço inicial e foi protegido contra exclusão, para preservar o armazenamento original.
+- **Importante:** espaços locais não são usuários autenticados. Qualquer pessoa com acesso ao navegador pode ver os dados. O botão **Adicionar pessoa** continua desabilitado até haver autenticação e backend.
+
+### Visual e relatórios
+
+- Telas e formulários principais em **blocos verticais**, com largura moderada para leitura.
+- **Caixas azul-acinzentadas** em modo claro e escuro.
+- Ícones e valores de **despesas em bordô**; **sobras positivas em verde**.
+- Visão Geral com comparativo entre receitas informadas e compromissos cadastrados. Se não houver receitas registradas, o sistema não deduz um saldo.
+- Relatórios com **barras simples por mês**, gráfico de rosca para composição e filtros de tipo, período e categoria.
+- O espaço financeiro selecionado na sidebar determina os dados exibidos em todas as telas.
+
+### Como testar a v0.2
+
+```bash
+git fetch
+git switch feat/v0.2-ux-contas-espacos-relatorios
+npm install
+npm run test
+npm run build
+npm run dev
+```
+
+Checklist manual recomendado:
+
+1. Cadastre uma conta mensal, informe valores em dois meses, edite o nome e confirme que os meses foram preservados.
+2. Arquive a conta, ative **Mostrar contas arquivadas**, reative-a e confirme que não perdeu histórico.
+3. Exclua outra conta teste digitando seu nome; ela deve desaparecer da lista, do seletor e do histórico.
+4. Crie um espaço de teste, cadastre despesas e exclua-o pelo gerenciador de espaços. O espaço padrão deve continuar intacto.
+5. Confirme os valores em bordô para gastos e em verde para a sobra estimada; faça testes também no modo claro e em uma janela estreita.
+6. Confira os gráficos de 6 e 12 meses e os filtros de categoria nos relatórios.
+
+Não utilize dados financeiros sensíveis neste protótipo sem login, banco e backup seguro.

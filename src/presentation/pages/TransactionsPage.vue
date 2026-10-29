@@ -4,6 +4,7 @@ import { useTransactions } from '../composables/useTransactions'
 import { activeWorkspaceId } from '../composables/useWorkspaces'
 import { TRANSACTION_CATEGORIES } from '../../domain/entities/Transaction'
 import MoneyInput from '../components/MoneyInput.vue'
+import UiIcon from '../components/UiIcon.vue'
 import type { TransactionCategory, TransactionKind, Transaction } from '../../domain/entities/Transaction'
 import { parseBRLToCents, formatBRL } from '../../domain/value-objects/Money'
 import { expensesByCategory, transactionsInMonth, transactionSummary } from '../../domain/services/transactionAnalytics'
@@ -115,7 +116,7 @@ watch(activeWorkspaceId, () => { resetForm(); feedback.value = '' })
       <label>Tipo <select v-model="kind"><option value="expense">Despesa</option><option value="income">Receita</option></select></label>
       <label>Categoria <input v-model="category" list="transaction-categories" minlength="2" maxlength="40" required placeholder="Digite ou escolha" /><datalist id="transaction-categories"><option v-for="item in categorySuggestions" :key="item" :value="item" /></datalist></label>
       <label>Data <input v-model="occurredOn" type="date" required /></label>
-      <div class="transaction-actions"><button type="submit" class="primary">{{ editingId ? 'Salvar alterações' : '+ Adicionar' }}</button><button v-if="editingId" type="button" class="secondary-action" @click="resetForm">Cancelar</button></div>
+      <div class="transaction-actions"><button type="submit" class="primary"><UiIcon :name="editingId ? 'check' : 'plus'" :size="16" /> {{ editingId ? 'Salvar alterações' : 'Adicionar' }}</button><button v-if="editingId" type="button" class="secondary-action" @click="resetForm">Cancelar</button></div>
     </form>
     <p v-if="feedback" class="success" role="status">{{ feedback }}</p>
     <p v-if="error || formError" class="error" role="alert">{{ formError || error }}</p>
@@ -163,7 +164,7 @@ watch(activeWorkspaceId, () => { resetForm(); feedback.value = '' })
             <td>{{ item.category }}</td>
             <td>{{ item.kind === 'expense' ? 'Despesa' : 'Receita' }}</td>
             <td :class="item.kind === 'expense' ? 'up' : 'down'">{{ item.kind === 'expense' ? '−' : '+' }} {{ formatBRL(item.amountCents) }}</td>
-            <td class="row-actions"><button type="button" @click="edit(item)">Editar</button><button type="button" @click="deleteTransaction(item)">Excluir</button></td>
+            <td class="row-actions"><button type="button" @click="edit(item)"><UiIcon name="edit" :size="15" /> Editar</button><button type="button" @click="deleteTransaction(item)"><UiIcon name="trash" :size="15" /> Excluir</button></td>
           </tr>
         </tbody>
       </table>
