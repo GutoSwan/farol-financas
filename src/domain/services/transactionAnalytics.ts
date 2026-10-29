@@ -1,4 +1,4 @@
-import type { Transaction, TransactionCategory } from '../entities/Transaction'
+import type { Transaction } from '../entities/Transaction'
 
 export function transactionsInMonth(entries: Transaction[], month: string): Transaction[] {
   return entries.filter((item) => item.occurredOn.slice(0, 7) === month)
@@ -14,12 +14,14 @@ export function transactionSummary(entries: Transaction[]) {
   return { expensesCents, incomeCents, netCents: incomeCents - expensesCents }
 }
 
-export function expensesByCategory(entries: Transaction[]): { category: TransactionCategory; amountCents: number }[] {
-  const groups = new Map<TransactionCategory, number>()
+export function expensesByCategory(entries: Transaction[]): { category: string; amountCents: number }[] {
+  const groups = new Map<string, { category: string; amountCents: number }>()
   for (const entry of entries) {
     if (entry.kind !== 'expense') continue
-    groups.set(entry.category, (groups.get(entry.category) ?? 0) + entry.amountCents)
+    const normalized = entry.category.trim().toLocaleLowerCase('pt-BR')
+    const current = groups.get(normalized)
+    if (current) current.amountCents += entry.amountCents
+    else groups.set(normalized, { category: entry.category.trim(), amountCents: entry.amountCents })
   }
-  return Array.from(groups, ([category, amountCents]) => ({ category, amountCents }))
-    .sort((a, b) => b.amountCents - a.amountCents)
+  return Array.from(groups.values()).sort((a, b) => b.amountCents - a.amountCents)
 }
