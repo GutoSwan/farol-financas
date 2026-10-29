@@ -6,9 +6,10 @@ on:
       - feat/v0.2-ux-contas-espacos-relatorios
       - feat/v0.3-orcamentos-projetos-cotacoes
       - feat/v0.4-backend-foundation
+      - feat/v0.5-auth-frontend-supabase
       - main
   pull_request:
-    branches: [main, feat/estrutura-base-clean-architecture, feat/v0.2-ux-contas-espacos-relatorios, feat/v0.3-orcamentos-projetos-cotacoes]
+    branches: [main, feat/estrutura-base-clean-architecture, feat/v0.2-ux-contas-espacos-relatorios, feat/v0.3-orcamentos-projetos-cotacoes, feat/v0.4-backend-foundation]
 
 permissions:
   contents: read
