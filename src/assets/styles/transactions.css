@@ -71,3 +71,62 @@
   .transaction-description { grid-column: 1; }
   .month-column strong { font-size: 9px; }
 }
+
+
+/* Dashboard: somatório de contas mensais e gastos avulsos. */
+.total-overview { margin-bottom: 28px; }
+.total-overview-summary {
+  display: grid;
+  grid-template-columns: 1.55fr 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 26px;
+}
+.total-overview-main, .total-overview-detail {
+  border-radius: 12px;
+  background: #f4f8fa;
+  border: 1px solid #e5edf2;
+  padding: 18px;
+  display: grid;
+  gap: 9px;
+  align-content: center;
+}
+.total-overview-main { background: #eaf5ee; border-color: #d5eadc; }
+.total-overview-main span, .total-overview-detail span { color: #63788c; font-size: 12px; }
+.total-overview-main strong { color: #173c31; font-size: clamp(22px,2.7vw,34px); overflow-wrap: anywhere; }
+.total-overview-detail strong { color: #1d354c; font-size: 21px; overflow-wrap: anywhere; }
+.total-overview-main small { color: #54856a; font-size: 11px; line-height: 1.5; }
+.total-chart-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.total-chart-heading h3 { font-size: 15px; margin: 0; }
+.total-chart-heading span { font-size: 12px; color: #8a97a6; }
+.total-chart-legend { display: flex; gap: 20px; flex-wrap: wrap; margin: 13px 0 20px; }
+.total-chart-legend span { display: flex; gap: 7px; align-items: center; color: #78899d; font-size: 11px; }
+.total-chart-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; }
+.legend-recurring { background: #608ab9; }
+.legend-oneoff { background: #48a17d; }
+.total-month-chart { display: grid; grid-template-columns: repeat(6,minmax(0,1fr)); gap: 13px; align-items: end; }
+.total-month-column { height: 222px; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 9px; justify-content: end; }
+.total-month-column > strong { color: #556e85; text-align: center; font-size: 11px; overflow-wrap: anywhere; }
+.total-month-column > small { color: #8795a6; font-size: 11px; text-transform: capitalize; }
+.total-month-track { width: min(100%,72px); height: 150px; background: #edf3f6; border-radius: 9px 9px 0 0; overflow: hidden; display: flex; align-items: flex-end; }
+.total-month-stacked { width: 100%; display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden; border-radius: 8px 8px 0 0; }
+.total-month-recurring { background: #608ab9; flex-shrink: 0; }
+.total-month-oneoff { background: #48a17d; flex-shrink: 0; }
+.dashboard-subheading { margin-top: 26px; }
+:root[data-theme="dark"] .total-overview-main { background: #1d3b34; border-color: #335a4a; }
+:root[data-theme="dark"] .total-overview-detail { background: #21334d; border-color: #36506c; }
+:root[data-theme="dark"] .total-overview-main span, :root[data-theme="dark"] .total-overview-detail span { color: #bbccdc; }
+:root[data-theme="dark"] .total-overview-main strong, :root[data-theme="dark"] .total-overview-detail strong { color: #ecf5ff; }
+:root[data-theme="dark"] .total-overview-main small { color: #a9e1c1; }
+:root[data-theme="dark"] .total-chart-heading span, :root[data-theme="dark"] .total-chart-legend span, :root[data-theme="dark"] .total-month-column > strong, :root[data-theme="dark"] .total-month-column > small { color: #b6c6da; }
+:root[data-theme="dark"] .total-month-track { background: #2a4055; }
+@media(max-width:900px) {
+  .total-overview-summary { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .total-overview-main { grid-column: 1/-1; }
+}
+@media(max-width:580px) {
+  .total-overview-summary { grid-template-columns: 1fr; }
+  .total-overview-main { grid-column: auto; }
+  .total-month-chart { gap: 6px; }
+  .total-month-column > strong { font-size: 9px; }
+  .total-month-track { height: 120px; }
+}
