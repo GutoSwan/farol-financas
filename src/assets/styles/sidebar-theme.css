@@ -1,0 +1,123 @@
+/* Farol v0.11 · Menu lateral acompanha o tema escolhido.
+   Regras explícitas para vencer as cores fixas das versões anteriores.
+   Aplicação: desktop e drawer móvel, sem modificar os cartões financeiros. */
+
+:root[data-theme="light"] .sidebar {
+  background: #f7f8fc;
+  color: #39485e;
+  border-right: 1px solid #e0e5ee;
+}
+:root[data-theme="light"] .sidebar .brand {
+  color: #243249;
+}
+:root[data-theme="light"] .sidebar .brand span {
+  color: #8e4058;
+}
+:root[data-theme="light"] .sidebar .section-label,
+:root[data-theme="light"] .sidebar .sidebar-workspace-label {
+  color: #69788e;
+}
+:root[data-theme="light"] .sidebar .side-nav-link {
+  color: #36465d;
+}
+:root[data-theme="light"] .sidebar .side-nav-link:hover {
+  background: #e8eaf1;
+  color: #642b42;
+}
+:root[data-theme="light"] .sidebar .side-nav-link.active {
+  background: #ebdfe6;
+  color: #702d46;
+  font-weight: 800;
+}
+:root[data-theme="light"] .sidebar .side-nav-link svg {
+  color: #9b4e67;
+}
+:root[data-theme="light"] .sidebar .side-nav-link.active svg {
+  color: #792f4a;
+}
+:root[data-theme="light"] .sidebar-workspace,
+:root[data-theme="light"] .sidebar-profile {
+  border-top-color: #dce2eb;
+}
+:root[data-theme="light"] .sidebar-workspace .workspace-select {
+  background: #fff;
+  border-color: #cbd5e2;
+  color: #23344b;
+}
+:root[data-theme="light"] .sidebar-workspace .workspace-select:focus-visible {
+  outline: 2px solid #a65c76;
+  outline-offset: 2px;
+}
+:root[data-theme="light"] .sidebar-profile-trigger {
+  background: transparent;
+  color: #2b3950;
+}
+:root[data-theme="light"] .sidebar-profile-trigger:hover,
+:root[data-theme="light"] .sidebar-profile-trigger[aria-expanded="true"] {
+  background: #e8eaf1;
+}
+:root[data-theme="light"] .sidebar-profile-identification strong {
+  color: #26374f;
+}
+:root[data-theme="light"] .sidebar-profile-identification small {
+  color: #65758c;
+}
+:root[data-theme="light"] .sidebar-profile-trigger > svg {
+  color: #8e4058;
+}
+:root[data-theme="light"] .sidebar-profile-menu {
+  background: #fff;
+  color: #27364c;
+  border-color: #d9e0ec;
+  box-shadow: 0 15px 40px rgba(30,42,62,.15);
+}
+:root[data-theme="light"] .sidebar-profile-menu a,
+:root[data-theme="light"] .sidebar-profile-menu button {
+  color: #2c3a51;
+}
+:root[data-theme="light"] .sidebar-profile-menu a:hover,
+:root[data-theme="light"] .sidebar-profile-menu button:hover {
+  background: #f3e8ee;
+}
+:root[data-theme="light"] .sidebar-profile-menu svg {
+  color: #8e4058;
+}
+:root[data-theme="light"] .sidebar-profile-menu p {
+  color: #67778f;
+  border-top-color: #e0e5ee;
+}
+:root[data-theme="light"] .sidebar-profile-error {
+  color: #a32c45;
+}
+:root[data-theme="light"] .sidebar-workspace .workspace-add,
+:root[data-theme="light"] .sidebar-workspace .workspace-add svg {
+  color: #fff;
+}
+/* Popover de gerenciamento deve continuar legível quando parte da lateral clara. */
+:root[data-theme="light"] .sidebar-workspace .workspace-popover {
+  background: #fff;
+  color: #27384d;
+  border-color: #d9e0ea;
+}
+:root[data-theme="light"] .sidebar-workspace .workspace-popover p {
+  color: #62738a;
+}
+:root[data-theme="light"] .sidebar-mobile-close {
+  background: #e8eaf1;
+  color: #36445a;
+  border-color: #d4dbe6;
+}
+:root[data-theme="light"] .sidebar-mobile-close:hover {
+  background: #eadfe6;
+}
+/* Também preserva contraste no modo escuro ao alternar de volta. */
+:root[data-theme="dark"] .sidebar .brand { color: #f8f9ff; }
+:root[data-theme="dark"] .sidebar .brand span { color: #db879f; }
+:root[data-theme="dark"] .sidebar .side-nav-link { color: #cad6e7; }
+:root[data-theme="dark"] .sidebar .side-nav-link:hover,
+:root[data-theme="dark"] .sidebar .side-nav-link.active { color: #fff; }
+:root[data-theme="dark"] .sidebar-profile-menu a,
+:root[data-theme="dark"] .sidebar-profile-menu button { color: #ecf1f8; }
+@media (max-width: 700px) {
+  :root[data-theme="light"] .sidebar { box-shadow: 17px 0 40px rgba(20,34,54,.24); }
+}
