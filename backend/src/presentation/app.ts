@@ -37,7 +37,7 @@ export function buildApp(deps: AppDependencies) {
   }
 
 
-  app.get('/api/v1/health', async () => ({ status: 'ok', service: 'farol-api', version: '0.7.0' }))
+  app.get('/api/v1/health', async () => ({ status: 'ok', service: 'farol-api', version: '0.13.0' }))
 
   app.get('/api/v1/ready', async (_request, reply) => {
     try {
