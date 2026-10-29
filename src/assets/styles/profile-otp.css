@@ -1,0 +1,56 @@
+/* Farol v0.6 • Confirmação por código e perfil na barra lateral */
+.sidebar-workspace .workspace-add,
+:root[data-theme="dark"] .sidebar-workspace .workspace-add {
+  background: #8e4058;
+  color: #fff;
+  border-color: #a6546f;
+}
+.sidebar-workspace .workspace-add:hover,
+:root[data-theme="dark"] .sidebar-workspace .workspace-add:hover { background: #a14c66; }
+.sidebar-workspace .workspace-add svg,
+:root[data-theme="dark"] .sidebar-workspace .workspace-add svg { color: #fff; }
+
+.sidebar-profile { position: relative; padding: 13px 3px 0; margin-top: 14px; border-top: 1px solid rgba(210,228,248,.17); }
+.sidebar-profile-trigger { display: flex; align-items: center; gap: 10px; width: 100%; min-width: 0; min-height: 55px; padding: 8px 4px; text-align: left; color: #f1f5fc; background: transparent; border: 1px solid transparent; border-radius: 11px; }
+.sidebar-profile-trigger:hover { background: #263750; }
+.sidebar-profile-trigger:focus-visible { outline: 2px solid #eea6b8; outline-offset: 2px; }
+.sidebar-profile-avatar { flex: 0 0 42px; height: 42px; border-radius: 13px; border: 1px solid #a85a70; color: #fff; display: grid; place-items: center; background: #8e4058; }
+.sidebar-profile-identification { display: grid; gap: 5px; min-width: 0; flex: 1; }
+.sidebar-profile-identification strong, .sidebar-profile-identification small { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sidebar-profile-identification strong { font-size: 12px; font-weight: 800; }
+.sidebar-profile-identification small { font-size: 10px; color: #a9bfd8; }
+.sidebar-profile-trigger > svg { color: #d78ba0; flex-shrink: 0; }
+.sidebar-profile-menu { position: absolute; z-index: 50; left: 0; right: 0; bottom: calc(100% + 8px); padding: 10px; border: 1px solid #475c76; border-radius: 11px; background: #20334d; color: #e8f2ff; box-shadow: 0 15px 35px rgba(0,0,0,.32); }
+.sidebar-profile-menu a, .sidebar-profile-menu button { width: 100%; min-height: 37px; background: transparent; color: #ecf1f8; font-size: 12px; font-weight: 650; text-align: left; display: flex; align-items: center; justify-content: flex-start; gap: 10px; padding: 10px 8px; border-radius: 8px; }
+.sidebar-profile-menu a:hover, .sidebar-profile-menu button:hover { background: #30465e; }
+.sidebar-profile-menu svg { color: #edacbd; }
+.sidebar-profile-menu p { margin: 9px 8px 2px; padding-top: 9px; border-top: 1px solid #465973; color: #b5c9dd; font-size: 10px; line-height: 1.5; }
+.sidebar-profile-error { color: #ffc1cb; font-size: 11px; }
+.auth-confirmed { text-align: center; display: grid; gap: 14px; justify-items: center; }
+.auth-confirmed h1 { margin: 0; }
+.auth-confirmed p { font-size: 13px; line-height: 1.6; color: var(--farol-muted); margin: 0 0 10px; }
+.auth-confirmed-icon { background: var(--farol-positive-soft); color: var(--farol-positive); border: 1px solid var(--farol-positive); border-radius: 50%; height: 70px; width: 70px; display: grid; place-items: center; }
+.auth-otp-input { font-size: 26px !important; letter-spacing: .24em; font-variant-numeric: tabular-nums; font-weight: 750; text-align: center; }
+.auth-inline-link { display: block; min-height: 28px; background: transparent; color: var(--farol-wine); padding: 8px 0; border: 0; text-decoration: underline; text-underline-offset: 3px; margin-top: 10px; font-size: 12px; text-align: left; }
+.auth-inline-link:hover { filter: brightness(1.15); }
+.auth-avatar-preview { color: #fff; background: #8e4058; width: 54px; height: 54px; display: grid; place-items: center; border-radius: 16px; flex-shrink: 0; }
+.auth-identity > div strong { display: block; font-size: 16px; }
+.auth-identity > div small { display: block; font-size: 12px; overflow-wrap: anywhere; margin-top: 5px; }
+.profile-edit-form { margin-bottom: 20px; }
+.profile-icon-picker { min-width: 0; margin: 0; padding: 0; border: 0; }
+.profile-icon-picker legend { font-size: 12px; color: var(--farol-text); font-weight: 700; margin-bottom: 12px; }
+.profile-icon-grid { display: grid; grid-template-columns: repeat(6,minmax(0,1fr)); gap: 8px; }
+.profile-icon-choice { display: grid !important; place-items: center; min-height: 47px; border-radius: 11px; border: 1px solid var(--farol-border); color: var(--farol-wine) !important; background: var(--farol-card-muted); cursor: pointer; }
+.profile-icon-choice.selected { border: 2px solid var(--farol-wine); background: var(--farol-wine-soft); }
+.profile-icon-choice input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.profile-icon-choice:focus-within { outline: 3px solid var(--farol-wine); outline-offset: 2px; }
+.profile-edit-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.profile-edit-actions > button { flex: 1; }
+.auth-profile-warning { margin-top: 20px; }
+@media(max-width: 700px) {
+  .sidebar-profile { margin-top: 12px; }
+  .sidebar-profile-menu { bottom: calc(100% + 6px); }
+}
+@media(max-width: 400px) {
+  .profile-icon-grid { grid-template-columns: repeat(3,minmax(0,1fr)); }
+}
