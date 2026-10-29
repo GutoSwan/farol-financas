@@ -1,0 +1,26 @@
+name: Validar Farol Finanças
+on:
+  push:
+    branches:
+      - feat/estrutura-base-clean-architecture
+      - main
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Instalar dependências
+        run: npm install --no-audit --no-fund
+      - name: Testes de regras financeiras
+        run: npm run test
+      - name: Validar tipos e gerar build
+        run: npm run build
