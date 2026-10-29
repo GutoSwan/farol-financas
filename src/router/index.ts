@@ -37,7 +37,7 @@ const router = createRouter({
 // A Visão geral é a primeira tela após autenticação. As telas de recuperação
 // permanecem acessíveis, mesmo quando o Supabase abre uma sessão temporária.
 router.beforeEach(async (to) => {
-  if (!shouldRedirectLoggedInVisitor(to.path, true) || !supabase) return true
+  if (!supabase || (to.path !== '/entrar' && to.path !== '/cadastro')) return true
   try {
     const { data, error } = await supabase.auth.getSession()
     if (!error && shouldRedirectLoggedInVisitor(to.path, !!data.session)) {
