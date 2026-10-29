@@ -24,7 +24,7 @@ export class BrowserTransactionRepository implements TransactionRepository {
         if (!item || typeof item !== 'object') return false
         const value = item as Partial<Transaction>
         return typeof value.id === 'string' && typeof value.description === 'string' &&
-          Number.isSafeInteger(value.amountCents) && (value.amountCents as number) > 0 &&
+          typeof value.amountCents === 'number' && Number.isSafeInteger(value.amountCents) && value.amountCents > 0 &&
           (value.kind === 'expense' || value.kind === 'income') &&
           typeof value.category === 'string' && typeof value.occurredOn === 'string'
       })) throw new Error('Registros inválidos')
