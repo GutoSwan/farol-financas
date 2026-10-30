@@ -11,12 +11,34 @@ export interface AppDependencies {
   auth: AuthVerifier
   workspaceService: WorkspaceService
   checkDatabase(): Promise<boolean>
+  corsOrigin?: string
 }
 
-export function buildApp(deps: AppDependencies) {
-  const app = Fastify({ logger: false, bodyLimit: 100_000 })
+// Permite que o entrypoint serverless crie Fastify diretamente para o detector da Vercel.
+// Testes e execução local continuam usando a instância padrão.
+export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, bodyLimit: 100_000 })) {
 
-  app.get('/api/v1/health', async () => ({ status: 'ok', service: 'farol-api', version: '0.7.0' }))
+  // O CORS só autoriza o frontend conhecido. JWT é sempre obrigatório nos dados.
+  // O preflight não pode resultar em 404 nem refletir origens arbitrárias.
+  if (deps.corsOrigin) {
+    const allowed = new URL(deps.corsOrigin).origin
+    app.addHook('onRequest', async (request, reply) => {
+      const origin = request.headers.origin
+      if (!origin) return
+      reply.header('Vary', 'Origin')
+      if (origin !== allowed) {
+        return reply.code(403).send({ error: 'Origem não autorizada.' })
+      }
+      reply.header('Access-Control-Allow-Origin', allowed)
+      reply.header('Access-Control-Allow-Headers', 'Authorization, Content-Type')
+      reply.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+      reply.header('Access-Control-Max-Age', '600')
+      if (request.method === 'OPTIONS') return reply.code(204).send()
+    })
+  }
+
+
+  app.get('/api/v1/health', async () => ({ status: 'ok', service: 'farol-api', version: '0.13.0' }))
 
   app.get('/api/v1/ready', async (_request, reply) => {
     try {

@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import UiIcon from './UiIcon.vue'
+import { apiConfigured } from '../../infrastructure/api/apiEndpoint'
 import { getOnlineIdentity, listOnlineWorkspaces, createOnlineWorkspace } from '../../infrastructure/api/onlineWorkspaces'
 import type { OnlineWorkspace } from '../../infrastructure/api/onlineWorkspaces'
 
+// Na Vercel v0.11 somente o frontend Vite é publicado. Não solicitar /api sem Fastify online.
+const backendDisponivel = apiConfigured
 const checking = ref(false)
 const creating = ref(false)
 const authenticatedWithApi = ref(false)
@@ -46,7 +49,7 @@ async function create(): Promise<void> {
   }
 }
 
-onMounted(() => { void load() })
+onMounted(() => { if (backendDisponivel) void load() })
 </script>
 
 <template>
@@ -66,11 +69,16 @@ onMounted(() => { void load() })
       <strong>Espaços online são separados dos espaços locais.</strong> Criar um espaço aqui não copia nem publica suas contas, despesas ou orçamentos do navegador.
     </p>
 
-    <button type="button" class="secondary-action online-refresh" :disabled="checking || creating" @click="load">
+    <p v-if="!backendDisponivel" class="online-workspaces-warning" role="status">
+      <UiIcon name="info" :size="16" />
+      A API online ainda não foi vinculada a esta versão do Farol. Configure VITE_API_BASE_URL na Vercel depois de publicar o backend e aplicar as migrações.
+    </p>
+
+    <button v-if="backendDisponivel" type="button" class="secondary-action online-refresh" :disabled="checking || creating" @click="load">
       <UiIcon name="restore" :size="15" /> {{ checking ? 'Verificando backend...' : 'Atualizar conexão e espaços' }}
     </button>
 
-    <template v-if="authenticatedWithApi && !checking">
+    <template v-if="backendDisponivel && authenticatedWithApi && !checking">
       <h3>Espaços online</h3>
       <p v-if="!onlineSpaces.length" class="auth-muted">
         Sua conta está autenticada, mas você ainda não criou nenhum espaço no PostgreSQL.
