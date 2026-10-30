@@ -1,4 +1,5 @@
 import 'dotenv/config'
+import Fastify from 'fastify'
 import { createPrismaClient } from './infrastructure/database/prisma.js'
 import { PrismaWorkspaceRepository } from './infrastructure/repositories/PrismaWorkspaceRepository.js'
 import { SupabaseJwtVerifier } from './infrastructure/auth/SupabaseJwtVerifier.js'
@@ -6,8 +7,9 @@ import { WorkspaceService } from './application/use-cases/WorkspaceService.js'
 import { readConfig } from './shared/config.js'
 import { buildApp } from './presentation/app.js'
 
-// O app é reutilizado em invocações quentes. Vercel detecta Fastify no src/app.ts
-// e intercepta app.listen() para encaminhar requisições à Function.
+// A Vercel encontra o import e a criação explícita de Fastify neste entrypoint.
+// O framework preset 'fastify' é fixado em backend/vercel.json para evitar
+// que o projeto antigo com preset Other produza deploy estático e erro 404.
 
 const config = readConfig(process.env)
 const prisma = createPrismaClient()
@@ -19,7 +21,7 @@ const app = buildApp({
     await prisma.$queryRaw`SELECT 1`
     return true
   },
-})
+}, Fastify({ logger: false, bodyLimit: 100_000 }))
 
 app.addHook('onClose', async () => { await prisma.$disconnect() })
 

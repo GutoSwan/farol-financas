@@ -122,3 +122,13 @@ A validação da assinatura do JWT acontece no Fastify. O frontend não manda `u
 - Todos os endereços e segredos devem ser configurados no projeto **backend** da Vercel, nunca no frontend `VITE_*`.
 
 Passo a passo detalhado no [guia v0.13](../docs/api-postgres-nuvem-v0.13.md). Nenhuma migração ou deploy em conta externa foi executado automaticamente.
+
+## Correção Vercel: deploy Ready mas /api/v1/health retorna 404 NOT_FOUND
+
+O projeto da API foi inicialmente criado com `Application Preset: Other`. Um build pode terminar como **Ready** sem gerar uma Function e, nesse caso, todas as URLs da API retornam o erro 404 da própria Vercel, não um JSON Fastify.
+
+O arquivo `backend/vercel.json` agora fixa `"framework": "fastify"`, sobrepondo o preset do painel, e `src/app.ts` importa e instancia Fastify diretamente para reconhecimento do entrypoint. Não configurar `outputDirectory` ou rewrites SPA para esta API.
+
+Após integrar uma correção nesta branch de produção temporária, acesse **farol-api → Deployments** e confira o commit mais recente, faça um novo deploy **Production** se necessário. Em **Source/Output** ou **Functions**, deve existir uma Function do Fastify. Teste primeiro `/api/v1/health` no domínio da API (não do frontend), depois `/api/v1/ready` e, finalmente, `/api/v1/me` sem token (deve responder 401). Se aparecer 500, examine os **Runtime Logs**, sem expor segredos.
+
+As variáveis `CORS_ORIGIN`, `SUPABASE_URL` e `DATABASE_URL` permanecem restritas ao projeto `farol-api`. Nenhuma migração nem alteração de senha é necessária para corrigir este 404.
