@@ -14,8 +14,9 @@ export interface AppDependencies {
   corsOrigin?: string
 }
 
-export function buildApp(deps: AppDependencies) {
-  const app = Fastify({ logger: false, bodyLimit: 100_000 })
+// Permite que o entrypoint serverless crie Fastify diretamente para o detector da Vercel.
+// Testes e execução local continuam usando a instância padrão.
+export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, bodyLimit: 100_000 })) {
 
   // O CORS só autoriza o frontend conhecido. JWT é sempre obrigatório nos dados.
   // O preflight não pode resultar em 404 nem refletir origens arbitrárias.
