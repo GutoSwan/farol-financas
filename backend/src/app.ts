@@ -95,7 +95,11 @@ const app = buildApp({
   corsOrigin: corsOrigin(),
   async checkDatabase() {
     // Validação de variáveis e consulta SQL apenas em /ready, nunca em /health.
-    readConfig(process.env)
+    const config = readConfig(process.env)
+    if (process.env.VERCEL_ENV === 'preview') {
+      const { diagnosePgConnection } = await import('./infrastructure/database/diagnosePgConnection.js')
+      await diagnosePgConnection(config.DATABASE_URL)
+    }
     const prisma = await getPrisma()
     await prisma.$queryRaw`SELECT 1`
     return true
