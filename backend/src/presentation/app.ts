@@ -52,7 +52,7 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
         typeof error === 'object' &&
         'code' in error &&
         typeof error.code === 'string' &&
-        /^P\\d{4}$/.test(error.code)
+        /^P\d{4}$/.test(error.code)
           ? error.code
           : 'sem código Prisma'
       console.error('[farol-api] /ready indisponível:', errorName, errorCode)
