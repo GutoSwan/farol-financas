@@ -44,9 +44,18 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
     try {
       if (await deps.checkDatabase()) return { status: 'ready' }
     } catch (error) {
-      // Diagnóstico de conexão sem imprimir SQL, credenciais ou URL privada.
-      console.error('[farol-api] /ready indisponível:',
-        error instanceof Error ? error.name : 'Erro desconhecido')
+      // Diagnóstico restrito: registra apenas a classe e o código Prisma.
+      // Não registrar error.message, stack, meta, SQL, URL ou credenciais.
+      const errorName = error instanceof Error ? error.name : 'Erro desconhecido'
+      const errorCode =
+        error !== null &&
+        typeof error === 'object' &&
+        'code' in error &&
+        typeof error.code === 'string' &&
+        /^P\\d{4}$/.test(error.code)
+          ? error.code
+          : 'sem código Prisma'
+      console.error('[farol-api] /ready indisponível:', errorName, errorCode)
     }
     return reply.code(503).send({ status: 'unavailable' })
   })
