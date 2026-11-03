@@ -132,3 +132,18 @@ O arquivo `backend/vercel.json` agora fixa `"framework": "fastify"`, sobrepondo 
 Após integrar uma correção nesta branch de produção temporária, acesse **farol-api → Deployments** e confira o commit mais recente, faça um novo deploy **Production** se necessário. Em **Source/Output** ou **Functions**, deve existir uma Function do Fastify. Teste primeiro `/api/v1/health` no domínio da API (não do frontend), depois `/api/v1/ready` e, finalmente, `/api/v1/me` sem token (deve responder 401). Se aparecer 500, examine os **Runtime Logs**, sem expor segredos.
 
 As variáveis `CORS_ORIGIN`, `SUPABASE_URL` e `DATABASE_URL` permanecem restritas ao projeto `farol-api`. Nenhuma migração nem alteração de senha é necessária para corrigir este 404.
+
+## Correção 500 em Functions: saúde isolada e Prisma JS
+
+Se a implantação da Vercel aparecer **Ready** mas `GET /api/v1/health` responder **500 INTERNAL_FUNCTION_INVOCATION_FAILED**, a compilação não é suficiente para provar que a Function inicia.
+
+A API passa a carregar o Prisma **sob demanda**, e usa Prisma 6.19.3 com `engineType = "client"` e `@prisma/adapter-pg@6.19.3` para evitar problemas de empacotamento do mecanismo Rust. Isso **não altera o esquema nem exige uma nova migração**.
+
+- `GET /api/v1/health`: Fastify ativo, deve retornar `200` mesmo sem conexão com o banco.
+- `GET /api/v1/ready`: verifica as variáveis e executa `SELECT 1` no PostgreSQL, devolve `200` ou `503`.
+- `GET /api/v1/me` sem Bearer: devolve `401`.
+- Os logs usam prefixo `[farol-api]` e somente nome/classe do erro, sem dados privados.
+
+Esta mudança exige um **novo deployment de produção** da API na Vercel com o novo commit. Teste `/health` antes de `/ready`; caso `/health` ainda responda um 500 da plataforma, inspecione as Functions do deployment e os Runtime Logs para investigar a inicialização ou empacotamento, sem alterar o banco indiscriminadamente.
+
+Documentação: https://www.prisma.io/docs/orm/v6/prisma-client/deployment/serverless/deploy-to-vercel
