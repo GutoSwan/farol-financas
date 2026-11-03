@@ -109,16 +109,5 @@ app.addHook('onClose', async () => {
   }
 })
 
-const portRaw = Number(process.env.PORT ?? (process.env.VERCEL === '1' ? 3000 : 3333))
-const port = Number.isInteger(portRaw) && portRaw > 0 && portRaw < 65536 ? portRaw : 3000
-const host = process.env.VERCEL === '1' ? '0.0.0.0' : (process.env.HOST ?? '127.0.0.1')
-
-void app.listen({ port, host }).then(() => {
-  console.info('[farol-api] Fastify ouvindo; /health independente do banco')
-}).catch((error: unknown) => {
-  console.error('[farol-api] falha no listen:',
-    error instanceof Error ? error.name : 'Erro desconhecido')
-  process.exitCode = 1
-})
-
+// A Function usa esta instância sem abrir porta; server.ts inicia apenas em modo local.
 export default app
