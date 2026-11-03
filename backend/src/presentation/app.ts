@@ -43,7 +43,11 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
   app.get('/api/v1/ready', async (_request, reply) => {
     try {
       if (await deps.checkDatabase()) return { status: 'ready' }
-    } catch { /* Não revelar credenciais nem detalhes internos */ }
+    } catch (error) {
+      // Diagnóstico de conexão sem imprimir SQL, credenciais ou URL privada.
+      console.error('[farol-api] /ready indisponível:',
+        error instanceof Error ? error.name : 'Erro desconhecido')
+    }
     return reply.code(503).send({ status: 'unavailable' })
   })
 
