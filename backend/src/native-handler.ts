@@ -1,10 +1,15 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import app from './app.js'
-let readyPromise: Promise<unknown> | undefined
+let readyPromise: Promise<void> | undefined
 
 export default async function handler(req: IncomingMessage, res: ServerResponse): Promise<void> {
   try {
-    readyPromise ??= app.ready()
+    readyPromise ??= new Promise<void>((resolve, reject) => {
+      app.ready((error) => {
+        if (error) reject(error)
+        else resolve()
+      })
+    })
     await readyPromise
     app.routing(req, res)
   } catch (error: unknown) {
