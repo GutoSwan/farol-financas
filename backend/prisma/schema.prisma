@@ -1,7 +1,8 @@
 // Modelo inicial do domínio Farol: valores monetários são inteiros em CENTAVOS.
 // A base de autorização é a associação User <-> WorkspaceMember <-> Workspace.
 generator client {
-  provider = "prisma-client-js"
+  provider   = "prisma-client-js"
+  engineType = "client"
 }
 
 datasource db {
