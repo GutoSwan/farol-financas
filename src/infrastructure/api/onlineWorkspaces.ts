@@ -1,4 +1,5 @@
 import { supabase } from '../auth/supabase'
+import { apiEndpoint } from './apiEndpoint'
 
 export type OnlineWorkspaceRole = 'OWNER' | 'EDITOR' | 'VIEWER'
 
@@ -29,7 +30,7 @@ async function apiRequest(path: string, options: { method?: 'GET' | 'POST'; body
 
   let response: Response
   try {
-    response = await fetch(path, {
+    response = await fetch(apiEndpoint(path), {
       method: options.method ?? 'GET',
       headers: {
         Authorization: `Bearer ${data.session.access_token}`,
@@ -39,7 +40,7 @@ async function apiRequest(path: string, options: { method?: 'GET' | 'POST'; body
       cache: 'no-store',
     })
   } catch {
-    throw new Error('Não foi possível acessar a API. Confira se o backend está rodando na porta 3333.')
+    throw new Error('Não foi possível acessar a API. Confira o endereço HTTPS do backend e a configuração de CORS.')
   }
 
   if (response.status === 401) throw new Error('O backend recusou o token. Confira a URL do Supabase no frontend e no backend.')

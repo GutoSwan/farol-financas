@@ -73,7 +73,8 @@ async function submit(): Promise<void> {
     if (props.mode === 'login') {
       await signIn(email.value, password.value)
       password.value = ''
-      await router.replace('/conta')
+      // Após autenticar, abrir a Visão geral. O perfil continua no menu lateral.
+      await router.replace('/')
     } else if (props.mode === 'signup') {
       const hasSession = await signUp(email.value, password.value, displayName.value)
       password.value = ''

@@ -336,3 +336,19 @@ A barra lateral agora é fixa durante a rolagem da página, com **Espaços** e *
 ## v0.10: todas as páginas no desktop, menu hambúrguer no celular
 
 A navegação desktop volta a mostrar os **sete links**, incluindo em **892 × 576**, sem o botão `Mais páginas`. Em telas de até 700px de largura, um botão de **três linhas** abre um menu lateral deslizante, com fundo escurecido, fechamento por ×/Esc/toque fora e acessos a espaços e perfil. [Guia de teste com resoluções e teclado](docs/mobile-drawer-v0.10.md).
+
+## v0.11: barra lateral clara e preparação para Vercel Hobby
+
+A barra lateral, inclusive o drawer mobile, acompanha o modo claro ou escuro: fundo e textos adaptativos, seletor de espaços e menu de perfil legíveis. Foi criado `vercel.json` para o frontend Vite, com fallback SPA apenas nas rotas do Vue, sem transformar URLs `/api` em HTML. O painel da API mostra um aviso na demo estática, já que Fastify e PostgreSQL permanecem locais. **Nenhum deploy foi realizado.** Veja [as instruções para conectar o GitHub à Vercel e testar a branch correta](docs/tema-e-vercel-v0.11.md).
+
+## v0.12: entrar leva à Visão geral
+
+Após autenticar em `/entrar`, o Farol redireciona para `/` (Dashboard), mostrando a barra lateral com o perfil e os espaços. Se a sessão do Supabase já estiver ativa, abrir `/entrar` ou `/cadastro` também leva ao Dashboard. Recuperação e redefinição de senha não são redirecionadas.
+
+**Limite de segurança atual:** isso melhora apenas a navegação. A Visão geral e os registros locais continuam acessíveis sem login, e o `localStorage` **não é separado por usuário**. Isolamento e autenticação obrigatória serão ativados somente após migrarmos os dados para o backend com permissões.
+
+## v0.13: preparar o backend Fastify com Supabase PostgreSQL
+
+Além do frontend Vercel, o repositório agora suporta um **segundo projeto Vercel com Root Directory `backend`**, com entrada Fastify serverless, CORS restrito e PostgreSQL gerenciado pelo Supabase. A primeira migração Prisma está versionada e habilita RLS nas 11 tabelas. A Vercel do frontend só habilita espaços online após configurar `VITE_API_BASE_URL`.
+
+**Nenhum projeto API foi criado e nenhuma migração foi aplicada ao Supabase do usuário automaticamente**. O backend requer variáveis privadas e configuração manual. Os lançamentos financeiros do Dashboard continuam locais e sem isolamento entre logins. Leia o [guia completo v0.13](docs/api-postgres-nuvem-v0.13.md) antes de realizar qualquer ação no banco online.

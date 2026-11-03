@@ -58,6 +58,39 @@ describe('Farol API v0.4', () => {
     await isolated.close()
   })
 
+  it('limita CORS ao frontend configurado, incluindo preflight com Bearer', async () => {
+    const { app: basic } = fixtures()
+    await basic.close()
+    const app = buildApp({
+      auth: { async verifyAccessToken() { return { userId } } },
+      workspaceService: new WorkspaceService({
+        async listForUser() { return [] }, async createOwnedBy() { throw new Error('unused') },
+        async hasMembership() { return false },
+      }),
+      corsOrigin: 'https://farol-financas.vercel.app',
+      checkDatabase: async () => true,
+    })
+    const allowed = await app.inject({
+      method: 'OPTIONS', url: '/api/v1/workspaces',
+      headers: { origin: 'https://farol-financas.vercel.app', 'access-control-request-method': 'GET' },
+    })
+    expect(allowed.statusCode).toBe(204)
+    expect(allowed.headers['access-control-allow-origin']).toBe('https://farol-financas.vercel.app')
+    expect(allowed.headers['access-control-allow-headers']).toContain('Authorization')
+    const denied = await app.inject({
+      method: 'OPTIONS', url: '/api/v1/workspaces',
+      headers: { origin: 'https://exemplo-malicioso.com', 'access-control-request-method': 'POST' },
+    })
+    expect(denied.statusCode).toBe(403)
+    expect(denied.headers['access-control-allow-origin']).toBeUndefined()
+    const withoutToken = await app.inject({
+      method: 'GET', url: '/api/v1/workspaces',
+      headers: { origin: 'https://farol-financas.vercel.app' },
+    })
+    expect(withoutToken.statusCode).toBe(401)
+    await app.close()
+  })
+
   it('nega acesso sem token ou com token inválido', async () => {
     const { app } = fixtures()
     const noToken = await app.inject({ method: 'GET', url: '/api/v1/workspaces' })

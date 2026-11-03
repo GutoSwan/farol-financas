@@ -8,8 +8,10 @@ import ReportsPage from '../presentation/pages/ReportsPage.vue'
 import BudgetsPage from '../presentation/pages/BudgetsPage.vue'
 import ComingSoonPage from '../presentation/pages/ComingSoonPage.vue'
 import AuthPage from '../presentation/pages/AuthPage.vue'
+import { supabase } from '../infrastructure/auth/supabase'
+import { shouldRedirectLoggedInVisitor } from './authNavigation'
 
-export default createRouter({
+const router = createRouter({
   history: createWebHistory(),
   routes: [{
     path: '/',
@@ -31,3 +33,20 @@ export default createRouter({
   { path: '/conta', component: AuthPage, props: { mode: 'profile' }, meta: { title: 'Minha conta' } },
   ],
 })
+
+// A Visão geral é a primeira tela após autenticação. As telas de recuperação
+// permanecem acessíveis, mesmo quando o Supabase abre uma sessão temporária.
+router.beforeEach(async (to) => {
+  if (!supabase || (to.path !== '/entrar' && to.path !== '/cadastro')) return true
+  try {
+    const { data, error } = await supabase.auth.getSession()
+    if (!error && shouldRedirectLoggedInVisitor(to.path, !!data.session)) {
+      return { path: '/', replace: true }
+    }
+  } catch {
+    // Se a sessão não puder ser restaurada, a tela de login permanece acessível.
+  }
+  return true
+})
+
+export default router

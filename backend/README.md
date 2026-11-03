@@ -111,3 +111,49 @@ Adicionar login na interface, fluxo de criação e convites com papéis, endpoin
 - `POST /api/v1/workspaces` cria um espaço PostgreSQL e vincula esse usuário como `OWNER`.
 
 A validação da assinatura do JWT acontece no Fastify. O frontend não manda `userId` no corpo, e dados locais ainda não são importados nem protegidos pelo login.
+
+## v0.13: hospedagem independente do frontend
+
+- `src/app.ts` exporta a aplicação Fastify para Vercel Functions; `src/server.ts` continua sendo a entrada local com `npm run dev`.
+- `CORS_ORIGIN` autoriza somente a origem HTTPS exata do frontend. O backend continua exigindo JWT nas rotas protegidas.
+- `prisma/migrations/20261029195000_init/migration.sql` cria as 11 tabelas e ativa RLS, revogando acesso direto de `anon` e `authenticated` quando esses papéis existem.
+- O CI sobe PostgreSQL 16 temporário, aplica `prisma migrate deploy`, confere RLS e executa testes/builds.
+- Em Supabase serverless, `DATABASE_URL` usa o **Transaction pooler 6543** com `pgbouncer=true&connection_limit=1`. Para migrações no terminal, use temporariamente **Session pooler 5432**. Nunca rode migrações no build público.
+- Todos os endereços e segredos devem ser configurados no projeto **backend** da Vercel, nunca no frontend `VITE_*`.
+
+Passo a passo detalhado no [guia v0.13](../docs/api-postgres-nuvem-v0.13.md). Nenhuma migração ou deploy em conta externa foi executado automaticamente.
+
+## Correção Vercel: deploy Ready mas /api/v1/health retorna 404 NOT_FOUND
+
+O projeto da API foi inicialmente criado com `Application Preset: Other`. Um build pode terminar como **Ready** sem gerar uma Function e, nesse caso, todas as URLs da API retornam o erro 404 da própria Vercel, não um JSON Fastify.
+
+O arquivo `backend/vercel.json` agora fixa `"framework": "fastify"`, sobrepondo o preset do painel, e `src/app.ts` importa e instancia Fastify diretamente para reconhecimento do entrypoint. Não configurar `outputDirectory` ou rewrites SPA para esta API.
+
+Após integrar uma correção nesta branch de produção temporária, acesse **farol-api → Deployments** e confira o commit mais recente, faça um novo deploy **Production** se necessário. Em **Source/Output** ou **Functions**, deve existir uma Function do Fastify. Teste primeiro `/api/v1/health` no domínio da API (não do frontend), depois `/api/v1/ready` e, finalmente, `/api/v1/me` sem token (deve responder 401). Se aparecer 500, examine os **Runtime Logs**, sem expor segredos.
+
+As variáveis `CORS_ORIGIN`, `SUPABASE_URL` e `DATABASE_URL` permanecem restritas ao projeto `farol-api`. Nenhuma migração nem alteração de senha é necessária para corrigir este 404.
+
+## Correção 500 em Functions: saúde isolada e Prisma JS
+
+Se a implantação da Vercel aparecer **Ready** mas `GET /api/v1/health` responder **500 INTERNAL_FUNCTION_INVOCATION_FAILED**, a compilação não é suficiente para provar que a Function inicia.
+
+A API passa a carregar o Prisma **sob demanda**, e usa Prisma 6.19.3 com `engineType = "client"` e `@prisma/adapter-pg@6.19.3` para evitar problemas de empacotamento do mecanismo Rust. Isso **não altera o esquema nem exige uma nova migração**.
+
+- `GET /api/v1/health`: Fastify ativo, deve retornar `200` mesmo sem conexão com o banco.
+- `GET /api/v1/ready`: verifica as variáveis e executa `SELECT 1` no PostgreSQL, devolve `200` ou `503`.
+- `GET /api/v1/me` sem Bearer: devolve `401`.
+- Os logs usam prefixo `[farol-api]` e somente nome/classe do erro, sem dados privados.
+
+Esta mudança exige um **novo deployment de produção** da API na Vercel com o novo commit. Teste `/health` antes de `/ready`; caso `/health` ainda responda um 500 da plataforma, inspecione as Functions do deployment e os Runtime Logs para investigar a inicialização ou empacotamento, sem alterar o banco indiscriminadamente.
+
+Documentação: https://www.prisma.io/docs/orm/v6/prisma-client/deployment/serverless/deploy-to-vercel
+
+## Node.js da API na Vercel: usar 22.x
+
+O `package.json` do backend agora fixa `"engines": { "node": "22.x" }`. Em outubro de 2026, a Vercel passou a usar Node 26 por padrão em projetos com ranges abertos como `>=22`. A API usa Prisma 6.19.3 e o pipeline CI é testado em Node 22, por isso a versão 22 é escolhida explicitamente para evitar mudança de runtime sem validação.
+
+Essa configuração prevalece sobre o seletor Node.js Version do painel da Vercel e será aplicada apenas **em novos deployments**. No projeto `farol-api`, confirme **Deployments → novo commit → Deployment Settings → Runtime Settings → Node.js Version: 22.x**. Se ainda mostrar 26.x, confira se o deployment realmente usa o commit mais recente, a pasta `backend` e se o build não foi feito a partir de um deploy antigo. Confirme então `/api/v1/health`, `/api/v1/ready` e `/api/v1/me`.
+
+A compatibilidade do Node 26 é uma hipótese de causa para o erro 500, não uma conclusão dos logs. Nenhum reset ou alteração no banco de dados é necessário para a troca do runtime.
+
+Referência oficial: https://vercel.com/changelog/node-js-26-lts-is-now-generally-available-on-vercel
