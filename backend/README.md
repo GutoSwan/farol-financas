@@ -147,3 +147,13 @@ A API passa a carregar o Prisma **sob demanda**, e usa Prisma 6.19.3 com `engine
 Esta mudança exige um **novo deployment de produção** da API na Vercel com o novo commit. Teste `/health` antes de `/ready`; caso `/health` ainda responda um 500 da plataforma, inspecione as Functions do deployment e os Runtime Logs para investigar a inicialização ou empacotamento, sem alterar o banco indiscriminadamente.
 
 Documentação: https://www.prisma.io/docs/orm/v6/prisma-client/deployment/serverless/deploy-to-vercel
+
+## Node.js da API na Vercel: usar 22.x
+
+O `package.json` do backend agora fixa `"engines": { "node": "22.x" }`. Em outubro de 2026, a Vercel passou a usar Node 26 por padrão em projetos com ranges abertos como `>=22`. A API usa Prisma 6.19.3 e o pipeline CI é testado em Node 22, por isso a versão 22 é escolhida explicitamente para evitar mudança de runtime sem validação.
+
+Essa configuração prevalece sobre o seletor Node.js Version do painel da Vercel e será aplicada apenas **em novos deployments**. No projeto `farol-api`, confirme **Deployments → novo commit → Deployment Settings → Runtime Settings → Node.js Version: 22.x**. Se ainda mostrar 26.x, confira se o deployment realmente usa o commit mais recente, a pasta `backend` e se o build não foi feito a partir de um deploy antigo. Confirme então `/api/v1/health`, `/api/v1/ready` e `/api/v1/me`.
+
+A compatibilidade do Node 26 é uma hipótese de causa para o erro 500, não uma conclusão dos logs. Nenhum reset ou alteração no banco de dados é necessário para a troca do runtime.
+
+Referência oficial: https://vercel.com/changelog/node-js-26-lts-is-now-generally-available-on-vercel
