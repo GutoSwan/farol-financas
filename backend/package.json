@@ -1,0 +1,12 @@
+{
+  "name": "farol-fastify-native-handler-diag",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "engines": {
+    "node": "22.x"
+  },
+  "dependencies": {
+    "fastify": "5.6.0"
+  }
+}
