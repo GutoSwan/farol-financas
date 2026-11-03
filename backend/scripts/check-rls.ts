@@ -10,7 +10,7 @@ async function main() {
   const prisma = createPrismaClient()
   try {
     const rows = await prisma.$queryRaw<Array<{ relname: string; relrowsecurity: boolean }>>`
-      SELECT c.relname, c.relrowsecurity
+      SELECT c.relname::text AS relname, c.relrowsecurity
       FROM pg_catalog.pg_class c
       JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
       WHERE n.nspname = 'public' AND c.relkind = 'r'
