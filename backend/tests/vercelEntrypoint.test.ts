@@ -19,4 +19,22 @@ describe('Vercel Fastify entrypoint', () => {
     expect(source).toContain('app.listen({')
     expect(source).toContain('export default app')
   })
+
+  it('inicia Fastify no entrypoint tanto no local quanto na Vercel', () => {
+    const entry = read('../src/app.ts')
+    const localServer = read('../src/server.ts')
+    expect(entry).toContain('void app.listen({ port: config.PORT, host })')
+    expect(entry).not.toContain("if (process.env.VERCEL === '1') {")
+    expect(localServer).toContain("import './app.js'")
+    expect(localServer).not.toContain('app.listen(')
+  })
+
+  it('registra etapas de inicializacao sem imprimir credenciais', () => {
+    const entry = read('../src/app.ts')
+    expect(entry).toContain('[farol-api] configuracao validada')
+    expect(entry).toContain('[farol-api] prisma inicializado')
+    expect(entry).toContain('[farol-api] Fastify inicializado')
+    expect(entry).not.toContain('console.log(config)')
+    expect(entry).not.toContain('console.log(process.env)')
+  })
 })
