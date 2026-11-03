@@ -44,18 +44,36 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
     try {
       if (await deps.checkDatabase()) return { status: 'ready' }
     } catch (error) {
-      // Diagnóstico restrito: registra apenas a classe e o código Prisma.
-      // Não registrar error.message, stack, meta, SQL, URL ou credenciais.
-      const errorName = error instanceof Error ? error.name : 'Erro desconhecido'
-      const errorCode =
-        error !== null &&
-        typeof error === 'object' &&
-        'code' in error &&
-        typeof error.code === 'string' &&
-        /^P\d{4}$/.test(error.code)
-          ? error.code
-          : 'sem código Prisma'
-      console.error('[farol-api] /ready indisponível:', errorName, errorCode)
+      // Diagnóstico seguro: somente códigos padronizados e tipo do erro do driver.
+      // Nunca registrar error.message, stack, meta completo, SQL, URL ou credenciais.
+      const asRecord = (value: unknown): Record<string, unknown> | undefined =>
+        value !== null && typeof value === 'object'
+          ? value as Record<string, unknown>
+          : undefined
+      const wrapped = asRecord(error)
+      const meta = asRecord(wrapped?.meta)
+      const adapter = asRecord(meta?.driverAdapterError)
+      const driverCause = asRecord(adapter?.cause)
+      const genericCause = asRecord(wrapped?.cause)
+      const candidates = [
+        wrapped?.code,
+        meta?.code,
+        driverCause?.originalCode,
+        driverCause?.code,
+        genericCause?.originalCode,
+        genericCause?.code,
+      ]
+      const safeCodes = candidates.filter((candidate): candidate is string =>
+        typeof candidate === 'string' &&
+        /^(?:P\d{4}|[0-9A-Z]{5}|ECONNREFUSED|ECONNRESET|ETIMEDOUT|ENOTFOUND|EAI_AGAIN)$/.test(candidate)
+      )
+      const kind = driverCause?.kind
+      const safeKind = typeof kind === 'string' && /^[a-zA-Z][a-zA-Z0-9_-]{0,40}$/.test(kind)
+        ? kind : 'não identificado'
+      console.error('[farol-api] /ready indisponível:',
+        error instanceof Error ? error.name : 'Erro desconhecido',
+        'codes=' + (safeCodes.length ? [...new Set(safeCodes)].join(',') : 'indisponível'),
+        'driverKind=' + safeKind)
     }
     return reply.code(503).send({ status: 'unavailable' })
   })
