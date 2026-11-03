@@ -1,5 +1,5 @@
 import 'dotenv/config'
-import { PrismaClient } from '@prisma/client'
+import { createPrismaClient } from '../src/infrastructure/database/prisma.js'
 
 const names = [
   'User', 'Workspace', 'WorkspaceMember', 'RecurringBill', 'MonthlyBillEntry',
@@ -7,7 +7,7 @@ const names = [
 ]
 
 async function main() {
-  const prisma = new PrismaClient()
+  const prisma = createPrismaClient()
   try {
     const rows = await prisma.$queryRaw<Array<{ relname: string; relrowsecurity: boolean }>>`
       SELECT c.relname, c.relrowsecurity
