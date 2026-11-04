@@ -53,7 +53,7 @@ describe('Detalhes ao clicar na barra do relatório', () => {
   })
 
   it('mostra mês sem gastos e respeita término de gastos fixos', () => {
-    const empty = monthlyExpenseDetails(bills, entries, fixed, transactions, '2026-06')
+    const empty = monthlyExpenseDetails(bills, entries, fixed, transactions, '2025-12')
     expect(empty.every((section) => section.items.length === 0 && section.totalCents === 0)).toBe(true)
     const ended = monthlyExpenseDetails(bills, entries, fixed, transactions, '2026-10')
     expect(ended[1].items.map((item) => item.name)).toEqual(['Aluguel'])
