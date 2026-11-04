@@ -3,10 +3,5 @@
   "framework": null,
   "installCommand": "npm install --include=dev",
   "buildCommand": "npm run build",
-  "outputDirectory": "public",
-  "functions": {
-    "src/app.ts": {
-      "includeFiles": "{node_modules/.prisma/client/**,node_modules/@prisma/client/runtime/*wasm*,node_modules/@prisma/client/runtime/*query_compiler*}"
-    }
-  }
+  "outputDirectory": "public"
 }
