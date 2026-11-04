@@ -98,6 +98,8 @@ const app = buildApp({
     const config = readConfig(process.env)
     if (process.env.VERCEL_ENV === 'preview') {
       const { diagnosePgConnection } = await import('./infrastructure/database/diagnosePgConnection.js')
+      const { inspectPrismaWasm } = await import('./infrastructure/database/tracePrismaWasm.js')
+      inspectPrismaWasm()
       await diagnosePgConnection(config.DATABASE_URL)
     }
     const prisma = await getPrisma()
