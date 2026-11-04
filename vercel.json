@@ -29,6 +29,10 @@
       "destination": "/index.html"
     },
     {
+      "source": "/relatorios/detalhes",
+      "destination": "/index.html"
+    },
+    {
       "source": "/entrar",
       "destination": "/index.html"
     },
