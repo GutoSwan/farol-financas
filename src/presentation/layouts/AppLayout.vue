@@ -2,6 +2,7 @@
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import UiIcon from '../components/UiIcon.vue'
+import OnlineWorkspacesSidebar from '../components/OnlineWorkspacesSidebar.vue'
 import { useTheme } from '../composables/useTheme'
 import { useWorkspaces } from '../composables/useWorkspaces'
 import { useAuth } from '../composables/useAuth'
@@ -185,6 +186,7 @@ function removeWorkspace(space: FinancialWorkspace): void {
               </button>
             </div>
           </div>
+          <OnlineWorkspacesSidebar />
           <p v-if="notice" class="success" role="status">{{ notice }}</p>
           <button class="secondary-action close-spaces" type="button" @click="managing = false">Fechar</button>
         </div>
