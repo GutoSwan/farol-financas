@@ -1,4 +1,5 @@
 import { Client } from 'pg'
+import { X509Certificate } from 'node:crypto'
 import { previewPgOptions } from './pgVerifiedOptions.js'
 
 /**
@@ -49,7 +50,32 @@ export async function diagnosePgConnection(connectionString: string): Promise<vo
 
   // Mesma cadeia de confiança usada pelo Prisma: CA do Supabase e
   // verificação de certificado/hostname obrigatória.
-  const client = new Client(previewPgOptions(connectionString))
+  const options = previewPgOptions(connectionString)
+  const client = new Client(options)
+
+  // Diagnóstico da CA em Preview: publica somente indicadores booleanos.
+  // A impressão digital de referência é a CA pública Supabase Root 2021.
+  const expectedFingerprint = '807025ad50d4ed219d2c9c7d299c004f824eb00cf7f65afef607d07b72e6cafa'
+  const configuredSsl = options.ssl
+  const certificate = configuredSsl && typeof configuredSsl === 'object' && 'ca' in configuredSsl
+    ? configuredSsl.ca
+    : undefined
+  let caMatchesOfficial = false
+  if (typeof certificate === 'string') {
+    try {
+      const fingerprint = new X509Certificate(certificate).fingerprint256
+        .replace(/:/g, '').toLowerCase()
+      caMatchesOfficial = fingerprint === expectedFingerprint
+    } catch { /* O certificado não passou na validação do parser X509. */ }
+  }
+  const effectiveSsl = client.connectionParameters.ssl
+  const effectiveCa = effectiveSsl && typeof effectiveSsl === 'object' && 'ca' in effectiveSsl
+    ? effectiveSsl.ca
+    : undefined
+  console.info('[farol-api] pg TLS verificado:',
+    'caCorreta=' + caMatchesOfficial,
+    'caAplicada=' + (typeof certificate === 'string' && effectiveCa === certificate))
+
   let connected = false
   let phase = 'conexao'
   try {
