@@ -180,7 +180,7 @@ async function logout(): Promise<void> {
       <div v-if="!configured" class="auth-warning" role="alert">
         <UiIcon name="info" :size="20" />
         <div><strong>Conexão com Supabase ainda não configurada</strong>
-          <p>Na raiz do frontend, crie <code>.env.local</code> com <code>VITE_SUPABASE_URL</code> e <code>VITE_SUPABASE_PUBLISHABLE_KEY</code>, depois reinicie o Vite.</p>
+          <p>No Preview da Vercel, configure <code>VITE_SUPABASE_URL</code> e <code>VITE_SUPABASE_PUBLISHABLE_KEY</code> nas variáveis de ambiente do projeto frontend. Depois crie um novo deployment.</p>
         </div>
       </div>
 
