@@ -70,10 +70,24 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
       const kind = driverCause?.kind
       const safeKind = typeof kind === 'string' && /^[a-zA-Z][a-zA-Z0-9_-]{0,40}$/.test(kind)
         ? kind : 'não identificado'
+      // Não registrar mensagens brutas do Prisma: podem conter URL, SQL e dados.
+      // As expressões abaixo somente produzem uma categoria fixa e não sensível.
+      const diagnosticText = [
+        error instanceof Error ? error.message : '',
+        typeof driverCause?.originalMessage === 'string' ? driverCause.originalMessage : '',
+      ].join(' ').toLowerCase()
+      let prismaCategory = 'outra'
+      if (/tls|ssl|certificate|self.signed/.test(diagnosticText)) prismaCategory = 'certificado'
+      else if (/prepared statement|already exists|does not exist/.test(diagnosticText)) prismaCategory = 'prepared-statement'
+      else if (/unsupported|deserialize|unknown type|unknown column|column type/.test(diagnosticText)) prismaCategory = 'tipo-de-coluna'
+      else if (/authentication|password|scram|sasl|denied/.test(diagnosticText)) prismaCategory = 'autenticacao'
+      else if (/timeout|timed out|connection refused|connect/.test(diagnosticText)) prismaCategory = 'conexao'
+      else if (/syntax|sqlstate/.test(diagnosticText)) prismaCategory = 'sql'
       console.error('[farol-api] /ready indisponível:',
         error instanceof Error ? error.name : 'Erro desconhecido',
         'codes=' + (safeCodes.length ? [...new Set(safeCodes)].join(',') : 'indisponível'),
-        'driverKind=' + safeKind)
+        'driverKind=' + safeKind,
+        'prismaCategoria=' + prismaCategory)
     }
     return reply.code(503).send({ status: 'unavailable' })
   })
