@@ -12,6 +12,8 @@ export interface AppDependencies {
   workspaceService: WorkspaceService
   checkDatabase(): Promise<boolean>
   corsOrigin?: string
+  /** Preview usa banco real por enquanto: impedir gravações HTTP no servidor. */
+  allowWorkspaceWrites?: boolean
 }
 
 // Permite que o entrypoint serverless crie Fastify diretamente para o detector da Vercel.
@@ -172,6 +174,9 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
   app.post('/api/v1/workspaces', async (request, reply) => {
     const identity = await authorized(request, reply)
     if (!identity) return
+    if (deps.allowWorkspaceWrites === false) {
+      return reply.code(403).send({ error: 'Criação de espaços desativada neste ambiente de testes.' })
+    }
     const parsed = createWorkspaceSchema.safeParse(request.body)
     if (!parsed.success) return reply.code(400).send({ error: 'Informe um nome de espaço de 2 a 60 caracteres.' })
     const trimmed = parsed.data.name.trim()
