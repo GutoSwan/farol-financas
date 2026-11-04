@@ -83,11 +83,23 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
       else if (/authentication|password|scram|sasl|denied/.test(diagnosticText)) prismaCategory = 'autenticacao'
       else if (/timeout|timed out|connection refused|connect/.test(diagnosticText)) prismaCategory = 'conexao'
       else if (/syntax|sqlstate/.test(diagnosticText)) prismaCategory = 'sql'
+      // Reporta apenas nomes de classes da cadeia de causas, nunca valores.
+      const causeClasses: string[] = []
+      let currentCause: unknown = error
+      for (let depth = 0; depth < 4; depth++) {
+        const record = asRecord(currentCause)
+        if (!record) break
+        const rawName = record.name
+        causeClasses.push(typeof rawName === 'string' && /^[A-Za-z][A-Za-z0-9]{0,63}$/.test(rawName)
+          ? rawName : 'Desconhecido')
+        currentCause = record.cause
+      }
       console.error('[farol-api] /ready indisponível:',
         error instanceof Error ? error.name : 'Erro desconhecido',
         'codes=' + (safeCodes.length ? [...new Set(safeCodes)].join(',') : 'indisponível'),
         'driverKind=' + safeKind,
-        'prismaCategoria=' + prismaCategory)
+        'prismaCategoria=' + prismaCategory,
+        'causas=' + causeClasses.join('>'))
     }
     return reply.code(503).send({ status: 'unavailable' })
   })
