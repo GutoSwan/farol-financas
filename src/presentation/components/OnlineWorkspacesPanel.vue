@@ -5,8 +5,11 @@ import { apiConfigured } from '../../infrastructure/api/apiEndpoint'
 import { getOnlineIdentity, listOnlineWorkspaces, createOnlineWorkspace } from '../../infrastructure/api/onlineWorkspaces'
 import type { OnlineWorkspace } from '../../infrastructure/api/onlineWorkspaces'
 
-// Na Vercel v0.11 somente o frontend Vite é publicado. Não solicitar /api sem Fastify online.
+// A URL da API é configurada no Preview do projeto frontend, sem segredos.
 const backendDisponivel = apiConfigured
+// A API pode apontar ao banco real. Escritas online ficam desativadas por
+// padrão nesta etapa: testar login e listagem antes de criar dados na nuvem.
+const onlineWritesEnabled = import.meta.env.VITE_ENABLE_ONLINE_WORKSPACE_WRITES === 'true'
 const checking = ref(false)
 const creating = ref(false)
 const authenticatedWithApi = ref(false)
@@ -33,7 +36,7 @@ async function load(): Promise<void> {
 }
 
 async function create(): Promise<void> {
-  if (creating.value) return
+  if (creating.value || !onlineWritesEnabled) return
   creating.value = true
   errorMessage.value = ''
   successMessage.value = ''
@@ -57,7 +60,7 @@ onMounted(() => { if (backendDisponivel) void load() })
     <div class="online-workspaces-heading">
       <div>
         <h2>Minha conexão com a API</h2>
-        <p>Primeiros espaços protegidos pelo login e salvos no PostgreSQL.</p>
+        <p>Validação do login e leitura de espaços protegidos no PostgreSQL.</p>
       </div>
       <span :class="authenticatedWithApi ? 'online-status active' : 'online-status'">
         <UiIcon :name="authenticatedWithApi ? 'check' : 'info'" :size="14" />
@@ -66,12 +69,16 @@ onMounted(() => { if (backendDisponivel) void load() })
     </div>
 
     <p class="online-workspaces-warning"><UiIcon name="info" :size="16" />
-      <strong>Espaços online são separados dos espaços locais.</strong> Criar um espaço aqui não copia nem publica suas contas, despesas ou orçamentos do navegador.
+      <strong>Espaços online são separados dos espaços locais.</strong> Consultar espaços aqui não migra nem publica contas, despesas ou orçamentos do navegador.
+    </p>
+    <p v-if="!onlineWritesEnabled" class="online-workspaces-warning" role="status">
+      <UiIcon name="info" :size="16" />
+      Modo de teste somente leitura nesta interface: nenhum espaço online poderá ser criado por este painel. A API e o Supabase ainda podem permitir gravações por outros clientes.
     </p>
 
     <p v-if="!backendDisponivel" class="online-workspaces-warning" role="status">
       <UiIcon name="info" :size="16" />
-      A API online ainda não foi vinculada a esta versão do Farol. Configure VITE_API_BASE_URL na Vercel depois de publicar o backend e aplicar as migrações.
+      A API online ainda não foi vinculada a este Preview. Configure VITE_API_BASE_URL nas variáveis de ambiente Preview do projeto frontend na Vercel.
     </p>
 
     <button v-if="backendDisponivel" type="button" class="secondary-action online-refresh" :disabled="checking || creating" @click="load">
@@ -92,7 +99,7 @@ onMounted(() => { if (backendDisponivel) void load() })
         </div>
       </div>
 
-      <form class="online-space-form" @submit.prevent="create">
+      <form v-if="onlineWritesEnabled" class="online-space-form" @submit.prevent="create">
         <label>Nome do novo espaço online
           <input v-model="name" required minlength="2" maxlength="60" placeholder="Ex.: Casa e família" :disabled="creating || checking" />
         </label>
