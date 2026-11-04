@@ -96,6 +96,29 @@ export async function diagnosePgConnection(connectionString: string): Promise<vo
     try {
       await pool.query('SELECT 1')
       console.info('[farol-api] pg pool: SELECT 1 OK')
+
+      // Teste somente leitura do adaptador, isolado do PrismaClient.
+      // Dessa forma distinguimos erros em PrismaPg de erros no engine gerado.
+      const { PrismaPg } = await import('@prisma/adapter-pg')
+      const factory = new PrismaPg({ ...previewPgOptions(connectionString), max: 2 })
+      let adapter: Awaited<ReturnType<typeof factory.connect>> | undefined
+      try {
+        adapter = await factory.connect()
+        console.info('[farol-api] adaptador PrismaPg: connect OK')
+        await adapter.queryRaw({ sql: 'SELECT 1', args: [], argTypes: [] })
+        console.info('[farol-api] adaptador PrismaPg: SELECT 1 OK')
+      } catch (adapterError: unknown) {
+        const info = getErrorInfo(adapterError)
+        const name = adapterError instanceof Error ? adapterError.name : 'Desconhecido'
+        console.error('[farol-api] adaptador PrismaPg falhou:',
+          'classe=' + (/^[a-zA-Z]{1,64}$/.test(name) ? name : 'Desconhecida'),
+          'categoria=' + info.category, 'codigo=' + info.code)
+        // Não encobrir a falha do PrismaClient: o teste é observacional.
+      } finally {
+        if (adapter) {
+          try { await adapter.dispose() } catch { /* Sem imprimir dados privados. */ }
+        }
+      }
     } catch (poolError: unknown) {
       const poolInfo = getErrorInfo(poolError)
       console.error('[farol-api] pg pool falhou:',
