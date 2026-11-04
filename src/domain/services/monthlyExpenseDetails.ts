@@ -57,7 +57,7 @@ export function monthlyExpenseDetails(
       name: expense.name,
       description: `Vencimento: dia ${expense.dueDay} · cobrança recorrente`,
       amountCents: expense.amountCents,
-      status: expense.paidMonths.includes(month) ? 'paid' : 'pending',
+      status: expense.paidMonths.includes(month) ? 'paid' as const : 'pending' as const,
       dueDay: expense.dueDay,
     }))
     .sort((a, b) => a.dueDay - b.dueDay || a.name.localeCompare(b.name, 'pt-BR'))
