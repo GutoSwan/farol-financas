@@ -8,6 +8,7 @@ import './assets/styles/transactions.css'
 import './assets/styles/finance-improvements.css'
 import './assets/styles/v0.2.css'
 import './assets/styles/budgets.css'
+import './assets/styles/monthly-expenses.css'
 
 createApp(App).use(router).mount('#app')
 
