@@ -1,4 +1,5 @@
 import { Client } from 'pg'
+import { previewPgOptions } from './pgVerifiedOptions.js'
 
 /**
  * Diagnóstico somente no ambiente Preview. Não registra dados de conexão,
@@ -46,13 +47,9 @@ export async function diagnosePgConnection(connectionString: string): Promise<vo
     'databasePostgres=' + (url.pathname === '/postgres'),
     'senhaPresente=' + Boolean(url.password))
 
-  // O driver pg não usa os parâmetros do Prisma.
-  url.searchParams.delete('pgbouncer')
-  url.searchParams.delete('connection_limit')
-  // Em pg 8, verify-full mantém a verificação TLS e evita o aviso do sslmode=require.
-  url.searchParams.set('sslmode', 'verify-full')
-
-  const client = new Client({ connectionString: url.toString(), connectionTimeoutMillis: 7000 })
+  // Mesma cadeia de confiança usada pelo Prisma: CA do Supabase e
+  // verificação de certificado/hostname obrigatória.
+  const client = new Client(previewPgOptions(connectionString))
   let connected = false
   let phase = 'conexao'
   try {
