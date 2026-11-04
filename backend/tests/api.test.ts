@@ -7,7 +7,7 @@ import type { AuthVerifier } from '../src/infrastructure/auth/SupabaseJwtVerifie
 
 const userId = '123e4567-e89b-42d3-a456-426614174000'
 
-function fixtures() {
+function fixtures(allowWorkspaceWrites = true) {
   const records = new Map<string, WorkspaceSummary[]>()
   const repository: WorkspaceRepository = {
     async listForUser(id) { return records.get(id) ?? [] },
@@ -28,7 +28,7 @@ function fixtures() {
       throw new Error('invalid')
     },
   }
-  const app = buildApp({ auth, workspaceService: new WorkspaceService(repository), checkDatabase: async () => true })
+  const app = buildApp({ auth, workspaceService: new WorkspaceService(repository), allowWorkspaceWrites, checkDatabase: async () => true })
   return { app, records }
 }
 
@@ -97,6 +97,26 @@ describe('Farol API v0.4', () => {
     const invalid = await app.inject({ method: 'GET', url: '/api/v1/workspaces', headers: { authorization: 'Bearer fake' } })
     expect(noToken.statusCode).toBe(401)
     expect(invalid.statusCode).toBe(401)
+    await app.close()
+  })
+
+  it('Preview bloqueia criação mesmo com token válido, mas mantém consultas', async () => {
+    const { app, records } = fixtures(false)
+    const authorized = { authorization: 'Bearer valid-for-test' }
+    const response = await app.inject({
+      method: 'POST', url: '/api/v1/workspaces',
+      headers: authorized, payload: { name: 'Não gravar no banco' },
+    })
+    expect(response.statusCode).toBe(403)
+    expect(response.json()).toEqual({ error: 'Criação de espaços desativada neste ambiente de testes.' })
+    expect(records.size).toBe(0)
+    const list = await app.inject({ method: 'GET', url: '/api/v1/workspaces', headers: authorized })
+    expect(list.statusCode).toBe(200)
+    expect(list.json()).toEqual({ data: [] })
+    const anonymous = await app.inject({
+      method: 'POST', url: '/api/v1/workspaces', payload: { name: 'Sem token' },
+    })
+    expect(anonymous.statusCode).toBe(401)
     await app.close()
   })
 
