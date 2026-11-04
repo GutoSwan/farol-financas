@@ -19,3 +19,41 @@
 .online-space-form { margin-top: 17px; display: grid; gap: 10px; padding-top: 13px; border-top: 1px solid var(--farol-border); }
 .online-space-form label { font-size: 12px; font-weight: 700; color: var(--farol-text); display: grid; gap: 7px; }
 .online-space-form input { width: 100%; }
+
+/* Visão somente leitura dos espaços online, dentro do gerenciador da barra
+   lateral. Não aumenta a altura da barra sticky enquanto o popover está fechado. */
+.sidebar-online-section {
+  margin-top: 17px;
+  padding-top: 16px;
+  border-top: 1px solid var(--farol-border);
+  color: var(--farol-text);
+}
+.sidebar-online-heading { display: flex; align-items: start; justify-content: space-between; gap: 8px; }
+.sidebar-online-heading h3 {
+  margin: 0 0 5px; display: flex; align-items: center; gap: 7px;
+  color: var(--farol-text); font-size: 13px;
+}
+.sidebar-online-heading h3 svg { flex: 0 0 auto; color: var(--farol-wine); }
+.sidebar-online-heading small { font-size: 10px; font-weight: 650; color: var(--farol-muted); }
+.sidebar-online-refresh {
+  flex: 0 0 auto; border: 1px solid var(--farol-border); border-radius: 8px;
+  background: var(--farol-card-muted); color: var(--farol-wine);
+  padding: 7px 9px; font-size: 11px; font-weight: 700;
+}
+.sidebar-online-refresh:focus-visible,
+.sidebar-online-account:focus-visible,
+.sidebar-online-feedback a:focus-visible { outline: 2px solid var(--farol-wine); outline-offset: 3px; }
+.sidebar-online-section .sidebar-online-explanation,
+.sidebar-online-section .sidebar-online-feedback {
+  color: var(--farol-muted); margin: 11px 0; font-size: 11px; line-height: 1.5;
+}
+.sidebar-online-section .sidebar-online-error { color: var(--farol-wine); overflow-wrap: anywhere; }
+.sidebar-online-feedback a, .sidebar-online-account { color: var(--farol-wine); text-decoration: underline; text-underline-offset: 3px; }
+.sidebar-online-list { list-style: none; margin: 12px 0; padding: 0; display: grid; gap: 7px; }
+.sidebar-online-list li {
+  display: grid; gap: 4px; padding: 10px; border: 1px solid var(--farol-border);
+  border-radius: 9px; background: var(--farol-card-muted); min-width: 0;
+}
+.sidebar-online-list span { color: var(--farol-text); font-weight: 700; font-size: 12px; overflow-wrap: anywhere; }
+.sidebar-online-list small { color: var(--farol-muted); font-size: 10px; }
+.sidebar-online-account { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; }
