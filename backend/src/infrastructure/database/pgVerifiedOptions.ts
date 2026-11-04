@@ -1,20 +1,13 @@
 import type { PoolConfig } from 'pg'
+import { SUPABASE_ROOT_2021_CA } from './supabaseRoot2021Ca.js'
 
-// Configuração exclusiva do Preview: CA fornecida pelo Supabase, sem desligar
-// a validação TLS. Nunca registrar o PEM ou a URL de conexão.
+// Apenas no Preview, utiliza a CA pública oficial versionada no código.
+// Evita erros de cópia no campo multilinha da Vercel.
+// A validação TLS e de hostname continua obrigatória.
 export function previewPgOptions(connectionString: string): PoolConfig {
-  const certificate = process.env.SUPABASE_DB_CA_CERT
-    ?.replace(/\\n/g, '\n')
-    .trim()
-  if (!certificate ||
-      !certificate.includes('-----BEGIN CERTIFICATE-----') ||
-      !certificate.includes('-----END CERTIFICATE-----')) {
-    throw new Error('Certificado CA do Supabase ausente ou inválido no Preview')
-  }
-
   const url = new URL(connectionString)
-  // node-postgres substitui o objeto SSL se a URL contiver opções SSL.
-  // O adaptador PG também não precisa destes parâmetros do Prisma.
+  // node-postgres substitui as opções SSL se parâmetros SSL vierem na URL.
+  // Remove apenas opções de driver que poderiam sobrescrever a CA.
   for (const parameter of [
     'sslmode', 'sslrootcert', 'sslcert', 'sslkey',
     'pgbouncer', 'connection_limit',
@@ -24,7 +17,7 @@ export function previewPgOptions(connectionString: string): PoolConfig {
 
   return {
     connectionString: url.toString(),
-    ssl: { ca: certificate, rejectUnauthorized: true },
+    ssl: { ca: SUPABASE_ROOT_2021_CA, rejectUnauthorized: true },
     connectionTimeoutMillis: 7000,
   }
 }
