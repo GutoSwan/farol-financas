@@ -68,7 +68,12 @@ export async function diagnosePgConnection(connectionString: string): Promise<vo
       caMatchesOfficial = fingerprint === expectedFingerprint
     } catch { /* O certificado não passou na validação do parser X509. */ }
   }
-  const effectiveSsl = client.connectionParameters.ssl
+  // O tipo público Client não expõe connectionParameters; este acesso
+  // é opcional e usado somente para o diagnóstico em Preview.
+  const diagnosticClient = client as unknown as {
+    connectionParameters?: { ssl?: unknown }
+  }
+  const effectiveSsl = diagnosticClient.connectionParameters?.ssl
   const effectiveCa = effectiveSsl && typeof effectiveSsl === 'object' && 'ca' in effectiveSsl
     ? effectiveSsl.ca
     : undefined
