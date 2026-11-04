@@ -101,7 +101,17 @@ const app = buildApp({
       await diagnosePgConnection(config.DATABASE_URL)
     }
     const prisma = await getPrisma()
+    if (process.env.VERCEL_ENV === 'preview') {
+      console.info('[farol-api] Prisma criado; iniciando $connect')
+    }
+    await prisma.$connect()
+    if (process.env.VERCEL_ENV === 'preview') {
+      console.info('[farol-api] Prisma $connect OK; iniciando SELECT 1')
+    }
     await prisma.$queryRaw`SELECT 1`
+    if (process.env.VERCEL_ENV === 'preview') {
+      console.info('[farol-api] Prisma SELECT 1 OK')
+    }
     return true
   },
 }, Fastify({ logger: false, bodyLimit: 100_000 }))
