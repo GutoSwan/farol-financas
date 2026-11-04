@@ -16,9 +16,9 @@ const entries: MonthlyBillEntry[] = [
   { id: 'b3', billId: 'luz', yearMonth: '2026-08', amountCents: 18000, status: 'paid', paidAt: null },
 ]
 const fixed: FixedExpense[] = [
-  { id: 'f1', name: 'Aluguel', amountCents: 140000, dueDay: 10, startMonth: '2026-07', endBeforeMonth: null, paidMonths: ['2026-09'] },
-  { id: 'f2', name: 'Streaming', amountCents: 4000, dueDay: 20, startMonth: '2026-08', endBeforeMonth: '2026-10', paidMonths: [] },
-  { id: 'f3', name: 'Antigo', amountCents: 5500, dueDay: 2, startMonth: '2026-01', endBeforeMonth: '2026-09', paidMonths: [] },
+  { id: 'f1', name: 'Aluguel', amountCents: 140000, dueDay: 10, startMonth: '2026-07', endBeforeMonth: null, paidMonths: ['2026-09'], createdAt: '' },
+  { id: 'f2', name: 'Streaming', amountCents: 4000, dueDay: 20, startMonth: '2026-08', endBeforeMonth: '2026-10', paidMonths: [], createdAt: '' },
+  { id: 'f3', name: 'Antigo', amountCents: 5500, dueDay: 2, startMonth: '2026-01', endBeforeMonth: '2026-09', paidMonths: [], createdAt: '' },
 ]
 const transactions: Transaction[] = [
   { id: 't1', description: 'Mercado', amountCents: 9000, category: 'Alimentação', kind: 'expense', occurredOn: '2026-09-19', createdAt: '' },
