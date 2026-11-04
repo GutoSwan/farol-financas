@@ -106,7 +106,7 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
         [/cannot find module|module not found|err_module_not_found|cannot resolve|failed to import/, 'modulo-ausente'],
         [/enoent|no such file|cannot find module|module not found/, 'arquivo-ausente'],
         [/query_compiler_bg|query_compiler|wasm/, 'wasm'],
-        [/webassembly\\.instantiate|compileerror|linkerror/, 'wasm-instanciacao'],
+        [/webassembly\.instantiate|compileerror|linkerror/, 'wasm-instanciacao'],
         [/querycompiler|query compiler|query engine|engine type|enginetype/, 'engine'],
         [/external connector|externalconnector/, 'conector-externo'],
         [/\.connect.*\.catch is not a function|connect.*catch is not a function/, 'instrumentacao-pg'],
