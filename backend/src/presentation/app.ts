@@ -94,6 +94,41 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
           ? rawName : 'Desconhecido')
         currentCause = record.cause
       }
+      // Classifica as mensagens em categorias fixas. Não imprimir mensagem,
+      // stack, meta ou causa brutas, pois podem conter SQL, URLs e segredos.
+      const causesForClassify: unknown[] = [error, wrapped?.cause, meta?.driverAdapterError, driverCause]
+      const texts = causesForClassify
+        .filter((part): part is Record<string, unknown> => Boolean(asRecord(part)))
+        .map((part) => typeof part.message === 'string' ? part.message : '')
+      const errorText = texts.join(' ').toLowerCase()
+      const fingerprints: Array<[RegExp, string]> = [
+        [/did not initialize yet|prisma generate|generated client/, 'client-nao-gerado'],
+        [/cannot find module|module not found|err_module_not_found|cannot resolve|failed to import/, 'modulo-ausente'],
+        [/wasm|webassembly/, 'wasm'],
+        [/querycompiler|query compiler|query engine|engine type|enginetype/, 'engine'],
+        [/external connector|externalconnector/, 'conector-externo'],
+        [/\.connect.*\.catch is not a function|connect.*catch is not a function/, 'instrumentacao-pg'],
+        [/pool.*(?:ended|closed)|cannot use a pool after calling end/, 'pool-encerrado'],
+        [/undefined|not a function|null is not|cannot read properties/, 'erro-de-tipo'],
+        [/tls|ssl|certificate|self.signed/, 'ssl'],
+        [/password|authentication|sasl|scram/, 'autenticacao'],
+        [/timeout|timed out|econnrefused|connection refused/, 'rede'],
+      ]
+      const problemTags = fingerprints
+        .filter(([pattern]) => pattern.test(errorText))
+        .map(([, tag]) => tag)
+        .slice(0, 5)
+      const safeShape = {
+        nome: error instanceof Error ? error.name : 'Desconhecido',
+        mensagemExiste: error instanceof Error && error.message.length > 0,
+        mensagensMultilinha: errorText.includes('\n'),
+        quantidadeCausas: causesForClassify.filter((part) => Boolean(asRecord(part))).length,
+      }
+      console.error('[farol-api] Prisma Client diagnostico seguro:',
+        'sinais=' + (problemTags.join(',') || 'nenhum'),
+        'mensagem=' + (safeShape.mensagemExiste ? 'presente' : 'ausente'),
+        'multilinha=' + safeShape.mensagensMultilinha,
+        'niveis=' + safeShape.quantidadeCausas)
       console.error('[farol-api] /ready indisponível:',
         error instanceof Error ? error.name : 'Erro desconhecido',
         'codes=' + (safeCodes.length ? [...new Set(safeCodes)].join(',') : 'indisponível'),
