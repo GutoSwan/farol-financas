@@ -1,4 +1,4 @@
-import { Client } from 'pg'
+import { Client, Pool } from 'pg'
 import { X509Certificate } from 'node:crypto'
 import { previewPgOptions } from './pgVerifiedOptions.js'
 
@@ -89,6 +89,21 @@ export async function diagnosePgConnection(connectionString: string): Promise<vo
     phase = 'consulta'
     await client.query('SELECT 1')
     console.info('[farol-api] pg nativo: conexao e SELECT 1 OK')
+
+    // PrismaPg utiliza Pool, portanto testamos esse mesmo caminho separado
+    // do Prisma para saber se o problema é no driver/SSL ou no adaptador.
+    const pool = new Pool({ ...previewPgOptions(connectionString), max: 2 })
+    try {
+      await pool.query('SELECT 1')
+      console.info('[farol-api] pg pool: SELECT 1 OK')
+    } catch (poolError: unknown) {
+      const poolInfo = getErrorInfo(poolError)
+      console.error('[farol-api] pg pool falhou:',
+        'categoria=' + poolInfo.category, 'codigo=' + poolInfo.code)
+      throw new Error('Falha no pool pg')
+    } finally {
+      await pool.end()
+    }
   } catch (error: unknown) {
     const info = getErrorInfo(error)
     console.error('[farol-api] pg diagnostico:',
