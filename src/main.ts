@@ -1,6 +1,7 @@
 import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
+import { initializeTheme } from './presentation/composables/useTheme'
 import './assets/styles/global.css'
 import './assets/styles/themes.css'
 import './assets/styles/layout-improvements.css'
@@ -10,6 +11,7 @@ import './assets/styles/v0.2.css'
 import './assets/styles/budgets.css'
 import './assets/styles/monthly-expenses.css'
 
+initializeTheme()
 createApp(App).use(router).mount('#app')
 
 import './assets/styles/auth.css'
