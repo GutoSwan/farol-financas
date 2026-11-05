@@ -3,8 +3,7 @@ import sidebar from '../src/presentation/layouts/AppLayout.vue?raw'
 import routes from '../src/router/index.ts?raw'
 import gifts from '../src/presentation/pages/GiftsPage.vue?raw'
 import photos from '../src/presentation/components/GiftPhoto.vue?raw'
-import { readFileSync } from 'node:fs'
-const css = readFileSync(new URL('../src/assets/styles/gifts.css', import.meta.url), 'utf8')
+import main from '../src/main.ts?raw'
 
 describe('Experiência de presentes na barra lateral', () => {
   it('abre uma tela própria com seletor de Gustavo e Ana, acessível por modal', () => {
@@ -31,9 +30,8 @@ describe('Experiência de presentes na barra lateral', () => {
     expect(photos).toContain('Arraste a foto PNG aqui')
     expect(photos).toContain('@drop.prevent="dropFile"')
     expect(photos).toContain('saveGiftPhoto(props.giftId, file)')
-    expect(css).toContain('.gift-card-high')
-    expect(css).toContain('.gift-card-medium')
-    expect(css).toContain('.gift-card-low')
+    expect(main).toContain("import './assets/styles/gifts.css'")
+    expect(gifts).toContain("'gift-card-' + gift.priority")
   })
 
   it('deixa explícito que as listas ainda são locais e não afetam os gastos', () => {
