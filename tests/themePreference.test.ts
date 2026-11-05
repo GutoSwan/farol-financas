@@ -20,7 +20,7 @@ beforeEach(() => {
   authMocks.updateUser.mockReset()
   authMocks.getSession.mockResolvedValue({ data: { session: null }, error: null })
   authMocks.updateUser.mockResolvedValue({ error: null })
-  vi.stubGlobal('document', { documentElement: root })
+  vi.stubGlobal('document', { documentElement: root, createElement: () => ({}) })
   vi.stubGlobal('window', { addEventListener: vi.fn() })
   vi.stubGlobal('localStorage', {
     getItem: (key: string) => memory.get(key) ?? null,
