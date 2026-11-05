@@ -19,7 +19,7 @@ describe('Preparação do Farol para Vercel', () => {
   it('serve todas as rotas Vue como SPA, sem reescrever URLs da API como HTML', () => {
     const routes = [
       '/contas-mensais', '/gastos-fixos', '/lancamentos', '/cartoes', '/orcamentos',
-      '/relatorios', '/relatorios/detalhes', '/entrar', '/cadastro', '/recuperar-senha',
+      '/relatorios', '/relatorios/detalhes', '/presentes', '/entrar', '/cadastro', '/recuperar-senha',
       '/redefinir-senha', '/conta',
     ]
     expect(config.rewrites.map(rule => rule.source).sort()).toEqual(routes.sort())

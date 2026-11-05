@@ -89,6 +89,7 @@ const links = [
   { to: '/cartoes', label: 'Cartões de crédito', icon: 'card' as const },
   { to: '/orcamentos', label: 'Orçamentos', icon: 'target' as const },
   { to: '/relatorios', label: 'Relatórios', icon: 'chart' as const },
+  { to: '/presentes', label: 'Presentes', icon: 'gift' as const },
 ]
 
 watch(() => route.fullPath, () => {

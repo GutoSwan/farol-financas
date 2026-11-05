@@ -25,6 +25,10 @@
       "destination": "/index.html"
     },
     {
+      "source": "/presentes",
+      "destination": "/index.html"
+    },
+    {
       "source": "/relatorios",
       "destination": "/index.html"
     },

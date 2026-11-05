@@ -5,6 +5,7 @@ import BillsPage from '../presentation/pages/BillsPage.vue'
 import FixedExpensesPage from '../presentation/pages/FixedExpensesPage.vue'
 import TransactionsPage from '../presentation/pages/TransactionsPage.vue'
 import ReportsPage from '../presentation/pages/ReportsPage.vue'
+import GiftsPage from '../presentation/pages/GiftsPage.vue'
 import MonthlyExpensesPage from '../presentation/pages/MonthlyExpensesPage.vue'
 import BudgetsPage from '../presentation/pages/BudgetsPage.vue'
 import ComingSoonPage from '../presentation/pages/ComingSoonPage.vue'
@@ -25,6 +26,7 @@ const router = createRouter({
       { path: 'cartoes', component: ComingSoonPage, props: { title: 'Cartões de crédito' } },
       { path: 'orcamentos', component: BudgetsPage, meta: { title: 'Orçamentos' } },
       { path: 'relatorios', component: ReportsPage, meta: { title: 'Relatórios' } },
+      { path: 'presentes', component: GiftsPage, meta: { title: 'Presentes' } },
       { path: 'relatorios/detalhes', component: MonthlyExpensesPage, meta: { title: 'Detalhes do mês' } },
     ],
   },
