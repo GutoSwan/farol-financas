@@ -3,7 +3,8 @@ import sidebar from '../src/presentation/layouts/AppLayout.vue?raw'
 import routes from '../src/router/index.ts?raw'
 import gifts from '../src/presentation/pages/GiftsPage.vue?raw'
 import photos from '../src/presentation/components/GiftPhoto.vue?raw'
-import css from '../src/assets/styles/gifts.css?raw'
+import { readFileSync } from 'node:fs'
+const css = readFileSync(new URL('../src/assets/styles/gifts.css', import.meta.url), 'utf8')
 
 describe('Experiência de presentes na barra lateral', () => {
   it('abre uma tela própria com seletor de Gustavo e Ana, acessível por modal', () => {
