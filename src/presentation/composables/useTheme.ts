@@ -59,13 +59,14 @@ export function restoreThemeFromProfile(theme: unknown): void {
 }
 
 function persistAccountTheme(theme: Theme): void {
-  if (!supabase) return
+  const client = supabase
+  if (!client) return
   // Serializa alterações rápidas: a última escolha deve ser a última gravada.
   remoteSaveQueue = remoteSaveQueue
     .then(async () => {
-      const { data, error } = await supabase.auth.getSession()
+      const { data, error } = await client.auth.getSession()
       if (error || !data.session) return
-      await supabase.auth.updateUser({ data: { [PROFILE_KEY]: theme } })
+      await client.auth.updateUser({ data: { [PROFILE_KEY]: theme } })
     })
     .catch(() => {
       // A preferência local permanece válida mesmo que a nuvem falhe.
