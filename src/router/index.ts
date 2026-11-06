@@ -11,7 +11,7 @@ import BudgetsPage from '../presentation/pages/BudgetsPage.vue'
 import ComingSoonPage from '../presentation/pages/ComingSoonPage.vue'
 import AuthPage from '../presentation/pages/AuthPage.vue'
 import { supabase } from '../infrastructure/auth/supabase'
-import { shouldRedirectLoggedInVisitor } from './authNavigation'
+import { canAccessWithoutSession, shouldRedirectLoggedInVisitor } from './authNavigation'
 import { isFarolAdmin } from '../domain/auth/adminAccess'
 
 const router = createRouter({
@@ -39,12 +39,33 @@ const router = createRouter({
   ],
 })
 
-// A Visão geral é a primeira tela após autenticação. As telas de recuperação
-// permanecem acessíveis, mesmo quando o Supabase abre uma sessão temporária.
+// Todas as telas financeiras exigem uma sessão Supabase antes da navegação.
+// A verificação assíncrona acontece antes de renderizar o dashboard, evitando
+// mostrar dados locais durante a restauração de sessão no primeiro acesso.
+// Cadastro e recuperação de senha continuam públicos.
 router.beforeEach(async (to) => {
-  // A permissão é conferida no Supabase Auth remoto, sem confiar em display_name.
+  if (!supabase) {
+    return canAccessWithoutSession(to.path) ? true : { path: '/entrar', replace: true }
+  }
+
+  let authenticated = false
+  try {
+    const { data, error } = await supabase.auth.getSession()
+    authenticated = !error && !!data.session
+  } catch {
+    // Na ausência de sessão recuperável, não abrir páginas financeiras.
+  }
+
+  if (!authenticated && !canAccessWithoutSession(to.path)) {
+    return { path: '/entrar', replace: true }
+  }
+
+  if (shouldRedirectLoggedInVisitor(to.path, authenticated)) {
+    return { path: '/', replace: true }
+  }
+
+  // Permissões de administrador seguem validadas diretamente no Auth remoto.
   if (to.meta.requiresAdmin) {
-    if (!supabase) return { path: '/entrar', replace: true }
     try {
       const { data, error } = await supabase.auth.getUser()
       if (error || !data.user) return { path: '/entrar', replace: true }
@@ -53,15 +74,7 @@ router.beforeEach(async (to) => {
       return { path: '/entrar', replace: true }
     }
   }
-  if (!supabase || (to.path !== '/entrar' && to.path !== '/cadastro')) return true
-  try {
-    const { data, error } = await supabase.auth.getSession()
-    if (!error && shouldRedirectLoggedInVisitor(to.path, !!data.session)) {
-      return { path: '/', replace: true }
-    }
-  } catch {
-    // Se a sessão não puder ser restaurada, a tela de login permanece acessível.
-  }
+
   return true
 })
 
