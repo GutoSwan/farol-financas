@@ -7,7 +7,8 @@ import main from '../src/main.ts?raw'
 
 describe('Experiência de presentes na barra lateral', () => {
   it('abre uma tela própria com seletor de Gustavo e Ana, acessível por modal', () => {
-    expect(sidebar).toContain("to: '/presentes', label: 'Presentes'")
+    expect(sidebar).toContain('to="/presentes"')
+    expect(sidebar).toContain('v-if="isAdmin"')
     expect(routes).toContain("path: 'presentes', component: GiftsPage")
     expect(gifts).toContain('role="dialog"')
     expect(gifts).toContain("choosePerson('gustavo')")
