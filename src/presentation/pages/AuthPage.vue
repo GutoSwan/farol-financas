@@ -3,6 +3,7 @@ import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import UiIcon from '../components/UiIcon.vue'
 import OnlineWorkspacesPanel from '../components/OnlineWorkspacesPanel.vue'
+import TotpSettings from '../components/TotpSettings.vue'
 import { useAuth } from '../composables/useAuth'
 import { PROFILE_ICONS } from '../../domain/profile/profile'
 import type { ProfileIcon } from '../../domain/profile/profile'
@@ -222,6 +223,7 @@ async function logout(): Promise<void> {
             <UiIcon name="info" :size="19" />
             <span>O acesso às telas financeiras exige login. Porém, os espaços e lançamentos ainda ficam neste dispositivo, sem separação por usuário ou sincronização entre dispositivos.</span>
           </div>
+          <TotpSettings />
           <OnlineWorkspacesPanel />
           <button type="button" class="secondary-action auth-full-button" :disabled="busy" @click="logout">
             <UiIcon name="log-out" :size="16" /> Sair da conta
