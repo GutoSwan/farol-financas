@@ -40,6 +40,16 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
   }
 
 
+  // Não permitir armazenamento intermediário de respostas da API autenticada.
+  app.addHook('onSend', async (request, reply, payload) => {
+    if (request.url.startsWith('/api/v1/')) {
+      reply.header('Cache-Control', 'no-store, private')
+      reply.header('X-Content-Type-Options', 'nosniff')
+      reply.header('Referrer-Policy', 'no-referrer')
+    }
+    return payload
+  })
+
   app.get('/api/v1/health', async () => ({ status: 'ok', service: 'farol-api', version: '0.13.0' }))
 
   app.get('/api/v1/ready', async (_request, reply) => {
@@ -168,12 +178,18 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
   app.get('/api/v1/workspaces', async (request, reply) => {
     const identity = await authorized(request, reply)
     if (!identity) return
+    if (identity.assuranceLevel !== 'aal2') {
+      return reply.code(403).send({ error: 'Autenticação em duas etapas necessária para consultar dados financeiros.' })
+    }
     return { data: await deps.workspaceService.listForUser(identity.userId) }
   })
 
   app.post('/api/v1/workspaces', async (request, reply) => {
     const identity = await authorized(request, reply)
     if (!identity) return
+    if (identity.assuranceLevel !== 'aal2') {
+      return reply.code(403).send({ error: 'Autenticação em duas etapas necessária para alterar dados financeiros.' })
+    }
     if (deps.allowWorkspaceWrites === false) {
       return reply.code(403).send({ error: 'Criação de espaços desativada neste ambiente de testes.' })
     }
@@ -187,7 +203,8 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
 
   app.setErrorHandler((error, _request, reply) => {
     // Evita expor detalhes do banco, SQL ou variáveis de ambiente aos clientes.
-    app.log.error({ err: error }, 'Erro não tratado')
+    // Erros brutos podem incluir conteúdo de requisições, SQL e dados privados.
+    app.log.error({ errorType: error.name }, 'Erro não tratado')
     reply.code(500).send({ error: 'Erro interno do servidor.' })
   })
 
