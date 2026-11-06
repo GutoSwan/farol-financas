@@ -12,6 +12,7 @@ import ComingSoonPage from '../presentation/pages/ComingSoonPage.vue'
 import AuthPage from '../presentation/pages/AuthPage.vue'
 import { supabase } from '../infrastructure/auth/supabase'
 import { shouldRedirectLoggedInVisitor } from './authNavigation'
+import { isFarolAdmin } from '../domain/auth/adminAccess'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -26,7 +27,7 @@ const router = createRouter({
       { path: 'cartoes', component: ComingSoonPage, props: { title: 'Cartões de crédito' } },
       { path: 'orcamentos', component: BudgetsPage, meta: { title: 'Orçamentos' } },
       { path: 'relatorios', component: ReportsPage, meta: { title: 'Relatórios' } },
-      { path: 'presentes', component: GiftsPage, meta: { title: 'Presentes' } },
+      { path: 'presentes', component: GiftsPage, meta: { title: 'Presentes', requiresAdmin: true } },
       { path: 'relatorios/detalhes', component: MonthlyExpensesPage, meta: { title: 'Detalhes do mês' } },
     ],
   },
@@ -41,6 +42,17 @@ const router = createRouter({
 // A Visão geral é a primeira tela após autenticação. As telas de recuperação
 // permanecem acessíveis, mesmo quando o Supabase abre uma sessão temporária.
 router.beforeEach(async (to) => {
+  // A permissão é conferida no Supabase Auth remoto, sem confiar em display_name.
+  if (to.meta.requiresAdmin) {
+    if (!supabase) return { path: '/entrar', replace: true }
+    try {
+      const { data, error } = await supabase.auth.getUser()
+      if (error || !data.user) return { path: '/entrar', replace: true }
+      if (!isFarolAdmin(data.user)) return { path: '/', replace: true }
+    } catch {
+      return { path: '/entrar', replace: true }
+    }
+  }
   if (!supabase || (to.path !== '/entrar' && to.path !== '/cadastro')) return true
   try {
     const { data, error } = await supabase.auth.getSession()

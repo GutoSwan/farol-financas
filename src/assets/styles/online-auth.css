@@ -57,3 +57,13 @@
 .sidebar-online-list span { color: var(--farol-text); font-weight: 700; font-size: 12px; overflow-wrap: anywhere; }
 .sidebar-online-list small { color: var(--farol-muted); font-size: 10px; }
 .sidebar-online-account { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; }
+
+/* Backup financeiro local: exportação de leitura, sem acessar Supabase. */
+.sidebar-backup-section { margin-top: 18px; padding-top: 15px; border-top: 1px solid var(--farol-border); color: var(--farol-text); }
+.sidebar-backup-section h3 { margin: 0 0 9px; font-size: 13px; display: flex; align-items: center; gap: 7px; }
+.sidebar-backup-section h3 svg { color: var(--farol-wine); }
+.sidebar-workspace .sidebar-backup-section p { font-size: 11px; margin: 0 0 11px; line-height: 1.55; color: var(--farol-muted); }
+.sidebar-backup-button { width: 100%; background: var(--farol-wine-soft); color: var(--farol-wine); border: 1px solid var(--farol-border); min-height: 38px; border-radius: 9px; padding: 9px 12px; font-size: 11px; }
+.sidebar-backup-button:focus-visible { outline: 2px solid var(--farol-wine); outline-offset: 3px; }
+.sidebar-workspace .sidebar-backup-section .sidebar-backup-notice { margin-top: 10px; color: var(--farol-positive); overflow-wrap: anywhere; }
+.sidebar-workspace .sidebar-backup-section .sidebar-backup-error { margin-top: 10px; color: var(--farol-wine); overflow-wrap: anywhere; }

@@ -2,6 +2,7 @@ import { computed, ref } from 'vue'
 import type { Session } from '@supabase/supabase-js'
 import { authConfigured, supabase } from '../../infrastructure/auth/supabase'
 import { normalizeDisplayName, normalizeProfileIcon, readProfile } from '../../domain/profile/profile'
+import { isFarolAdmin } from '../../domain/auth/adminAccess'
 import type { ProfileIcon } from '../../domain/profile/profile'
 
 const session = ref<Session | null>(null)
@@ -127,6 +128,7 @@ export function useAuth() {
     ready: computed(() => ready.value),
     user: computed(() => session.value?.user ?? null),
     isLoggedIn: computed(() => !!session.value),
+    isAdmin: computed(() => isFarolAdmin(session.value?.user)),
     profile: computed(() => readProfile(session.value?.user?.user_metadata as Record<string, unknown> | undefined, session.value?.user?.email)),
     recoveringPassword: computed(() => recoveringPassword.value),
     signIn, signUp, verifySignupCode, resendSignupCode, updateProfile,

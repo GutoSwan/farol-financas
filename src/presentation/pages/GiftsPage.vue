@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuth } from '../composables/useAuth'
 import UiIcon from '../components/UiIcon.vue'
 import MoneyInput from '../components/MoneyInput.vue'
 import GiftPhoto from '../components/GiftPhoto.vue'
@@ -11,6 +12,7 @@ import { deleteGiftPhoto } from '../../infrastructure/persistence/GiftPhotoStora
 import { formatBRL, parseBRLToCents } from '../../domain/value-objects/Money'
 
 const router = useRouter()
+const { isAdmin } = useAuth()
 const repository = new BrowserGiftRepository()
 const person = ref<GiftOwner | null>(null)
 const gifts = ref<Gift[]>([])
@@ -26,6 +28,14 @@ const priority = ref<GiftPriority>('high')
 const chooserFirst = ref<HTMLButtonElement | null>(null)
 const formFirst = ref<HTMLInputElement | null>(null)
 
+watch(isAdmin, (allowed) => {
+  if (allowed) return
+  person.value = null
+  gifts.value = []
+  formOpen.value = false
+  editId.value = null
+})
+
 const personLabel = computed(() => person.value ? GIFT_OWNER_NAMES[person.value] : '')
 const totalPrice = computed(() => gifts.value.reduce((total, gift) => total + gift.priceCents, 0))
 const counts = computed(() => ({
@@ -35,7 +45,7 @@ const counts = computed(() => ({
 }))
 
 function reload(): void {
-  if (!person.value) return
+  if (!isAdmin.value || !person.value) return
   try {
     gifts.value = repository.list(person.value)
     error.value = ''
@@ -46,6 +56,7 @@ function reload(): void {
 }
 
 function choosePerson(chosen: GiftOwner): void {
+  if (!isAdmin.value) return
   person.value = chosen
   formOpen.value = false
   feedback.value = ''
@@ -63,6 +74,7 @@ function changePerson(): void {
 }
 
 function openForm(gift?: Gift): void {
+  if (!isAdmin.value) return
   editId.value = gift?.id ?? null
   name.value = gift?.name ?? ''
   price.value = gift ? formatBRL(gift.priceCents) : ''
@@ -77,7 +89,7 @@ function openForm(gift?: Gift): void {
 function closeForm(): void { formOpen.value = false; formError.value = '' }
 
 function saveGift(): void {
-  if (!person.value) return
+  if (!isAdmin.value || !person.value) return
   formError.value = ''
   feedback.value = ''
   try {
@@ -97,7 +109,7 @@ function saveGift(): void {
 }
 
 async function removeGift(gift: Gift): Promise<void> {
-  if (!person.value) return
+  if (!isAdmin.value || !person.value) return
   if (!window.confirm('Excluir o presente "' + gift.name + '" da lista de ' + personLabel.value + '?')) return
   try {
     repository.remove(person.value, gift.id)
@@ -128,11 +140,11 @@ function trapDialogFocus(event: KeyboardEvent): void {
   }
 }
 
-onMounted(() => { void nextTick(() => chooserFirst.value?.focus()) })
+onMounted(() => { if (isAdmin.value) void nextTick(() => chooserFirst.value?.focus()) })
 </script>
 
 <template>
-  <div class="gifts-page">
+  <div v-if="isAdmin" class="gifts-page">
     <div class="heading gifts-page-heading">
       <div>
         <p class="eyebrow">LISTA DE DESEJOS</p>
