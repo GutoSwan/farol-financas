@@ -8,7 +8,7 @@ import {
 type PendingEnrollment = { factorId: string; qrSvg: string; secret: string }
 const pending = ref<PendingEnrollment | null>(null)
 const verifiedCount = ref(0)
-const assurance = ref<'aal1' | 'aal2' | null>(null)
+const assurance = ref<string | null>(null)
 const busy = ref(false)
 const loading = ref(true)
 const code = ref('')
