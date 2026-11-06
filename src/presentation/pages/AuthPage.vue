@@ -220,7 +220,7 @@ async function logout(): Promise<void> {
 
           <div class="auth-warning auth-profile-warning">
             <UiIcon name="info" :size="19" />
-            <span>Seu perfil é salvo no Supabase, mas os espaços financeiros e lançamentos continuam neste navegador. O login ainda não protege nem sincroniza esses dados.</span>
+            <span>O acesso às telas financeiras exige login. Porém, os espaços e lançamentos ainda ficam neste dispositivo, sem separação por usuário ou sincronização entre dispositivos.</span>
           </div>
           <OnlineWorkspacesPanel />
           <button type="button" class="secondary-action auth-full-button" :disabled="busy" @click="logout">
@@ -316,8 +316,7 @@ async function logout(): Promise<void> {
       <p v-if="errorText" class="error" role="alert">{{ errorText }}</p>
 
       <div class="auth-footer">
-        <RouterLink to="/">Voltar ao Farol (dados locais)</RouterLink>
-        <small>Protótipo: entrar ou sair não apaga nem isola os dados financeiros deste navegador.</small>
+        <small>Para acessar as finanças, entre na sua conta. Os dados já salvos neste dispositivo não são apagados ao sair e ainda não são separados por usuário.</small>
       </div>
     </div>
   </div>
