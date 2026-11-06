@@ -35,16 +35,18 @@ jobs:
       - name: Gerar projeto iOS do Capacitor
         run: npm run mobile:add:ios
       - name: Verificar projeto nativo iOS sem assinatura
-        run: >
-          xcodebuild
-          -workspace ios/App/App.xcworkspace
-          -scheme App
-          -configuration Debug
-          -sdk iphonesimulator
-          -destination 'generic/platform=iOS Simulator'
-          -derivedDataPath build/ios
-          CODE_SIGNING_ALLOWED=NO
-          build
+        run: |
+          if [ -d ios/App/App.xcworkspace ]; then
+            xcodebuild -workspace ios/App/App.xcworkspace \
+              -scheme App -configuration Debug -sdk iphonesimulator \
+              -destination 'generic/platform=iOS Simulator' -derivedDataPath build/ios \
+              CODE_SIGNING_ALLOWED=NO build
+          else
+            xcodebuild -project ios/App/App.xcodeproj \
+              -scheme App -configuration Debug -sdk iphonesimulator \
+              -destination 'generic/platform=iOS Simulator' -derivedDataPath build/ios \
+              CODE_SIGNING_ALLOWED=NO build
+          fi
       - name: Arquivo para simulador (nao instala no iPhone real)
         uses: actions/upload-artifact@v4
         with:
