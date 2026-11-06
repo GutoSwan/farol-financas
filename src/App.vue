@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { watch } from 'vue'
+import InstallAppBanner from './presentation/components/InstallAppBanner.vue'
 import { useAuth } from './presentation/composables/useAuth'
 import { restoreThemeFromProfile } from './presentation/composables/useTheme'
 
@@ -12,4 +13,4 @@ watch(() => user.value?.id, () => {
 }, { immediate: true })
 </script>
 
-<template><RouterView /></template>
+<template><RouterView /><InstallAppBanner /></template>

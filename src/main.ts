@@ -20,3 +20,14 @@ import './assets/styles/online-auth.css'
 import './assets/styles/sticky-sidebar.css'
 import './assets/styles/sidebar-theme.css'
 import './assets/styles/gifts.css'
+
+
+// Atualiza apenas os arquivos estáticos. Dados financeiros e autenticação
+// nunca são interceptados ou armazenados pelo service worker.
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    void navigator.serviceWorker.register('/sw.js').catch(() => {
+      // Falha no modo offline não impede o uso online do Farol.
+    })
+  })
+}
