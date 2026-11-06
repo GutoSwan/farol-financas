@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
+import { Capacitor } from '@capacitor/core'
 
 interface InstallPrompt extends Event {
   prompt: () => Promise<void>
@@ -21,7 +22,7 @@ function refreshPlatform(): void {
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
   isMobile.value = isIOS.value || /Android/i.test(agent)
   const appleNavigator = navigator as Navigator & { standalone?: boolean }
-  isStandalone.value = window.matchMedia('(display-mode: standalone)').matches ||
+  isStandalone.value = Capacitor.isNativePlatform() || window.matchMedia('(display-mode: standalone)').matches ||
     appleNavigator.standalone === true
 }
 

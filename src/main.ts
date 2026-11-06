@@ -1,4 +1,5 @@
 import { createApp } from 'vue'
+import { Capacitor } from '@capacitor/core'
 import App from './App.vue'
 import router from './router'
 import { initializeTheme } from './presentation/composables/useTheme'
@@ -24,7 +25,7 @@ import './assets/styles/gifts.css'
 
 // Atualiza apenas os arquivos estáticos. Dados financeiros e autenticação
 // nunca são interceptados ou armazenados pelo service worker.
-if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+if (import.meta.env.PROD && !Capacitor.isNativePlatform() && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     void navigator.serviceWorker.register('/sw.js').catch(() => {
       // Falha no modo offline não impede o uso online do Farol.
