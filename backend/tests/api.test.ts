@@ -7,7 +7,7 @@ import type { AuthVerifier } from '../src/infrastructure/auth/SupabaseJwtVerifie
 
 const userId = '123e4567-e89b-42d3-a456-426614174000'
 
-function fixtures() {
+function fixtures(allowWorkspaceWrites = true) {
   const records = new Map<string, WorkspaceSummary[]>()
   const repository: WorkspaceRepository = {
     async listForUser(id) { return records.get(id) ?? [] },
@@ -23,12 +23,13 @@ function fixtures() {
   }
   const auth: AuthVerifier = {
     async verifyAccessToken(token) {
-      if (token === 'valid-for-test') return { userId }
-      if (token === 'other-user-test') return { userId: '823e4567-e89b-42d3-a456-426614174999' }
+      if (token === 'valid-for-test') return { userId, assuranceLevel: 'aal2' }
+      if (token === 'other-user-test') return { userId: '823e4567-e89b-42d3-a456-426614174999', assuranceLevel: 'aal2' }
+      if (token === 'password-only-test') return { userId, assuranceLevel: 'aal1' }
       throw new Error('invalid')
     },
   }
-  const app = buildApp({ auth, workspaceService: new WorkspaceService(repository), checkDatabase: async () => true })
+  const app = buildApp({ auth, workspaceService: new WorkspaceService(repository), allowWorkspaceWrites, checkDatabase: async () => true })
   return { app, records }
 }
 
@@ -100,6 +101,26 @@ describe('Farol API v0.4', () => {
     await app.close()
   })
 
+  it('Preview bloqueia criação mesmo com token válido, mas mantém consultas', async () => {
+    const { app, records } = fixtures(false)
+    const authorized = { authorization: 'Bearer valid-for-test' }
+    const response = await app.inject({
+      method: 'POST', url: '/api/v1/workspaces',
+      headers: authorized, payload: { name: 'Não gravar no banco' },
+    })
+    expect(response.statusCode).toBe(403)
+    expect(response.json()).toEqual({ error: 'Criação de espaços desativada neste ambiente de testes.' })
+    expect(records.size).toBe(0)
+    const list = await app.inject({ method: 'GET', url: '/api/v1/workspaces', headers: authorized })
+    expect(list.statusCode).toBe(200)
+    expect(list.json()).toEqual({ data: [] })
+    const anonymous = await app.inject({
+      method: 'POST', url: '/api/v1/workspaces', payload: { name: 'Sem token' },
+    })
+    expect(anonymous.statusCode).toBe(401)
+    await app.close()
+  })
+
   it('cria espaço associado ao usuário autenticado e retorna só os seus espaços', async () => {
     const { app } = fixtures()
     const headers = { authorization: 'Bearer valid-for-test' }
@@ -150,4 +171,33 @@ describe('Farol API v0.4', () => {
     expect(b.statusCode).toBe(400)
     await app.close()
   })
+  it('nega consulta e gravação financeira com sessão somente de senha (aal1)', async () => {
+    const { app, records } = fixtures()
+    const headers = { authorization: 'Bearer password-only-test' }
+    const list = await app.inject({ method: 'GET', url: '/api/v1/workspaces', headers })
+    expect(list.statusCode).toBe(403)
+    expect(list.json().error).toContain('duas etapas')
+    const created = await app.inject({
+      method: 'POST', url: '/api/v1/workspaces', headers, payload: { name: 'Conta privada' },
+    })
+    expect(created.statusCode).toBe(403)
+    expect(records.size).toBe(0)
+    const me = await app.inject({ method: 'GET', url: '/api/v1/me', headers })
+    expect(me.statusCode).toBe(200)
+    await app.close()
+  })
+
+  it('impede cache de respostas protegidas e evita expor token em resposta', async () => {
+    const { app } = fixtures()
+    const response = await app.inject({
+      method: 'GET', url: '/api/v1/me',
+      headers: { authorization: 'Bearer valid-for-test' },
+    })
+    expect(response.statusCode).toBe(200)
+    expect(response.headers['cache-control']).toContain('no-store')
+    expect(response.headers['x-content-type-options']).toBe('nosniff')
+    expect(response.body).not.toContain('valid-for-test')
+    await app.close()
+  })
+
 })

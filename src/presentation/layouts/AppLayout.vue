@@ -2,6 +2,8 @@
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import UiIcon from '../components/UiIcon.vue'
+import OnlineWorkspacesSidebar from '../components/OnlineWorkspacesSidebar.vue'
+import { downloadLocalFinancialBackup } from '../../application/use-cases/exportFinancialBackup'
 import { useTheme } from '../composables/useTheme'
 import { useWorkspaces } from '../composables/useWorkspaces'
 import { useAuth } from '../composables/useAuth'
@@ -10,7 +12,7 @@ import type { FinancialWorkspace } from '../../domain/entities/FinancialWorkspac
 
 const route = useRoute()
 const router = useRouter()
-const { isLoggedIn, user, profile, signOut } = useAuth()
+const { isLoggedIn, isAdmin, user, profile, signOut } = useAuth()
 const profileMenuOpen = ref(false)
 const profileBusy = ref(false)
 const profileError = ref('')
@@ -79,6 +81,19 @@ onBeforeUnmount(() => {
 })
 const newName = ref('')
 const notice = ref('')
+const backupNotice = ref('')
+const backupError = ref('')
+
+function exportFinancialData(): void {
+  backupNotice.value = ''
+  backupError.value = ''
+  try {
+    const file = downloadLocalFinancialBackup()
+    backupNotice.value = 'Backup preparado: ' + file
+  } catch (cause) {
+    backupError.value = cause instanceof Error ? cause.message : 'Não foi possível baixar o backup.'
+  }
+}
 
 const links = [
   { to: '/', label: 'Visão geral', icon: 'dashboard' as const },
@@ -156,6 +171,10 @@ function removeWorkspace(space: FinancialWorkspace): void {
           <UiIcon :name="link.icon" :size="17" />
           <span>{{ link.label }}</span>
         </RouterLink>
+        <RouterLink v-if="isAdmin" to="/presentes" class="side-nav-link"
+          :class="{ active: route.path === '/presentes' }" @click="closeMobileMenu(true)">
+          <UiIcon name="gift" :size="17" /><span>Presentes</span>
+        </RouterLink>
       </nav>
       </div>
       <div class="sidebar-bottom">
@@ -185,6 +204,16 @@ function removeWorkspace(space: FinancialWorkspace): void {
               </button>
             </div>
           </div>
+          <section class="sidebar-backup-section" aria-label="Backup dos dados financeiros">
+            <h3><UiIcon name="folder" :size="16" /> Segurança dos seus dados</h3>
+            <p>Antes de migrarmos seus registros para a nuvem, salve uma cópia dos espaços financeiros deste navegador.</p>
+            <button class="sidebar-backup-button" type="button" @click="exportFinancialData">
+              Baixar backup financeiro (JSON)
+            </button>
+            <p v-if="backupNotice" class="sidebar-backup-notice" role="status">{{ backupNotice }}</p>
+            <p v-if="backupError" class="sidebar-backup-error" role="alert">{{ backupError }}</p>
+          </section>
+          <OnlineWorkspacesSidebar />
           <p v-if="notice" class="success" role="status">{{ notice }}</p>
           <button class="secondary-action close-spaces" type="button" @click="managing = false">Fechar</button>
         </div>

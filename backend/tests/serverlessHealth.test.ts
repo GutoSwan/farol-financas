@@ -23,7 +23,7 @@ describe('Health da API independente de PostgreSQL e JWT', () => {
   it('responde health=200, ready=503 e me=401 sem credenciais no processo', async () => {
     const port = await unusedLocalPort()
     const cwd = fileURLToPath(new URL('../', import.meta.url))
-    const child = spawn(process.execPath, ['--import', 'tsx', 'src/app.ts'], {
+    const child = spawn(process.execPath, ['--import', 'tsx', 'src/server.ts'], {
       cwd,
       env: {
         ...process.env,

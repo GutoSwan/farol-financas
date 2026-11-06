@@ -89,7 +89,7 @@ const categoryMax = computed(() => Math.max(1, ...visibleCategories.value.map((i
 
     <section class="panel">
       <div class="panel-title">
-        <div><h2>Quanto gastou em cada mês?</h2><p>Uma barra representa o total de gastos de um mês. Quanto maior, maior a despesa.</p></div>
+        <div><h2>Quanto gastou em cada mês?</h2><p>Uma barra representa o total de gastos de um mês. Clique no mês para ver cada despesa.</p></div>
         <div class="report-filters">
           <label class="period-select">Tipo
             <select v-model="typeFilter">
@@ -104,14 +104,18 @@ const categoryMax = computed(() => Math.max(1, ...visibleCategories.value.map((i
       </div>
       <div class="simple-chart-scroll">
         <div class="simple-chart" :style="{ gridTemplateColumns: 'repeat(' + monthCount + ', minmax(90px, 1fr))' }"
-          role="img" :aria-label="'Gastos por mês no filtro escolhido: ' + chartData.map((item) => formatYearMonth(item.period) + ' ' + formatBRL(filteredAmount(item.value))).join('; ')">
-          <div v-for="item in chartData" :key="item.period" class="simple-chart-column" :class="{ current: item.period === month }">
+          role="group" aria-label="Gastos por mês. Cada barra abre os gastos detalhados do mês selecionado.">
+          <RouterLink v-for="item in chartData" :key="item.period" class="simple-chart-column month-chart-link"
+            :class="{ current: item.period === month }"
+            :to="{ path: '/relatorios/detalhes', query: { mes: item.period, tipo: typeFilter } }"
+            :aria-label="'Ver gastos de ' + formatYearMonth(item.period) + ': ' + formatBRL(filteredAmount(item.value))">
             <strong>{{ formatBRL(filteredAmount(item.value)) }}</strong>
             <div class="simple-chart-background">
               <div class="simple-chart-bar" :style="{ height: (filteredAmount(item.value) / maxTotal * 100) + '%' }"></div>
             </div>
             <span>{{ item.label }}</span>
-          </div>
+            <small class="month-chart-hint">Ver gastos</small>
+          </RouterLink>
         </div>
       </div>
     </section>
@@ -156,7 +160,7 @@ const categoryMax = computed(() => Math.max(1, ...visibleCategories.value.map((i
       <div class="scroll"><table>
         <thead><tr><th>Mês</th><th>Contas mensais</th><th>Gastos fixos</th><th>Compras</th><th>Total</th></tr></thead>
         <tbody><tr v-for="item in [...chartData].reverse()" :key="item.period">
-          <td>{{ formatYearMonth(item.period) }}</td>
+          <td><RouterLink class="month-detail-table-link" :to="{ path: '/relatorios/detalhes', query: { mes: item.period, tipo: 'all' } }">{{ formatYearMonth(item.period) }}</RouterLink></td>
           <td>{{ formatBRL(item.value.recurringCents) }}</td>
           <td>{{ formatBRL(item.value.fixedCents) }}</td>
           <td>{{ formatBRL(item.value.oneOffCents) }}</td>

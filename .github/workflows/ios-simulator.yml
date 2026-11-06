@@ -1,0 +1,56 @@
+name: Validar Farol para iPhone (simulador)
+on:
+  push:
+    branches:
+      - feat/frontend-preview-auth-api-20261104
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'scripts/**'
+      - 'index.html'
+      - 'package.json'
+      - 'capacitor.config.ts'
+      - '.github/workflows/ios-simulator.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ios-simulator:
+    # Esta compilacao NAO gera IPA de iPhone e NAO distribui dados/credenciais.
+    runs-on: macos-26
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Versao do Xcode
+        run: xcodebuild -version
+      - name: Instalar dependencias
+        run: npm install --no-audit --no-fund
+      - name: Rodar testes do Farol
+        run: npm run test
+      - name: Gerar projeto iOS do Capacitor
+        run: npm run mobile:add:ios
+      - name: Verificar projeto nativo iOS sem assinatura
+        run: |
+          if [ -d ios/App/App.xcworkspace ]; then
+            xcodebuild -workspace ios/App/App.xcworkspace \
+              -scheme App -configuration Debug -sdk iphonesimulator \
+              -destination 'generic/platform=iOS Simulator' -derivedDataPath build/ios \
+              CODE_SIGNING_ALLOWED=NO build
+          else
+            xcodebuild -project ios/App/App.xcodeproj \
+              -scheme App -configuration Debug -sdk iphonesimulator \
+              -destination 'generic/platform=iOS Simulator' -derivedDataPath build/ios \
+              CODE_SIGNING_ALLOWED=NO build
+          fi
+      - name: Arquivo para simulador (nao instala no iPhone real)
+        uses: actions/upload-artifact@v4
+        with:
+          name: farol-ios-simulator-debug
+          path: build/ios/Build/Products/Debug-iphonesimulator/App.app
+          if-no-files-found: error
+          retention-days: 7

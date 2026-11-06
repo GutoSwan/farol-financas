@@ -93,6 +93,9 @@ const app = buildApp({
   auth,
   workspaceService: new WorkspaceService(lazyRepository),
   corsOrigin: corsOrigin(),
+  // Por segurança, deployments Preview não aceitam criar espaços nem mesmo
+  // por requisições diretas (a trava VITE_* sozinha não protege a API).
+  allowWorkspaceWrites: process.env.VERCEL_ENV !== 'preview',
   async checkDatabase() {
     // Validação de variáveis e consulta SQL apenas em /ready, nunca em /health.
     const config = readConfig(process.env)

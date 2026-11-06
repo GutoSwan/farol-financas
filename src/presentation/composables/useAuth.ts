@@ -2,11 +2,28 @@ import { computed, ref } from 'vue'
 import type { Session } from '@supabase/supabase-js'
 import { authConfigured, supabase } from '../../infrastructure/auth/supabase'
 import { normalizeDisplayName, normalizeProfileIcon, readProfile } from '../../domain/profile/profile'
+import { isFarolAdmin } from '../../domain/auth/adminAccess'
 import type { ProfileIcon } from '../../domain/profile/profile'
 
 const session = ref<Session | null>(null)
 const ready = ref(!authConfigured)
 const recoveringPassword = ref(false)
+
+
+/** Revalida mudanças administrativas com o servidor de Auth, não com dados locais. */
+async function refreshCurrentUser(): Promise<void> {
+  if (!supabase || !session.value) return
+  const expectedUserId = session.value.user.id
+  try {
+    const { data, error } = await supabase.auth.getUser()
+    if (!error && data.user && session.value?.user.id === expectedUserId &&
+        data.user.id === expectedUserId) {
+      session.value = { ...session.value, user: data.user }
+    }
+  } catch {
+    // Se estiver offline, a rota protegida ainda exige validação remota.
+  }
+}
 
 if (supabase) {
   supabase.auth.onAuthStateChange((event, nextSession) => {
@@ -19,7 +36,11 @@ if (supabase) {
   supabase.auth.getSession().then(({ data, error }) => {
     if (!error) session.value = data.session
     ready.value = true
+    void refreshCurrentUser()
   }).catch(() => { ready.value = true })
+  if (typeof window !== 'undefined') {
+    window.addEventListener('focus', () => { void refreshCurrentUser() })
+  }
 }
 
 function client() {
@@ -29,8 +50,10 @@ function client() {
 
 export function useAuth() {
   async function signIn(email: string, password: string): Promise<void> {
-    const { error } = await client().auth.signInWithPassword({ email: email.trim(), password })
+    const { data, error } = await client().auth.signInWithPassword({ email: email.trim(), password })
     if (error) throw new Error(error.message)
+    if (data.session) session.value = data.session
+    await refreshCurrentUser()
   }
 
   async function signUp(email: string, password: string, nameInput: string): Promise<boolean> {
@@ -127,6 +150,7 @@ export function useAuth() {
     ready: computed(() => ready.value),
     user: computed(() => session.value?.user ?? null),
     isLoggedIn: computed(() => !!session.value),
+    isAdmin: computed(() => isFarolAdmin(session.value?.user)),
     profile: computed(() => readProfile(session.value?.user?.user_metadata as Record<string, unknown> | undefined, session.value?.user?.email)),
     recoveringPassword: computed(() => recoveringPassword.value),
     signIn, signUp, verifySignupCode, resendSignupCode, updateProfile,

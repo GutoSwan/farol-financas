@@ -3,6 +3,7 @@ import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import UiIcon from '../components/UiIcon.vue'
 import OnlineWorkspacesPanel from '../components/OnlineWorkspacesPanel.vue'
+import TotpSettings from '../components/TotpSettings.vue'
 import { useAuth } from '../composables/useAuth'
 import { PROFILE_ICONS } from '../../domain/profile/profile'
 import type { ProfileIcon } from '../../domain/profile/profile'
@@ -180,7 +181,7 @@ async function logout(): Promise<void> {
       <div v-if="!configured" class="auth-warning" role="alert">
         <UiIcon name="info" :size="20" />
         <div><strong>Conexão com Supabase ainda não configurada</strong>
-          <p>Na raiz do frontend, crie <code>.env.local</code> com <code>VITE_SUPABASE_URL</code> e <code>VITE_SUPABASE_PUBLISHABLE_KEY</code>, depois reinicie o Vite.</p>
+          <p>No Preview da Vercel, configure <code>VITE_SUPABASE_URL</code> e <code>VITE_SUPABASE_PUBLISHABLE_KEY</code> nas variáveis de ambiente do projeto frontend. Depois crie um novo deployment.</p>
         </div>
       </div>
 
@@ -220,8 +221,9 @@ async function logout(): Promise<void> {
 
           <div class="auth-warning auth-profile-warning">
             <UiIcon name="info" :size="19" />
-            <span>Seu perfil é salvo no Supabase, mas os espaços financeiros e lançamentos continuam neste navegador. O login ainda não protege nem sincroniza esses dados.</span>
+            <span>O acesso às telas financeiras exige login. Porém, os espaços e lançamentos ainda ficam neste dispositivo, sem separação por usuário ou sincronização entre dispositivos.</span>
           </div>
+          <TotpSettings />
           <OnlineWorkspacesPanel />
           <button type="button" class="secondary-action auth-full-button" :disabled="busy" @click="logout">
             <UiIcon name="log-out" :size="16" /> Sair da conta
@@ -316,8 +318,7 @@ async function logout(): Promise<void> {
       <p v-if="errorText" class="error" role="alert">{{ errorText }}</p>
 
       <div class="auth-footer">
-        <RouterLink to="/">Voltar ao Farol (dados locais)</RouterLink>
-        <small>Protótipo: entrar ou sair não apaga nem isola os dados financeiros deste navegador.</small>
+        <small>Para acessar as finanças, entre na sua conta. Os dados já salvos neste dispositivo não são apagados ao sair e ainda não são separados por usuário.</small>
       </div>
     </div>
   </div>
