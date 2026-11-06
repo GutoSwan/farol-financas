@@ -20,7 +20,7 @@ describe('Preparação do Farol para Vercel', () => {
     const routes = [
       '/contas-mensais', '/gastos-fixos', '/lancamentos', '/cartoes', '/orcamentos',
       '/relatorios', '/relatorios/detalhes', '/presentes', '/entrar', '/cadastro', '/recuperar-senha',
-      '/redefinir-senha', '/conta',
+      '/redefinir-senha', '/conta', '/verificar-2fa',
     ]
     expect(config.rewrites.map(rule => rule.source).sort()).toEqual(routes.sort())
     expect(config.rewrites.every(rule => rule.destination === '/index.html')).toBe(true)
