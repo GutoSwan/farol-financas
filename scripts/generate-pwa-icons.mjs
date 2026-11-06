@@ -48,20 +48,21 @@ function chunk(type, data) {
   return Buffer.concat([length, label, data, crc])
 }
 
-function makeIcon(size) {
-  const bytes = Buffer.alloc(size * (size * 4 + 1))
+export function makeIcon(size, channels = 4) {
+  if (channels !== 3 && channels !== 4) throw new Error('Canais PNG inválidos')
+  const bytes = Buffer.alloc(size * (size * channels + 1))
   for (let y = 0; y < size; y++) {
-    const row = y * (size * 4 + 1)
+    const row = y * (size * channels + 1)
     for (let x = 0; x < size; x++) {
       const color = colorAt((x + 0.5) / size, (y + 0.5) / size)
-      for (let i = 0; i < 4; i++) bytes[row + 1 + x * 4 + i] = color[i]
+      for (let i = 0; i < channels; i++) bytes[row + 1 + x * channels + i] = color[i]
     }
   }
   const ihdr = Buffer.alloc(13)
   ihdr.writeUInt32BE(size, 0)
   ihdr.writeUInt32BE(size, 4)
   ihdr[8] = 8
-  ihdr[9] = 6
+  ihdr[9] = channels === 3 ? 2 : 6
   return Buffer.concat([
     Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
     chunk('IHDR', ihdr),

@@ -1,16 +1,6 @@
 name: Gerar APK Android de teste
 on:
-  push:
-    branches:
-      - feat/frontend-preview-auth-api-20261104
-    paths:
-      - 'src/**'
-      - 'public/**'
-      - 'scripts/**'
-      - 'index.html'
-      - 'package.json'
-      - 'capacitor.config.ts'
-      - '.github/workflows/android-apk.yml'
+  # Android foi adiado: gerar apenas quando solicitado manualmente.
   workflow_dispatch:
 
 permissions:

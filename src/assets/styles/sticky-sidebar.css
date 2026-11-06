@@ -327,3 +327,23 @@
   outline: 2px solid #efb3c5;
   outline-offset: 2px;
 }
+
+
+/* iPhone com Dynamic Island/notch e indicador de início: áreas de segurança. */
+@supports (padding: max(0px)) {
+  @media (max-width: 700px) {
+    .topbar {
+      height: calc(57px + env(safe-area-inset-top, 0px));
+      padding-top: env(safe-area-inset-top, 0px);
+      padding-right: max(16px, env(safe-area-inset-right, 0px));
+      padding-left: max(16px, env(safe-area-inset-left, 0px));
+    }
+    .sidebar {
+      padding-top: calc(15px + env(safe-area-inset-top, 0px));
+      padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+    }
+    .main .content {
+      padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+    }
+  }
+}
