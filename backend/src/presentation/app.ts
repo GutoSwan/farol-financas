@@ -204,7 +204,7 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
   app.setErrorHandler((error, _request, reply) => {
     // Evita expor detalhes do banco, SQL ou variáveis de ambiente aos clientes.
     // Erros brutos podem incluir conteúdo de requisições, SQL e dados privados.
-    app.log.error({ errorType: error.name }, 'Erro não tratado')
+    app.log.error({ errorType: error instanceof Error ? error.name : 'ErroDesconhecido' }, 'Erro não tratado')
     reply.code(500).send({ error: 'Erro interno do servidor.' })
   })
 
