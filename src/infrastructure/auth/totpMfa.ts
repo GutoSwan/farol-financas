@@ -53,7 +53,7 @@ export async function verifyTotpCode(factorId: string, code: string): Promise<vo
 export async function discardUnverifiedTotpFactor(factorId: string): Promise<void> {
   const { data, error } = await requireClient().auth.mfa.listFactors()
   if (error || !data) return
-  const factor = data.totp.find((item) => item.id === factorId)
-  if (!factor || factor.status !== 'unverified') return
+  const factor = data.all.find((item) => item.id === factorId)
+  if (!factor || factor.status === 'verified') return
   await requireClient().auth.mfa.unenroll({ factorId })
 }
