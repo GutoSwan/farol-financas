@@ -10,6 +10,7 @@ import MonthlyExpensesPage from '../presentation/pages/MonthlyExpensesPage.vue'
 import BudgetsPage from '../presentation/pages/BudgetsPage.vue'
 import ComingSoonPage from '../presentation/pages/ComingSoonPage.vue'
 import AuthPage from '../presentation/pages/AuthPage.vue'
+import MfaChallengePage from '../presentation/pages/MfaChallengePage.vue'
 import { supabase } from '../infrastructure/auth/supabase'
 import { canAccessWithoutSession, shouldRedirectLoggedInVisitor } from './authNavigation'
 import { isFarolAdmin } from '../domain/auth/adminAccess'
@@ -31,6 +32,7 @@ const router = createRouter({
       { path: 'relatorios/detalhes', component: MonthlyExpensesPage, meta: { title: 'Detalhes do mês' } },
     ],
   },
+  { path: '/verificar-2fa', component: MfaChallengePage, meta: { title: 'Verificar código' } },
   { path: '/entrar', component: AuthPage, props: { mode: 'login' }, meta: { title: 'Entrar' } },
   { path: '/cadastro', component: AuthPage, props: { mode: 'signup' }, meta: { title: 'Criar conta' } },
   { path: '/recuperar-senha', component: AuthPage, props: { mode: 'forgot' }, meta: { title: 'Recuperar senha' } },
@@ -39,10 +41,8 @@ const router = createRouter({
   ],
 })
 
-// Todas as telas financeiras exigem uma sessão Supabase antes da navegação.
-// A verificação assíncrona acontece antes de renderizar o dashboard, evitando
-// mostrar dados locais durante a restauração de sessão no primeiro acesso.
-// Cadastro e recuperação de senha continuam públicos.
+// Frontend controla a navegação, mas APIs financeiras devem validar AAL2
+// no SERVIDOR antes de consultar dados, mesmo se alguém ignorar o roteador.
 router.beforeEach(async (to) => {
   if (!supabase) {
     return canAccessWithoutSession(to.path) ? true : { path: '/entrar', replace: true }
@@ -53,18 +53,36 @@ router.beforeEach(async (to) => {
     const { data, error } = await supabase.auth.getSession()
     authenticated = !error && !!data.session
   } catch {
-    // Na ausência de sessão recuperável, não abrir páginas financeiras.
+    // Não mostrar telas financeiras se a sessão não puder ser restaurada.
   }
 
-  if (!authenticated && !canAccessWithoutSession(to.path)) {
-    return { path: '/entrar', replace: true }
+  if (!authenticated) {
+    if (!canAccessWithoutSession(to.path)) return { path: '/entrar', replace: true }
+    return true
   }
 
   if (shouldRedirectLoggedInVisitor(to.path, authenticated)) {
     return { path: '/', replace: true }
   }
 
-  // Permissões de administrador seguem validadas diretamente no Auth remoto.
+  const requiresAssurance = to.path === '/verificar-2fa' || !canAccessWithoutSession(to.path)
+  if (requiresAssurance) {
+    try {
+      const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+      if (error || !data) throw new Error('Não foi possível conferir o segundo fator.')
+      const pending = data.nextLevel === 'aal2' && data.currentLevel !== 'aal2'
+      if (pending && to.path !== '/verificar-2fa') {
+        return { path: '/verificar-2fa', replace: true }
+      }
+      if (!pending && to.path === '/verificar-2fa') {
+        return { path: '/', replace: true }
+      }
+    } catch {
+      // Em falha da verificação MFA, NÃO liberar dados financeiros.
+      if (to.path !== '/verificar-2fa') return { path: '/verificar-2fa', replace: true }
+    }
+  }
+
   if (to.meta.requiresAdmin) {
     try {
       const { data, error } = await supabase.auth.getUser()
