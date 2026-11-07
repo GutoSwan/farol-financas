@@ -76,6 +76,12 @@ const lazyTransactions: TransactionRepository = {
   async createForWorkspace(entry) {
     return (await getTransactionRepository()).createForWorkspace(entry)
   },
+  async updateWithinWorkspace(workspaceId, transactionId, changes) {
+    return (await getTransactionRepository()).updateWithinWorkspace(workspaceId, transactionId, changes)
+  },
+  async deleteWithinWorkspace(workspaceId, transactionId) {
+    return (await getTransactionRepository()).deleteWithinWorkspace(workspaceId, transactionId)
+  },
 }
 
 let verifierPromise: Promise<AuthVerifier> | undefined
