@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createOnlineWorkspace, getOnlineIdentity, listOnlineWorkspaces } from '../src/infrastructure/api/onlineWorkspaces'
+import { apiEndpoint } from '../src/infrastructure/api/apiEndpoint'
 
 vi.mock('../src/infrastructure/auth/supabase', () => ({
   supabase: {
@@ -18,7 +19,7 @@ describe('Cliente de autenticação Fastify', () => {
     })
     vi.stubGlobal('fetch', request)
     expect(await getOnlineIdentity()).toEqual({ id: 'usuario-jwt' })
-    expect(request).toHaveBeenCalledWith('/api/v1/me',
+    expect(request).toHaveBeenCalledWith(apiEndpoint('/api/v1/me'),
       expect.objectContaining({
         headers: expect.objectContaining({ Authorization: 'Bearer token-de-teste' }),
       }))
