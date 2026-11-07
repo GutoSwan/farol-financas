@@ -21,6 +21,7 @@ import './assets/styles/online-auth.css'
 import './assets/styles/sticky-sidebar.css'
 import './assets/styles/sidebar-theme.css'
 import './assets/styles/gifts.css'
+import './assets/styles/calendar.css'
 
 
 // Atualiza apenas os arquivos estáticos. Dados financeiros e autenticação
