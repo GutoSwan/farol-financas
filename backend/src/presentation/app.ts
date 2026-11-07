@@ -3,6 +3,8 @@ import { z } from 'zod'
 import type { AuthVerifier } from '../infrastructure/auth/SupabaseJwtVerifier.js'
 import { WorkspaceService } from '../application/use-cases/WorkspaceService.js'
 import type { TransactionRepository } from '../domain/repositories/TransactionRepository.js'
+import { randomUUID } from 'node:crypto'
+import type { InvoiceRepository } from '../domain/repositories/InvoiceRepository.js'
 import type { FinancialCatalogRepository } from '../domain/repositories/FinancialCatalogRepository.js'
 import type { CatalogKind, CatalogCreate, CatalogUpdate, FinancialCatalogMutations } from '../domain/repositories/FinancialCatalogMutations.js'
 
@@ -79,12 +81,24 @@ function parseCatalogInput(kind: CatalogKind, body: unknown, patch: boolean) {
   }
 }
 
+const newInvoiceSchema = z.object({
+  billingMonth: z.string().regex(/^[0-9]{4}-(0[1-9]|1[0-2])$/),
+  issuer: z.string().trim().min(2).max(80),
+  totalCents: z.number().int().min(1).max(2147483647),
+  dueDate: z.iso.date(),
+  cardLast4: z.string().regex(/^[0-9]{4}$/).optional(),
+  // PDF binário em base64; limite estrito abaixo do payload máximo da Vercel.
+  pdfBase64: z.string().min(12).max(2_850_000).regex(/^[A-Za-z0-9+/]+={0,2}$/),
+}).strict()
+
 export interface AppDependencies {
   auth: AuthVerifier
   workspaceService: WorkspaceService
   transactionRepository?: TransactionRepository
   financialCatalog?: FinancialCatalogRepository
   financialCatalogMutations?: FinancialCatalogMutations
+  invoiceRepository?: InvoiceRepository
+  allowInvoiceUploads?: boolean
   checkDatabase(): Promise<boolean>
   corsOrigin?: string
   /** Preview usa banco real por enquanto: impedir gravações HTTP no servidor. */
@@ -283,6 +297,66 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
     const workspace = workspaces.find(item => item.id === parsed.data)
     if (!workspace) return reply.code(404).send({ error: 'Espaço não encontrado.' })
     return { data: workspace }
+  })
+
+  // Faturas são PRIVADAS por usuário mesmo dentro de um workspace familiar.
+  // Downloads permanecem bloqueados até varredura de malware + teste E2E real.
+  app.get<{ Params: { workspaceId: string } }>('/api/v1/workspaces/:workspaceId/invoices', async (request, reply) => {
+    const identity = await authorized(request, reply)
+    if (!identity) return
+    if (identity.assuranceLevel !== 'aal2') {
+      return reply.code(403).send({ error: 'Autenticação em duas etapas necessária.' })
+    }
+    const space = z.string().uuid().safeParse(request.params.workspaceId)
+    if (!space.success) return reply.code(404).send({ error: 'Espaço não encontrado.' })
+    try {
+      await deps.workspaceService.requireMember(identity.userId, space.data)
+    } catch (error) {
+      if (!(error instanceof Error) || error.message !== 'Acesso negado ao espaço financeiro.') throw error
+      return reply.code(404).send({ error: 'Espaço não encontrado.' })
+    }
+    if (!deps.invoiceRepository) return reply.code(503).send({ error: 'Faturas indisponíveis.' })
+    return { data: await deps.invoiceRepository.listPersonal(space.data, identity.userId) }
+  })
+
+  app.post<{ Params: { workspaceId: string } }>('/api/v1/workspaces/:workspaceId/invoices', {
+    bodyLimit: 3_200_000,
+  }, async (request, reply) => {
+    const identity = await authorized(request, reply)
+    if (!identity) return
+    if (identity.assuranceLevel !== 'aal2') {
+      return reply.code(403).send({ error: 'Autenticação em duas etapas necessária.' })
+    }
+    const space = z.string().uuid().safeParse(request.params.workspaceId)
+    if (!space.success) return reply.code(404).send({ error: 'Espaço não encontrado.' })
+    // Independente das outras telas, upload de faturas exige DUAS flags no servidor.
+    if (deps.allowWorkspaceWrites !== true || deps.allowInvoiceUploads !== true) {
+      return reply.code(403).send({ error: 'Envio de faturas não habilitado.' })
+    }
+    const parsed = newInvoiceSchema.safeParse(request.body)
+    if (!parsed.success) return reply.code(400).send({ error: 'Arquivo ou fatura inválidos.' })
+    const encoded = parsed.data.pdfBase64
+    const file = Buffer.from(encoded, 'base64')
+    if (file.length < 12 || file.length > 2_000_000 ||
+        file.toString('base64') !== encoded ||
+        file.subarray(0, 5).toString('ascii') !== '%PDF-') {
+      return reply.code(400).send({ error: 'PDF inválido ou superior a 2 MB.' })
+    }
+    try {
+      await deps.workspaceService.requireMember(identity.userId, space.data, ['OWNER','EDITOR'])
+    } catch (error) {
+      if (!(error instanceof Error) || error.message !== 'Acesso negado ao espaço financeiro.') throw error
+      return reply.code(404).send({ error: 'Espaço não encontrado.' })
+    }
+    if (!deps.invoiceRepository) return reply.code(503).send({ error: 'Faturas indisponíveis.' })
+    const { billingMonth, issuer, totalCents, dueDate, cardLast4 } = parsed.data
+    const result = await deps.invoiceRepository.create({
+      id: randomUUID(), workspaceId: space.data, uploadedBy: identity.userId,
+      billingMonth, metadata: { issuer, totalCents, dueDate, ...(cardLast4 ? {cardLast4} : {}) },
+      pdfBytes: file,
+    })
+    // Em quarentena: não é possível abrir o PDF até análise segura do conteúdo.
+    return reply.code(202).send({ data: result })
   })
 
   // Catálogos financeiros em modo somente leitura. Não fornecer acesso às
