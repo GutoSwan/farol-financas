@@ -29,6 +29,8 @@ describe('Health da API independente de PostgreSQL e JWT', () => {
         ...process.env,
         NODE_ENV: 'test',
         VERCEL: '',
+        // Isolar o processo de teste das variáveis de Preview injetadas pelo CI.
+        VERCEL_ENV: 'development',
         PORT: String(port),
         HOST: '127.0.0.1',
         DATABASE_URL: '',
