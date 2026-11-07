@@ -70,7 +70,7 @@ export class SupabaseEncryptedInvoiceRepository implements InvoiceRepository {
         values
           (${input.id}::uuid,${input.workspaceId}::uuid,${input.uploadedBy}::uuid,
            ${input.billingMonth},${JSON.stringify(encryptedMetadata)},'v1',
-           ${randomUUID()}::uuid,${encryptedPdf.sha256},${encryptedPdf.bytes.length},
+           ${input.id}::uuid,${encryptedPdf.sha256},${encryptedPdf.bytes.length},
            'QUARANTINED','PENDING','PERSONAL')
         returning id,billing_month,state,scan_status,created_at
       `
