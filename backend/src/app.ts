@@ -4,6 +4,8 @@ import { buildApp } from './presentation/app.js'
 import { WorkspaceService } from './application/use-cases/WorkspaceService.js'
 import { readConfig } from './shared/config.js'
 import type { WorkspaceRepository } from './domain/repositories/WorkspaceRepository.js'
+import type { TransactionRepository } from './domain/repositories/TransactionRepository.js'
+import type { PrismaTransactionRepository } from './infrastructure/repositories/PrismaTransactionRepository.js'
 import type { AuthVerifier } from './infrastructure/auth/SupabaseJwtVerifier.js'
 import type { PrismaWorkspaceRepository } from './infrastructure/repositories/PrismaWorkspaceRepository.js'
 import type { PrismaClient } from '@prisma/client'
@@ -52,6 +54,30 @@ const lazyRepository: WorkspaceRepository = {
   },
 }
 
+let transactionRepositoryPromise: Promise<PrismaTransactionRepository> | undefined
+function getTransactionRepository(): Promise<PrismaTransactionRepository> {
+  if (!transactionRepositoryPromise) {
+    transactionRepositoryPromise = Promise.all([
+      getPrisma(),
+      import('./infrastructure/repositories/PrismaTransactionRepository.js'),
+    ]).then(([prisma, { PrismaTransactionRepository }]) => new PrismaTransactionRepository(prisma))
+      .catch((error: unknown) => {
+        transactionRepositoryPromise = undefined
+        throw error
+      })
+  }
+  return transactionRepositoryPromise
+}
+
+const lazyTransactions: TransactionRepository = {
+  async listForWorkspace(workspaceId, limit) {
+    return (await getTransactionRepository()).listForWorkspace(workspaceId, limit)
+  },
+  async createForWorkspace(entry) {
+    return (await getTransactionRepository()).createForWorkspace(entry)
+  },
+}
+
 let verifierPromise: Promise<AuthVerifier> | undefined
 function getVerifier(): Promise<AuthVerifier> {
   if (!verifierPromise) {
@@ -92,6 +118,7 @@ function corsOrigin(): string | undefined {
 const app = buildApp({
   auth,
   workspaceService: new WorkspaceService(lazyRepository),
+  transactionRepository: lazyTransactions,
   corsOrigin: corsOrigin(),
   // Por segurança, deployments Preview não aceitam criar espaços nem mesmo
   // por requisições diretas (a trava VITE_* sozinha não protege a API).
