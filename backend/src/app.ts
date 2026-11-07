@@ -6,6 +6,7 @@ import { readConfig } from './shared/config.js'
 import type { WorkspaceRepository } from './domain/repositories/WorkspaceRepository.js'
 import type { TransactionRepository } from './domain/repositories/TransactionRepository.js'
 import type { FinancialCatalogRepository } from './domain/repositories/FinancialCatalogRepository.js'
+import type { FinancialCatalogMutations } from './domain/repositories/FinancialCatalogMutations.js'
 import type { PrismaTransactionRepository } from './infrastructure/repositories/PrismaTransactionRepository.js'
 import type { AuthVerifier } from './infrastructure/auth/SupabaseJwtVerifier.js'
 import type { PrismaWorkspaceRepository } from './infrastructure/repositories/PrismaWorkspaceRepository.js'
@@ -108,6 +109,23 @@ const lazyCatalog: FinancialCatalogRepository = {
   },
 }
 
+let mutationsPromise: Promise<FinancialCatalogMutations> | undefined
+function getMutations(): Promise<FinancialCatalogMutations> {
+  if (!mutationsPromise) {
+    mutationsPromise = Promise.all([
+      getPrisma(),
+      import('./infrastructure/repositories/PrismaFinancialCatalogMutations.js'),
+    ]).then(([prisma, { PrismaFinancialCatalogMutations }]) => new PrismaFinancialCatalogMutations(prisma))
+      .catch((error: unknown) => { mutationsPromise = undefined; throw error })
+  }
+  return mutationsPromise
+}
+const lazyMutations: FinancialCatalogMutations = {
+  async create(input) { return (await getMutations()).create(input) },
+  async update(input) { return (await getMutations()).update(input) },
+  async delete(kind, workspaceId, id) { return (await getMutations()).delete(kind, workspaceId, id) },
+}
+
 let verifierPromise: Promise<AuthVerifier> | undefined
 function getVerifier(): Promise<AuthVerifier> {
   if (!verifierPromise) {
@@ -150,6 +168,7 @@ const app = buildApp({
   workspaceService: new WorkspaceService(lazyRepository),
   transactionRepository: lazyTransactions,
   financialCatalog: lazyCatalog,
+  financialCatalogMutations: lazyMutations,
   corsOrigin: corsOrigin(),
   // Por segurança, deployments Preview não aceitam criar espaços nem mesmo
   // por requisições diretas (a trava VITE_* sozinha não protege a API).
