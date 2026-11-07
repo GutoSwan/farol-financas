@@ -7,6 +7,7 @@ import type { WorkspaceRepository } from './domain/repositories/WorkspaceReposit
 import type { TransactionRepository } from './domain/repositories/TransactionRepository.js'
 import type { FinancialCatalogRepository } from './domain/repositories/FinancialCatalogRepository.js'
 import type { FinancialCatalogMutations } from './domain/repositories/FinancialCatalogMutations.js'
+import type { InvoiceRepository } from './domain/repositories/InvoiceRepository.js'
 import type { PrismaTransactionRepository } from './infrastructure/repositories/PrismaTransactionRepository.js'
 import type { AuthVerifier } from './infrastructure/auth/SupabaseJwtVerifier.js'
 import type { PrismaWorkspaceRepository } from './infrastructure/repositories/PrismaWorkspaceRepository.js'
@@ -126,6 +127,24 @@ const lazyMutations: FinancialCatalogMutations = {
   async delete(kind, workspaceId, id) { return (await getMutations()).delete(kind, workspaceId, id) },
 }
 
+let invoiceRepositoryPromise: Promise<InvoiceRepository> | undefined
+function getInvoiceRepository(): Promise<InvoiceRepository> {
+  if (!invoiceRepositoryPromise) {
+    invoiceRepositoryPromise = Promise.all([
+      getPrisma(),
+      import('./infrastructure/repositories/SupabaseEncryptedInvoiceRepository.js'),
+    ]).then(([prisma, { SupabaseEncryptedInvoiceRepository }]) => new SupabaseEncryptedInvoiceRepository(prisma))
+      .catch((error: unknown) => { invoiceRepositoryPromise = undefined; throw error })
+  }
+  return invoiceRepositoryPromise
+}
+const lazyInvoices: InvoiceRepository = {
+  async create(input) { return (await getInvoiceRepository()).create(input) },
+  async listPersonal(workspaceId, uploadedBy) {
+    return (await getInvoiceRepository()).listPersonal(workspaceId, uploadedBy)
+  },
+}
+
 let verifierPromise: Promise<AuthVerifier> | undefined
 function getVerifier(): Promise<AuthVerifier> {
   if (!verifierPromise) {
@@ -169,6 +188,10 @@ const app = buildApp({
   transactionRepository: lazyTransactions,
   financialCatalog: lazyCatalog,
   financialCatalogMutations: lazyMutations,
+  invoiceRepository: lazyInvoices,
+  allowInvoiceUploads: process.env.FAROL_INVOICE_UPLOADS_ENABLED === 'true' &&
+    process.env.FAROL_FINANCIAL_WRITES_ENABLED === 'true' &&
+    process.env.VERCEL_ENV !== 'preview',
   corsOrigin: corsOrigin(),
   // Por segurança, deployments Preview não aceitam criar espaços nem mesmo
   // por requisições diretas (a trava VITE_* sozinha não protege a API).
