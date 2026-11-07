@@ -172,7 +172,10 @@ const app = buildApp({
   corsOrigin: corsOrigin(),
   // Por segurança, deployments Preview não aceitam criar espaços nem mesmo
   // por requisições diretas (a trava VITE_* sozinha não protege a API).
-  allowWorkspaceWrites: process.env.VERCEL_ENV !== 'preview',
+  // Fail closed: nunca autorizar gravações por inferência do ambiente.
+  // Habilitar somente após E2E, revisão dos segredos e isolamento comprovado.
+  allowWorkspaceWrites: process.env.FAROL_FINANCIAL_WRITES_ENABLED === 'true' &&
+    process.env.VERCEL_ENV !== 'preview',
   async checkDatabase() {
     // Validação de variáveis e consulta SQL apenas em /ready, nunca em /health.
     const config = readConfig(process.env)
