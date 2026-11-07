@@ -43,7 +43,7 @@ function fixture(writes = false, uploads = false) {
       return { userId, assuranceLevel: token.endsWith(':aal2') ? 'aal2' as const : 'aal1' as const }
     }},
     checkDatabase: async () => true,
-    allowWorkspaceWrites: writes, allowInvoiceUploads: uploads,
+    allowWorkspaceWrites: writes, allowInvoiceUploads: uploads, allowInvoiceReads: true,
   })
   return { app, calls }
 }
