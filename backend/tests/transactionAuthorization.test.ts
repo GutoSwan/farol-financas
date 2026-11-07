@@ -144,3 +144,99 @@ describe('Transações: isolamento e permissão por operação', () => {
     } finally { await app.close() }
   })
 })
+
+const transactionUrl = url + '/' + record.id
+
+describe('Transações: edição e exclusão protegidas', () => {
+  it('nega PATCH e DELETE sem token', async () => {
+    const { app, calls } = fixture()
+    try {
+      for (const method of ['PATCH', 'DELETE'] as const) {
+        const res = await app.inject({ method, url: transactionUrl, ...(method === 'PATCH' ? { payload: { description: 'Novo' } } : {}) })
+        expect(res.statusCode).toBe(401)
+      }
+      expect(calls).toHaveLength(0)
+    } finally { await app.close() }
+  })
+
+  it('nega usuário de outro espaço, sem consultar transações', async () => {
+    const { app, calls } = fixture()
+    try {
+      for (const method of ['PATCH', 'DELETE'] as const) {
+        const res = await app.inject({ method, url: transactionUrl, headers: { authorization: 'Bearer bob:aal2' }, ...(method === 'PATCH' ? { payload: { description: 'Novo' } } : {}) })
+        expect(res.statusCode).toBe(404)
+      }
+      expect(calls).toHaveLength(0)
+    } finally { await app.close() }
+  })
+
+  it('VIEWER não pode editar nem excluir', async () => {
+    const { app, calls } = fixture()
+    try {
+      for (const method of ['PATCH', 'DELETE'] as const) {
+        const res = await app.inject({ method, url: transactionUrl, headers: { authorization: 'Bearer viewer:aal2' }, ...(method === 'PATCH' ? { payload: { description: 'Novo' } } : {}) })
+        expect(res.statusCode).toBe(404)
+      }
+      expect(calls).toHaveLength(0)
+    } finally { await app.close() }
+  })
+
+  it('sem AAL2 não edita ou exclui, mesmo sendo OWNER', async () => {
+    const { app, calls } = fixture()
+    try {
+      for (const method of ['PATCH', 'DELETE'] as const) {
+        const res = await app.inject({ method, url: transactionUrl, headers: { authorization: 'Bearer alice:aal1' }, ...(method === 'PATCH' ? { payload: { description: 'Novo' } } : {}) })
+        expect(res.statusCode).toBe(403)
+      }
+      expect(calls).toHaveLength(0)
+    } finally { await app.close() }
+  })
+
+  it('bloqueia toda mutação no Preview', async () => {
+    const { app, calls } = fixture(false)
+    try {
+      const headers = { authorization: 'Bearer alice:aal2' }
+      expect((await app.inject({ method: 'PATCH', url: transactionUrl, headers, payload: { description: 'Novo' } })).statusCode).toBe(403)
+      expect((await app.inject({ method: 'DELETE', url: transactionUrl, headers })).statusCode).toBe(403)
+      expect(calls).toHaveLength(0)
+    } finally { await app.close() }
+  })
+
+  it('bloqueia PATCH vazio, campos de ID e valores inválidos', async () => {
+    const { app, calls } = fixture()
+    try {
+      const headers = { authorization: 'Bearer alice:aal2' }
+      for (const invalid of [{}, { workspaceId: spaceId }, { amountCents: -1 }, { occurredOn: '2026-02-30' }]) {
+        const res = await app.inject({ method: 'PATCH', url: transactionUrl, headers, payload: invalid })
+        expect(res.statusCode).toBe(400)
+      }
+      expect(calls).toHaveLength(0)
+    } finally { await app.close() }
+  })
+
+  it('OWNER com MFA pode editar e excluir somente registro do próprio espaço', async () => {
+    const { app, calls } = fixture()
+    try {
+      const headers = { authorization: 'Bearer alice:aal2' }
+      const updated = await app.inject({ method: 'PATCH', url: transactionUrl, headers, payload: { description: 'Compra editada' } })
+      expect(updated.statusCode).toBe(200)
+      expect(updated.json().data.description).toBe('Compra editada')
+      const deleted = await app.inject({ method: 'DELETE', url: transactionUrl, headers })
+      expect(deleted.statusCode).toBe(204)
+      expect(calls).toEqual(['update:' + spaceId + ':' + record.id, 'delete:' + spaceId + ':' + record.id])
+    } finally { await app.close() }
+  })
+
+  it('não revela IDs inexistentes em PATCH ou DELETE', async () => {
+    const { app } = fixture()
+    try {
+      const headers = { authorization: 'Bearer alice:aal2' }
+      const nonexistent = '66666666-6666-4666-8666-666666666666'
+      const updated = await app.inject({ method: 'PATCH', url: url + '/' + nonexistent, headers, payload: { description: 'Novo' } })
+      const deleted = await app.inject({ method: 'DELETE', url: url + '/' + nonexistent, headers })
+      expect(updated.statusCode).toBe(404)
+      expect(deleted.statusCode).toBe(404)
+      expect(updated.body).not.toContain('Mercado')
+    } finally { await app.close() }
+  })
+})
