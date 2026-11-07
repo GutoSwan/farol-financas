@@ -4,6 +4,7 @@ import type { AuthVerifier } from '../infrastructure/auth/SupabaseJwtVerifier.js
 import { WorkspaceService } from '../application/use-cases/WorkspaceService.js'
 import type { TransactionRepository } from '../domain/repositories/TransactionRepository.js'
 import type { FinancialCatalogRepository } from '../domain/repositories/FinancialCatalogRepository.js'
+import type { CatalogKind, CatalogCreate, CatalogUpdate, FinancialCatalogMutations } from '../domain/repositories/FinancialCatalogMutations.js'
 
 const createWorkspaceSchema = z.object({
   name: z.string().min(2).max(60),
@@ -26,11 +27,54 @@ const transactionPatchSchema = transactionInputSchema.partial().refine(
   { message: 'Informe ao menos um campo para atualizar.' },
 )
 
+const yearMonthSchema = z.string().regex(/^\\d{4}-(0[1-9]|1[0-2])$/)
+const positiveCents = z.number().int().min(1).max(2147483647)
+const billSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  dueDay: z.number().int().min(1).max(31),
+  active: z.boolean().default(true),
+}).strict()
+const fixedSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  amountCents: positiveCents,
+  dueDay: z.number().int().min(1).max(31),
+  startMonth: yearMonthSchema,
+  endBeforeMonth: yearMonthSchema.nullable().default(null),
+}).strict().refine(value => !value.endBeforeMonth || value.endBeforeMonth > value.startMonth)
+const budgetSchema = z.object({
+  title: z.string().trim().min(1).max(120),
+  category: z.string().trim().min(1).max(40),
+  targetCents: positiveCents,
+  status: z.enum(['PLANNING', 'QUOTING', 'APPROVED', 'IN_PROGRESS', 'COMPLETED']).default('PLANNING'),
+  notes: z.string().max(4000).default(''),
+}).strict()
+const billPatchSchema = billSchema.partial().refine(v => Object.keys(v).length > 0)
+const fixedPatchSchema = z.object({
+  name: z.string().trim().min(1).max(80).optional(),
+  amountCents: positiveCents.optional(),
+  dueDay: z.number().int().min(1).max(31).optional(),
+  // Alterações do intervalo exigem envio dos dois campos para preservar consistência.
+  startMonth: yearMonthSchema.optional(),
+  endBeforeMonth: yearMonthSchema.nullable().optional(),
+}).strict().refine(v => Object.keys(v).length > 0)
+  .refine(v => !('startMonth' in v || 'endBeforeMonth' in v) ||
+    (v.startMonth !== undefined && 'endBeforeMonth' in v &&
+      (!v.endBeforeMonth || v.endBeforeMonth > v.startMonth)))
+const budgetPatchSchema = budgetSchema.partial().refine(v => Object.keys(v).length > 0)
+function parseCatalogInput(kind: CatalogKind, body: unknown, patch: boolean) {
+  switch (kind) {
+    case 'recurring-bills': return (patch ? billPatchSchema : billSchema).safeParse(body)
+    case 'fixed-expenses': return (patch ? fixedPatchSchema : fixedSchema).safeParse(body)
+    case 'budgets': return (patch ? budgetPatchSchema : budgetSchema).safeParse(body)
+  }
+}
+
 export interface AppDependencies {
   auth: AuthVerifier
   workspaceService: WorkspaceService
   transactionRepository?: TransactionRepository
   financialCatalog?: FinancialCatalogRepository
+  financialCatalogMutations?: FinancialCatalogMutations
   checkDatabase(): Promise<boolean>
   corsOrigin?: string
   /** Preview usa banco real por enquanto: impedir gravações HTTP no servidor. */
@@ -54,7 +98,7 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
       }
       reply.header('Access-Control-Allow-Origin', allowed)
       reply.header('Access-Control-Allow-Headers', 'Authorization, Content-Type')
-      reply.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+      reply.header('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS')
       reply.header('Access-Control-Max-Age', '600')
       if (request.method === 'OPTIONS') return reply.code(204).send()
     })
@@ -264,6 +308,76 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
         }
       },
     )
+  }
+
+  // Não há mutações sem MFA, autorização OWNER/EDITOR e escopo de workspace.
+  for (const kind of ['recurring-bills', 'fixed-expenses', 'budgets'] as const) {
+    const base = `/api/v1/workspaces/:workspaceId/${kind}`
+    app.post<{ Params: { workspaceId: string } }>(base, async (request, reply) => {
+      const identity = await authorized(request, reply)
+      if (!identity) return
+      if (identity.assuranceLevel !== 'aal2') return reply.code(403).send({ error: 'Autenticação em duas etapas necessária.' })
+      const space = z.string().uuid().safeParse(request.params.workspaceId)
+      if (!space.success) return reply.code(404).send({ error: 'Registro não encontrado.' })
+      if (deps.allowWorkspaceWrites === false) return reply.code(403).send({ error: 'Gravação desativada neste Preview.' })
+      const parsed = parseCatalogInput(kind, request.body, false)
+      if (!parsed.success) return reply.code(400).send({ error: 'Dados inválidos.' })
+      try {
+        await deps.workspaceService.requireMember(identity.userId, space.data, ['OWNER', 'EDITOR'])
+      } catch (error) {
+        if (!(error instanceof Error) || error.message !== 'Acesso negado ao espaço financeiro.') throw error
+        return reply.code(404).send({ error: 'Registro não encontrado.' })
+      }
+      if (!deps.financialCatalogMutations) return reply.code(503).send({ error: 'Módulo indisponível.' })
+      // A entrada foi validada pelo esquema correspondente ao discriminador kind.
+      const input = { kind, workspaceId: space.data, data: parsed.data } as CatalogCreate
+      const data = await deps.financialCatalogMutations.create(input)
+      return reply.code(201).send({ data })
+    })
+
+    app.patch<{ Params: { workspaceId: string; recordId: string } }>(base + '/:recordId', async (request, reply) => {
+      const identity = await authorized(request, reply)
+      if (!identity) return
+      if (identity.assuranceLevel !== 'aal2') return reply.code(403).send({ error: 'Autenticação em duas etapas necessária.' })
+      const space = z.string().uuid().safeParse(request.params.workspaceId)
+      const record = z.string().uuid().safeParse(request.params.recordId)
+      if (!space.success || !record.success) return reply.code(404).send({ error: 'Registro não encontrado.' })
+      if (deps.allowWorkspaceWrites === false) return reply.code(403).send({ error: 'Gravação desativada neste Preview.' })
+      const parsed = parseCatalogInput(kind, request.body, true)
+      if (!parsed.success) return reply.code(400).send({ error: 'Alterações inválidas.' })
+      try {
+        await deps.workspaceService.requireMember(identity.userId, space.data, ['OWNER', 'EDITOR'])
+      } catch (error) {
+        if (!(error instanceof Error) || error.message !== 'Acesso negado ao espaço financeiro.') throw error
+        return reply.code(404).send({ error: 'Registro não encontrado.' })
+      }
+      if (!deps.financialCatalogMutations) return reply.code(503).send({ error: 'Módulo indisponível.' })
+      const input = { kind, workspaceId: space.data, id: record.data, data: parsed.data } as CatalogUpdate
+      const data = await deps.financialCatalogMutations.update(input)
+      if (!data) return reply.code(404).send({ error: 'Registro não encontrado.' })
+      return { data }
+    })
+
+    app.delete<{ Params: { workspaceId: string; recordId: string } }>(base + '/:recordId', async (request, reply) => {
+      const identity = await authorized(request, reply)
+      if (!identity) return
+      if (identity.assuranceLevel !== 'aal2') return reply.code(403).send({ error: 'Autenticação em duas etapas necessária.' })
+      const space = z.string().uuid().safeParse(request.params.workspaceId)
+      const record = z.string().uuid().safeParse(request.params.recordId)
+      if (!space.success || !record.success) return reply.code(404).send({ error: 'Registro não encontrado.' })
+      if (deps.allowWorkspaceWrites === false) return reply.code(403).send({ error: 'Gravação desativada neste Preview.' })
+      try {
+        await deps.workspaceService.requireMember(identity.userId, space.data, ['OWNER', 'EDITOR'])
+      } catch (error) {
+        if (!(error instanceof Error) || error.message !== 'Acesso negado ao espaço financeiro.') throw error
+        return reply.code(404).send({ error: 'Registro não encontrado.' })
+      }
+      if (!deps.financialCatalogMutations) return reply.code(503).send({ error: 'Módulo indisponível.' })
+      if (!await deps.financialCatalogMutations.delete(kind, space.data, record.data)) {
+        return reply.code(404).send({ error: 'Registro não encontrado.' })
+      }
+      return reply.code(204).send()
+    })
   }
 
   // Transações pertencem ao espaço autorizado, não ao usuário indicado no corpo.
