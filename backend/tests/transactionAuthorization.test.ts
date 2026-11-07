@@ -37,6 +37,15 @@ function fixture(write = true) {
       calls.push('create:' + item.workspaceId)
       return { ...record, ...item }
     },
+    async updateWithinWorkspace(workspaceId, transactionId, changes) {
+      calls.push('update:' + workspaceId + ':' + transactionId)
+      if (workspaceId !== spaceId || transactionId !== record.id) return null
+      return { ...record, ...changes }
+    },
+    async deleteWithinWorkspace(workspaceId, transactionId) {
+      calls.push('delete:' + workspaceId + ':' + transactionId)
+      return workspaceId === spaceId && transactionId === record.id
+    },
   }
   const app = buildApp({
     auth: {
