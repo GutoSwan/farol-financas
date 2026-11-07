@@ -5,6 +5,7 @@ import { WorkspaceService } from './application/use-cases/WorkspaceService.js'
 import { readConfig } from './shared/config.js'
 import type { WorkspaceRepository } from './domain/repositories/WorkspaceRepository.js'
 import type { TransactionRepository } from './domain/repositories/TransactionRepository.js'
+import type { FinancialCatalogRepository } from './domain/repositories/FinancialCatalogRepository.js'
 import type { PrismaTransactionRepository } from './infrastructure/repositories/PrismaTransactionRepository.js'
 import type { AuthVerifier } from './infrastructure/auth/SupabaseJwtVerifier.js'
 import type { PrismaWorkspaceRepository } from './infrastructure/repositories/PrismaWorkspaceRepository.js'
@@ -84,6 +85,29 @@ const lazyTransactions: TransactionRepository = {
   },
 }
 
+let catalogPromise: Promise<FinancialCatalogRepository> | undefined
+function getCatalog(): Promise<FinancialCatalogRepository> {
+  if (!catalogPromise) {
+    catalogPromise = Promise.all([
+      getPrisma(),
+      import('./infrastructure/repositories/PrismaFinancialCatalogRepository.js'),
+    ]).then(([prisma, { PrismaFinancialCatalogRepository }]) => new PrismaFinancialCatalogRepository(prisma))
+      .catch((error: unknown) => { catalogPromise = undefined; throw error })
+  }
+  return catalogPromise
+}
+const lazyCatalog: FinancialCatalogRepository = {
+  async listRecurringBills(workspaceId, limit) {
+    return (await getCatalog()).listRecurringBills(workspaceId, limit)
+  },
+  async listFixedExpenses(workspaceId, limit) {
+    return (await getCatalog()).listFixedExpenses(workspaceId, limit)
+  },
+  async listBudgets(workspaceId, limit) {
+    return (await getCatalog()).listBudgets(workspaceId, limit)
+  },
+}
+
 let verifierPromise: Promise<AuthVerifier> | undefined
 function getVerifier(): Promise<AuthVerifier> {
   if (!verifierPromise) {
@@ -125,6 +149,7 @@ const app = buildApp({
   auth,
   workspaceService: new WorkspaceService(lazyRepository),
   transactionRepository: lazyTransactions,
+  financialCatalog: lazyCatalog,
   corsOrigin: corsOrigin(),
   // Por segurança, deployments Preview não aceitam criar espaços nem mesmo
   // por requisições diretas (a trava VITE_* sozinha não protege a API).
