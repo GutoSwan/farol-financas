@@ -99,6 +99,7 @@ export interface AppDependencies {
   financialCatalogMutations?: FinancialCatalogMutations
   invoiceRepository?: InvoiceRepository
   allowInvoiceUploads?: boolean
+  allowInvoiceReads?: boolean
   checkDatabase(): Promise<boolean>
   corsOrigin?: string
   /** Preview usa banco real por enquanto: impedir gravações HTTP no servidor. */
@@ -302,6 +303,7 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
   // Faturas são PRIVADAS por usuário mesmo dentro de um workspace familiar.
   // Downloads permanecem bloqueados até varredura de malware + teste E2E real.
   app.get<{ Params: { workspaceId: string } }>('/api/v1/workspaces/:workspaceId/invoices', async (request, reply) => {
+    if (deps.allowInvoiceReads !== true) return reply.code(503).send({ error: 'Faturas indisponíveis.' })
     const identity = await authorized(request, reply)
     if (!identity) return
     if (identity.assuranceLevel !== 'aal2') {
