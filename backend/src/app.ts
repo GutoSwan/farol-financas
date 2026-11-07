@@ -8,6 +8,7 @@ import type { TransactionRepository } from './domain/repositories/TransactionRep
 import type { FinancialCatalogRepository } from './domain/repositories/FinancialCatalogRepository.js'
 import type { FinancialCatalogMutations } from './domain/repositories/FinancialCatalogMutations.js'
 import type { InvoiceRepository } from './domain/repositories/InvoiceRepository.js'
+import { isVerifiedDevPreviewEnvironment } from './infrastructure/security/environmentIsolation.js'
 import type { PrismaTransactionRepository } from './infrastructure/repositories/PrismaTransactionRepository.js'
 import type { AuthVerifier } from './infrastructure/auth/SupabaseJwtVerifier.js'
 import type { PrismaWorkspaceRepository } from './infrastructure/repositories/PrismaWorkspaceRepository.js'
@@ -224,6 +225,17 @@ const app = buildApp({
     return true
   },
 }, Fastify({ logger: false, bodyLimit: 100_000 }))
+
+// In Preview, never access private or financial routes using unverified DB envs.
+// This check applies before JWT verification, lazy Prisma, and downstream handlers.
+app.addHook('onRequest', async (request, reply) => {
+  const path = request.url.split('?')[0]
+  if (path.startsWith('/api/v1/') &&
+      path !== '/api/v1/health' && path !== '/api/v1/ready' &&
+      !isVerifiedDevPreviewEnvironment(process.env)) {
+    return reply.code(503).send({ error: 'Ambiente de testes não isolado.' })
+  }
+})
 
 app.addHook('onClose', async () => {
   if (prismaPromise) {
