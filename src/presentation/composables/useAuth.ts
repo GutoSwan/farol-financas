@@ -89,6 +89,7 @@ export function useAuth() {
   async function resendSignupCode(email: string): Promise<void> {
     const { error } = await client().auth.resend({
       type: 'signup', email: email.trim(),
+      options: { emailRedirectTo: `${window.location.origin}/entrar` },
     })
     if (error) throw new Error(error.message)
   }
