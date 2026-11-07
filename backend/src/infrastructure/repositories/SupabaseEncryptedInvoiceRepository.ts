@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto'
 import type { PrismaClient } from '@prisma/client'
 import type { InvoiceRepository, NewInvoice, InvoiceListEntry } from '../../domain/repositories/InvoiceRepository.js'
 import { encryptInvoiceBytes, prepareEncryptedInvoicePdf } from '../security/invoiceEncryption.js'
