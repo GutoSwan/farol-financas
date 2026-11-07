@@ -20,6 +20,11 @@ const transactionInputSchema = z.object({
   }),
 }).strict()
 
+const transactionPatchSchema = transactionInputSchema.partial().refine(
+  value => Object.keys(value).length > 0,
+  { message: 'Informe ao menos um campo para atualizar.' },
+)
+
 export interface AppDependencies {
   auth: AuthVerifier
   workspaceService: WorkspaceService
@@ -276,6 +281,64 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
         ...parsed.data,
       })
       return reply.code(201).send({ data: saved })
+    },
+  )
+
+
+  // PATCH e DELETE exigem MFA e papel de escrita; nenhum ID do cliente autoriza acesso isoladamente.
+  app.patch<{ Params: { workspaceId: string; transactionId: string } }>(
+    '/api/v1/workspaces/:workspaceId/transactions/:transactionId', async (request, reply) => {
+      const identity = await authorized(request, reply)
+      if (!identity) return
+      if (identity.assuranceLevel !== 'aal2') {
+        return reply.code(403).send({ error: 'Autenticação em duas etapas necessária para alterar dados financeiros.' })
+      }
+      const workspaceId = z.string().uuid().safeParse(request.params.workspaceId)
+      const transactionId = z.string().uuid().safeParse(request.params.transactionId)
+      if (!workspaceId.success || !transactionId.success) return reply.code(404).send({ error: 'Lançamento não encontrado.' })
+      if (deps.allowWorkspaceWrites === false) {
+        return reply.code(403).send({ error: 'Gravação financeira desativada neste ambiente de testes.' })
+      }
+      const parsed = transactionPatchSchema.safeParse(request.body)
+      if (!parsed.success) return reply.code(400).send({ error: 'Alterações inválidas.' })
+      try {
+        await deps.workspaceService.requireMember(identity.userId, workspaceId.data, ['OWNER', 'EDITOR'])
+      } catch (error) {
+        if (!(error instanceof Error) || error.message !== 'Acesso negado ao espaço financeiro.') throw error
+        return reply.code(404).send({ error: 'Lançamento não encontrado.' })
+      }
+      if (!deps.transactionRepository) return reply.code(503).send({ error: 'Módulo indisponível.' })
+      const updated = await deps.transactionRepository.updateWithinWorkspace(
+        workspaceId.data, transactionId.data, parsed.data,
+      )
+      if (!updated) return reply.code(404).send({ error: 'Lançamento não encontrado.' })
+      return { data: updated }
+    },
+  )
+
+  app.delete<{ Params: { workspaceId: string; transactionId: string } }>(
+    '/api/v1/workspaces/:workspaceId/transactions/:transactionId', async (request, reply) => {
+      const identity = await authorized(request, reply)
+      if (!identity) return
+      if (identity.assuranceLevel !== 'aal2') {
+        return reply.code(403).send({ error: 'Autenticação em duas etapas necessária para alterar dados financeiros.' })
+      }
+      const workspaceId = z.string().uuid().safeParse(request.params.workspaceId)
+      const transactionId = z.string().uuid().safeParse(request.params.transactionId)
+      if (!workspaceId.success || !transactionId.success) return reply.code(404).send({ error: 'Lançamento não encontrado.' })
+      if (deps.allowWorkspaceWrites === false) {
+        return reply.code(403).send({ error: 'Gravação financeira desativada neste ambiente de testes.' })
+      }
+      try {
+        await deps.workspaceService.requireMember(identity.userId, workspaceId.data, ['OWNER', 'EDITOR'])
+      } catch (error) {
+        if (!(error instanceof Error) || error.message !== 'Acesso negado ao espaço financeiro.') throw error
+        return reply.code(404).send({ error: 'Lançamento não encontrado.' })
+      }
+      if (!deps.transactionRepository) return reply.code(503).send({ error: 'Módulo indisponível.' })
+      const deleted = await deps.transactionRepository.deleteWithinWorkspace(workspaceId.data, transactionId.data)
+      if (!deleted) return reply.code(404).send({ error: 'Lançamento não encontrado.' })
+      return reply.code(204).send()
     },
   )
 
