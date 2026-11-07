@@ -48,7 +48,11 @@ const budgetSchema = z.object({
   status: z.enum(['PLANNING', 'QUOTING', 'APPROVED', 'IN_PROGRESS', 'COMPLETED']).default('PLANNING'),
   notes: z.string().max(4000).default(''),
 }).strict()
-const billPatchSchema = billSchema.partial().refine(v => Object.keys(v).length > 0)
+const billPatchSchema = z.object({
+  name: z.string().trim().min(1).max(80).optional(),
+  dueDay: z.number().int().min(1).max(31).optional(),
+  active: z.boolean().optional(),
+}).strict().refine(v => Object.keys(v).length > 0)
 const fixedPatchSchema = z.object({
   name: z.string().trim().min(1).max(80).optional(),
   amountCents: positiveCents.optional(),
@@ -60,7 +64,13 @@ const fixedPatchSchema = z.object({
   .refine(v => !('startMonth' in v || 'endBeforeMonth' in v) ||
     (v.startMonth !== undefined && 'endBeforeMonth' in v &&
       (!v.endBeforeMonth || v.endBeforeMonth > v.startMonth)))
-const budgetPatchSchema = budgetSchema.partial().refine(v => Object.keys(v).length > 0)
+const budgetPatchSchema = z.object({
+  title: z.string().trim().min(1).max(120).optional(),
+  category: z.string().trim().min(1).max(40).optional(),
+  targetCents: positiveCents.optional(),
+  status: z.enum(['PLANNING', 'QUOTING', 'APPROVED', 'IN_PROGRESS', 'COMPLETED']).optional(),
+  notes: z.string().max(4000).optional(),
+}).strict().refine(v => Object.keys(v).length > 0)
 function parseCatalogInput(kind: CatalogKind, body: unknown, patch: boolean) {
   switch (kind) {
     case 'recurring-bills': return (patch ? billPatchSchema : billSchema).safeParse(body)
