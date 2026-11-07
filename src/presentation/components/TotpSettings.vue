@@ -4,6 +4,7 @@ import {
   beginTotpEnrollment, discardUnverifiedTotpFactor, getTotpAssurance,
   listVerifiedTotpFactors, verifyTotpCode,
 } from '../../infrastructure/auth/totpMfa'
+import { totpQrImageSource } from '../../infrastructure/auth/totpQrImage'
 
 type PendingEnrollment = { factorId: string; qrSvg: string; secret: string }
 const pending = ref<PendingEnrollment | null>(null)
@@ -15,10 +16,9 @@ const code = ref('')
 const message = ref('')
 const errorText = ref('')
 const showSecret = ref(false)
+const qrDisplayFailed = ref(false)
 
-const qrImage = computed(() => pending.value
-  ? 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(pending.value.qrSvg)
-  : '')
+const qrImage = computed(() => pending.value ? totpQrImageSource(pending.value.qrSvg) : '')
 
 function clearFeedback() {
   message.value = ''
@@ -48,6 +48,7 @@ async function beginEnrollment() {
   try {
     pending.value = await beginTotpEnrollment()
     showSecret.value = false
+    qrDisplayFailed.value = false
     code.value = ''
   } catch (error) { errorText.value = safeError(error) }
   finally { busy.value = false }
@@ -96,7 +97,12 @@ async function cancelEnrollment() {
 
       <div v-if="pending" class="totp-enrollment">
         <p><strong>1.</strong> Abra o autenticador e escaneie este QR Code.</p>
-        <img class="totp-qr" :src="qrImage" alt="QR Code para cadastrar o Farol no aplicativo autenticador" />
+        <img v-if="qrImage && !qrDisplayFailed" class="totp-qr" :src="qrImage"
+          alt="QR Code para cadastrar o Farol no aplicativo autenticador"
+          @error="qrDisplayFailed = true" />
+        <p v-if="!qrImage || qrDisplayFailed" class="auth-muted" role="status">
+          Não foi possível exibir o QR Code. Utilize a chave manual abaixo para concluir o cadastro com segurança.
+        </p>
         <button type="button" class="auth-inline-link" :disabled="busy" @click="showSecret = !showSecret">
           {{ showSecret ? 'Ocultar chave manual' : 'Não consigo escanear: mostrar chave manual' }}
         </button>
