@@ -104,6 +104,7 @@ const links = [
   { to: '/orcamentos', label: 'Orçamentos', icon: 'target' as const },
   { to: '/relatorios', label: 'Relatórios', icon: 'chart' as const },
   { to: '/calendario', label: 'Calendário', icon: 'calendar' as const },
+  { to: '/dados-online', label: 'Dados na nuvem', icon: 'folder' as const },
 ]
 
 watch(() => route.fullPath, () => {
