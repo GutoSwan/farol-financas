@@ -50,8 +50,10 @@ router.beforeEach(async (to) => {
 
   let authenticated = false
   try {
-    const { data, error } = await supabase.auth.getSession()
-    authenticated = !error && !!data.session
+    // getSession() lê o estado local e não garante que o usuário ainda esteja válido.
+    // getUser() consulta o Supabase Auth e valida o token antes de abrir rotas privadas.
+    const { data, error } = await supabase.auth.getUser()
+    authenticated = !error && !!data.user
   } catch {
     // Não mostrar telas financeiras se a sessão não puder ser restaurada.
   }
