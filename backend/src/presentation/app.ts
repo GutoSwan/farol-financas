@@ -2,14 +2,28 @@ import Fastify from 'fastify'
 import { z } from 'zod'
 import type { AuthVerifier } from '../infrastructure/auth/SupabaseJwtVerifier.js'
 import { WorkspaceService } from '../application/use-cases/WorkspaceService.js'
+import type { TransactionRepository } from '../domain/repositories/TransactionRepository.js'
 
 const createWorkspaceSchema = z.object({
   name: z.string().min(2).max(60),
 }).strict()
 
+// Bloquear campos arbitrários, valores inválidos e datas impossíveis.
+const transactionInputSchema = z.object({
+  description: z.string().trim().min(1).max(120),
+  category: z.string().trim().min(1).max(40),
+  amountCents: z.number().int().min(1).max(2147483647),
+  kind: z.enum(['EXPENSE', 'INCOME']),
+  occurredOn: z.iso.date().refine(value => {
+    const date = new Date(value + 'T00:00:00.000Z')
+    return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value
+  }),
+}).strict()
+
 export interface AppDependencies {
   auth: AuthVerifier
   workspaceService: WorkspaceService
+  transactionRepository?: TransactionRepository
   checkDatabase(): Promise<boolean>
   corsOrigin?: string
   /** Preview usa banco real por enquanto: impedir gravações HTTP no servidor. */
@@ -209,6 +223,61 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
     if (!workspace) return reply.code(404).send({ error: 'Espaço não encontrado.' })
     return { data: workspace }
   })
+
+  // Transações pertencem ao espaço autorizado, não ao usuário indicado no corpo.
+  // A conexão Prisma pode ignorar RLS: nenhuma rota pode pular requireMember.
+  app.get<{ Params: { workspaceId: string }; Querystring: { limit?: string } }>(
+    '/api/v1/workspaces/:workspaceId/transactions', async (request, reply) => {
+      const identity = await authorized(request, reply)
+      if (!identity) return
+      if (identity.assuranceLevel !== 'aal2') {
+        return reply.code(403).send({ error: 'Autenticação em duas etapas necessária para consultar dados financeiros.' })
+      }
+      const workspaceId = z.string().uuid().safeParse(request.params.workspaceId)
+      if (!workspaceId.success) return reply.code(404).send({ error: 'Espaço não encontrado.' })
+      const limitResult = z.coerce.number().int().min(1).max(100).safeParse(request.query.limit ?? '50')
+      if (!limitResult.success) return reply.code(400).send({ error: 'Limite inválido.' })
+      try {
+        await deps.workspaceService.requireMember(identity.userId, workspaceId.data)
+      } catch (error) {
+        if (!(error instanceof Error) || error.message !== 'Acesso negado ao espaço financeiro.') throw error
+        return reply.code(404).send({ error: 'Espaço não encontrado.' })
+      }
+      if (!deps.transactionRepository) return reply.code(503).send({ error: 'Módulo indisponível.' })
+      const entries = await deps.transactionRepository.listForWorkspace(workspaceId.data, limitResult.data)
+      return { data: entries }
+    },
+  )
+
+  app.post<{ Params: { workspaceId: string } }>(
+    '/api/v1/workspaces/:workspaceId/transactions', async (request, reply) => {
+      const identity = await authorized(request, reply)
+      if (!identity) return
+      if (identity.assuranceLevel !== 'aal2') {
+        return reply.code(403).send({ error: 'Autenticação em duas etapas necessária para alterar dados financeiros.' })
+      }
+      const workspaceId = z.string().uuid().safeParse(request.params.workspaceId)
+      if (!workspaceId.success) return reply.code(404).send({ error: 'Espaço não encontrado.' })
+      // Preview nunca grava dados financeiros reais, independentemente do token.
+      if (deps.allowWorkspaceWrites === false) {
+        return reply.code(403).send({ error: 'Gravação financeira desativada neste ambiente de testes.' })
+      }
+      const parsed = transactionInputSchema.safeParse(request.body)
+      if (!parsed.success) return reply.code(400).send({ error: 'Lançamento inválido.' })
+      try {
+        await deps.workspaceService.requireMember(identity.userId, workspaceId.data, ['OWNER', 'EDITOR'])
+      } catch (error) {
+        if (!(error instanceof Error) || error.message !== 'Acesso negado ao espaço financeiro.') throw error
+        return reply.code(404).send({ error: 'Espaço não encontrado.' })
+      }
+      if (!deps.transactionRepository) return reply.code(503).send({ error: 'Módulo indisponível.' })
+      const saved = await deps.transactionRepository.createForWorkspace({
+        workspaceId: workspaceId.data,
+        ...parsed.data,
+      })
+      return reply.code(201).send({ data: saved })
+    },
+  )
 
   app.post('/api/v1/workspaces', async (request, reply) => {
     const identity = await authorized(request, reply)
