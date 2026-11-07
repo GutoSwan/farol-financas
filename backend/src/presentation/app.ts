@@ -184,6 +184,32 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
     return { data: await deps.workspaceService.listForUser(identity.userId) }
   })
 
+  // ID de espaço não é prova de autorização. A API devolve 404 tanto para
+  // espaços inexistentes quanto para espaços aos quais o usuário não pertence,
+  // evitando facilitar enumeração de recursos de outras pessoas.
+  app.get<{ Params: { workspaceId: string } }>('/api/v1/workspaces/:workspaceId', async (request, reply) => {
+    const identity = await authorized(request, reply)
+    if (!identity) return
+    if (identity.assuranceLevel !== 'aal2') {
+      return reply.code(403).send({ error: 'Autenticação em duas etapas necessária para consultar dados financeiros.' })
+    }
+    const parsed = z.string().uuid().safeParse(request.params.workspaceId)
+    if (!parsed.success) {
+      return reply.code(404).send({ error: 'Espaço não encontrado.' })
+    }
+    try {
+      await deps.workspaceService.requireMember(identity.userId, parsed.data)
+    } catch (error) {
+      // Erros do banco precisam continuar sendo 503/500, não parecer 404.
+      if (!(error instanceof Error) || error.message !== 'Acesso negado ao espaço financeiro.') throw error
+      return reply.code(404).send({ error: 'Espaço não encontrado.' })
+    }
+    const workspaces = await deps.workspaceService.listForUser(identity.userId)
+    const workspace = workspaces.find(item => item.id === parsed.data)
+    if (!workspace) return reply.code(404).send({ error: 'Espaço não encontrado.' })
+    return { data: workspace }
+  })
+
   app.post('/api/v1/workspaces', async (request, reply) => {
     const identity = await authorized(request, reply)
     if (!identity) return
