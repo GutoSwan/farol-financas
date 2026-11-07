@@ -125,9 +125,9 @@ async function notifyDue():Promise<void> {
    try{
     if('serviceWorker' in navigator){
      const registration=await navigator.serviceWorker.getRegistration()
-     if(registration){await registration.showNotification('Lembrete do Farol',{body:event.title,tag:key});continue}
+     if(registration){await registration.showNotification('Lembrete do Farol',{body:'Você tem um evento agendado.',tag:key});continue}
     }
-    new Notification('Lembrete do Farol',{body:event.title,tag:key})
+    new Notification('Lembrete do Farol',{body:'Você tem um evento agendado.',tag:key})
    }catch{/* Navegador pode bloquear notificação; não vazar o conteúdo em logs. */}
   }
  }
