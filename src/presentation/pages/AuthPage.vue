@@ -83,7 +83,7 @@ async function submit(): Promise<void> {
       verificationEmail.value = email.value.trim()
       signupStep.value = hasSession ? 'success' : 'verification'
       if (hasSession) message.value = 'Cadastro realizado! Sua conta já está confirmada.'
-      else message.value = 'Enviamos um código para seu e-mail. Digite-o aqui para confirmar o cadastro.'
+      else message.value = 'Enviamos um e-mail de confirmação. Se ele trouxer um código, digite-o aqui. Se trouxer o botão Confirm address, confirme pelo link e depois entre no Farol.'
     } else if (props.mode === 'forgot') {
       await requestPasswordReset(email.value)
       message.value = 'Se esse e-mail estiver cadastrado, enviaremos um link para redefinir a senha.'
@@ -127,7 +127,7 @@ async function resendCode(): Promise<void> {
   try {
     await resendSignupCode(verificationEmail.value)
     nextResendAt.value = Date.now() + 60_000
-    message.value = 'Solicitação recebida. Verifique a caixa de entrada e o spam.'
+    message.value = 'Reenvio solicitado. Confira a caixa de entrada e o spam. O Supabase pode enviar outro link em vez de código; se o e-mail já foi confirmado, entre pelo login.'
   } catch (cause) {
     errorText.value = errorMessage(cause)
   } finally {
@@ -248,7 +248,7 @@ async function logout(): Promise<void> {
 
       <template v-else-if="mode === 'signup' && signupStep === 'verification'">
         <h1>Confirme seu e-mail</h1>
-        <p class="auth-subtitle">Enviamos um código para <strong>{{ verificationEmail }}</strong>. Digite o código recebido aqui. Você continuará nesta página.</p>
+        <p class="auth-subtitle">Enviamos uma mensagem de confirmação para <strong>{{ verificationEmail }}</strong>. Caso ela tenha um código numérico, digite-o abaixo. Se tiver o botão <strong>Confirm address</strong>, use o link e depois volte ao login. Não compartilhe o link nem o código.</p>
         <form class="auth-form" @submit.prevent="confirmEmail">
           <label>E-mail que recebeu o código
             <input v-model.trim="verificationEmail" type="email" autocomplete="email"
@@ -263,11 +263,12 @@ async function logout(): Promise<void> {
             <UiIcon name="check" :size="18" /> {{ busy ? 'Conferindo...' : 'Confirmar e-mail' }}
           </button>
         </form>
-        <button type="button" class="auth-inline-link" :disabled="busy" @click="resendCode">Reenviar código</button>
+        <button type="button" class="auth-inline-link" :disabled="busy" @click="resendCode">Reenviar e-mail de confirmação</button>
+        <RouterLink class="auth-inline-link" to="/entrar">Já confirmei pelo link. Ir para o login</RouterLink>
         <button type="button" class="auth-inline-link" :disabled="busy" @click="signupStep = 'form'; code = ''; resetMessages()">
           Corrigir e-mail ou voltar ao cadastro
         </button>
-        <p class="auth-muted">Não recebeu? Confira o spam. O Supabase limita a frequência de reenvio de códigos.</p>
+        <p class="auth-muted">O reenvio pode não gerar um novo e-mail se o endereço já estiver confirmado ou se houver um limite temporário de envio. Ao abrir o link pelo Gmail do celular, a sessão do navegador do computador não é transferida: você pode voltar ao computador e entrar normalmente.</p>
       </template>
 
       <template v-else>
