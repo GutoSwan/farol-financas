@@ -136,6 +136,10 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
       reply.header('Cache-Control', 'no-store, private')
       reply.header('X-Content-Type-Options', 'nosniff')
       reply.header('Referrer-Policy', 'no-referrer')
+      reply.header('X-Frame-Options', 'DENY')
+      reply.header('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'")
+      reply.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()')
+      reply.header('Cross-Origin-Resource-Policy', 'same-site')
     }
     return payload
   })
