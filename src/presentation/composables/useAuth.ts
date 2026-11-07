@@ -61,6 +61,10 @@ export function useAuth() {
     const { data, error } = await client().auth.signUp({
       email: email.trim(), password,
       options: {
+        // Se o template do Supabase oferecer link, ele retorna ao frontend HTTPS
+        // que iniciou o cadastro, e não à URL Site padrão de outro ambiente.
+        // O endereço precisa estar autorizado em Auth > URL Configuration.
+        emailRedirectTo: `${window.location.origin}/entrar`,
         data: { display_name: displayName, avatar_icon: 'user' },
       },
     })
