@@ -3,6 +3,7 @@ import { z } from 'zod'
 import type { AuthVerifier } from '../infrastructure/auth/SupabaseJwtVerifier.js'
 import { WorkspaceService } from '../application/use-cases/WorkspaceService.js'
 import type { TransactionRepository } from '../domain/repositories/TransactionRepository.js'
+import type { FinancialCatalogRepository } from '../domain/repositories/FinancialCatalogRepository.js'
 
 const createWorkspaceSchema = z.object({
   name: z.string().min(2).max(60),
@@ -29,6 +30,7 @@ export interface AppDependencies {
   auth: AuthVerifier
   workspaceService: WorkspaceService
   transactionRepository?: TransactionRepository
+  financialCatalog?: FinancialCatalogRepository
   checkDatabase(): Promise<boolean>
   corsOrigin?: string
   /** Preview usa banco real por enquanto: impedir gravações HTTP no servidor. */
@@ -228,6 +230,41 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
     if (!workspace) return reply.code(404).send({ error: 'Espaço não encontrado.' })
     return { data: workspace }
   })
+
+  // Catálogos financeiros em modo somente leitura. Não fornecer acesso às
+  // tabelas filhas sem verificar a associação ao workspace do registro pai.
+  type CatalogKind = 'recurring-bills' | 'fixed-expenses' | 'budgets'
+  for (const kind of ['recurring-bills', 'fixed-expenses', 'budgets'] as const) {
+    app.get<{ Params: { workspaceId: string }; Querystring: { limit?: string } }>(
+      `/api/v1/workspaces/:workspaceId/${kind}`, async (request, reply) => {
+        const identity = await authorized(request, reply)
+        if (!identity) return
+        if (identity.assuranceLevel !== 'aal2') {
+          return reply.code(403).send({ error: 'Autenticação em duas etapas necessária para consultar dados financeiros.' })
+        }
+        const parsed = z.string().uuid().safeParse(request.params.workspaceId)
+        if (!parsed.success) return reply.code(404).send({ error: 'Espaço não encontrado.' })
+        const limitResult = z.coerce.number().int().min(1).max(100).safeParse(request.query.limit ?? '50')
+        if (!limitResult.success) return reply.code(400).send({ error: 'Limite inválido.' })
+        try {
+          await deps.workspaceService.requireMember(identity.userId, parsed.data)
+        } catch (error) {
+          if (!(error instanceof Error) || error.message !== 'Acesso negado ao espaço financeiro.') throw error
+          return reply.code(404).send({ error: 'Espaço não encontrado.' })
+        }
+        if (!deps.financialCatalog) return reply.code(503).send({ error: 'Módulo indisponível.' })
+        const catalog: CatalogKind = kind
+        switch (catalog) {
+          case 'recurring-bills':
+            return { data: await deps.financialCatalog.listRecurringBills(parsed.data, limitResult.data) }
+          case 'fixed-expenses':
+            return { data: await deps.financialCatalog.listFixedExpenses(parsed.data, limitResult.data) }
+          case 'budgets':
+            return { data: await deps.financialCatalog.listBudgets(parsed.data, limitResult.data) }
+        }
+      },
+    )
+  }
 
   // Transações pertencem ao espaço autorizado, não ao usuário indicado no corpo.
   // A conexão Prisma pode ignorar RLS: nenhuma rota pode pular requireMember.
