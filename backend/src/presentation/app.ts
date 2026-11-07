@@ -27,7 +27,7 @@ const transactionPatchSchema = transactionInputSchema.partial().refine(
   { message: 'Informe ao menos um campo para atualizar.' },
 )
 
-const yearMonthSchema = z.string().regex(/^\\d{4}-(0[1-9]|1[0-2])$/)
+const yearMonthSchema = z.string().regex(/^[0-9]{4}-(0[1-9]|1[0-2])$/)
 const positiveCents = z.number().int().min(1).max(2147483647)
 const billSchema = z.object({
   name: z.string().trim().min(1).max(80),
