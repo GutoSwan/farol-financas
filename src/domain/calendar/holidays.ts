@@ -18,8 +18,8 @@ export function getHolidays(year: number, region: 'BR' | 'SP'): Holiday[] {
  ['11-15','Proclamação da República'],['11-20','Consciência Negra'],['12-25','Natal'],
  ]
  const items: Holiday[] = fixed.map(([day,name])=>({date:year+'-'+day,name,level:'Nacional'}))
- items.push({date:plusDays(easter(year),-2),name:'Sexta-feira Santa',level:'Nacional'})
- // Carnaval e Corpus Christi podem ser pontos facultativos; não os rotular como feriados nacionais.
+ // Datas religiosas móveis, incluindo Sexta-feira Santa, podem depender de lei municipal.
+ // Exibir somente as datas nacionais e estaduais de vigência geral confirmadas.
  if(region==='SP') items.push({date:year+'-07-09',name:'Revolução Constitucionalista',level:'Estadual'})
  return items.sort((a,b)=>a.date.localeCompare(b.date))
 }
