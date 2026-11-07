@@ -17,6 +17,7 @@ import AuthPage from '../presentation/pages/AuthPage.vue'
 import MfaChallengePage from '../presentation/pages/MfaChallengePage.vue'
 import { supabase } from '../infrastructure/auth/supabase'
 import { canAccessWithoutSession, shouldRedirectLoggedInVisitor } from './authNavigation'
+import { requiredMfaRedirect } from './mfaNavigation'
 import { isFarolAdmin } from '../domain/auth/adminAccess'
 
 const router = createRouter({
@@ -82,16 +83,18 @@ router.beforeEach(async (to) => {
     try {
       const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
       if (error || !data) throw new Error('Não foi possível conferir o segundo fator.')
-      const pending = data.nextLevel === 'aal2' && data.currentLevel !== 'aal2'
-      if (pending && to.path !== '/verificar-2fa') {
-        return { path: '/verificar-2fa', replace: true }
-      }
-      if (!pending && to.path === '/verificar-2fa') {
-        return { path: '/', replace: true }
-      }
+      const target = requiredMfaRedirect(
+        to.path,
+        Boolean(to.meta.requiresLegacyData) || to.path === '/vincular-dados-locais',
+        data.currentLevel,
+        data.nextLevel,
+      )
+      if (target) return { path: target, replace: true }
     } catch {
       // Em falha da verificação MFA, NÃO liberar dados financeiros.
-      if (to.path !== '/verificar-2fa') return { path: '/verificar-2fa', replace: true }
+      if (to.path !== '/conta' && to.path !== '/verificar-2fa') {
+        return { path: '/conta', replace: true }
+      }
     }
   }
 
