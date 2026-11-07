@@ -10,6 +10,7 @@ import MonthlyExpensesPage from '../presentation/pages/MonthlyExpensesPage.vue'
 import BudgetsPage from '../presentation/pages/BudgetsPage.vue'
 import ComingSoonPage from '../presentation/pages/ComingSoonPage.vue'
 import CalendarPage from '../presentation/pages/CalendarPage.vue'
+import OnlineFinancePage from '../presentation/pages/OnlineFinancePage.vue'
 import AuthPage from '../presentation/pages/AuthPage.vue'
 import MfaChallengePage from '../presentation/pages/MfaChallengePage.vue'
 import { supabase } from '../infrastructure/auth/supabase'
@@ -30,6 +31,7 @@ const router = createRouter({
       { path: 'orcamentos', component: BudgetsPage, meta: { title: 'Orçamentos' } },
       { path: 'relatorios', component: ReportsPage, meta: { title: 'Relatórios' } },
       { path: 'calendario', component: CalendarPage, meta: { title: 'Calendário' } },
+      { path: 'dados-online', component: OnlineFinancePage, meta: { title: 'Dados na nuvem' } },
       { path: 'presentes', component: GiftsPage, meta: { title: 'Presentes', requiresAdmin: true } },
       { path: 'relatorios/detalhes', component: MonthlyExpensesPage, meta: { title: 'Detalhes do mês' } },
     ],
