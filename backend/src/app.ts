@@ -214,6 +214,8 @@ const app = buildApp({
   allowWorkspaceWrites: process.env.FAROL_FINANCIAL_WRITES_ENABLED === 'true' &&
     process.env.VERCEL_ENV !== 'preview',
   async checkDatabase() {
+    // Nem mesmo o endpoint readiness deve contactar um banco inesperado.
+    if (!isVerifiedDevPreviewEnvironment(process.env)) return false
     // Validação de variáveis e consulta SQL apenas em /ready, nunca em /health.
     const config = readConfig(process.env)
     if (process.env.VERCEL_ENV === 'preview') {
