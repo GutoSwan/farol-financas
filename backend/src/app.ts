@@ -189,6 +189,7 @@ const app = buildApp({
   financialCatalog: lazyCatalog,
   financialCatalogMutations: lazyMutations,
   invoiceRepository: lazyInvoices,
+  allowInvoiceReads: process.env.FAROL_INVOICE_READS_ENABLED === 'true',
   allowInvoiceUploads: process.env.FAROL_INVOICE_UPLOADS_ENABLED === 'true' &&
     process.env.FAROL_FINANCIAL_WRITES_ENABLED === 'true' &&
     process.env.VERCEL_ENV !== 'preview',
