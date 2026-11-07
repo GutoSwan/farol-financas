@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "start": "node dist/server.js",
-    "build": "prisma generate && tsc -p tsconfig.build.json",
+    "build": "npm test && prisma generate && tsc -p tsconfig.build.json",
     "typecheck": "prisma generate && tsc --noEmit -p tsconfig.json",
     "test": "vitest run --config vitest.config.ts",
     "db:generate": "prisma generate",
