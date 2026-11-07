@@ -49,6 +49,27 @@ function fixture(writes = false, uploads = false) {
 }
 const auth = (token: string) => ({ authorization:'Bearer ' + token })
 describe('Faturas: isolamento pessoal, MFA e upload fechado por padrão', () => {
+ it('sem flag de leitura responde indisponível antes de acessar repositório', async () => {
+  const {app,calls}=fixture()
+  // O contrato de produção estabelece allowInvoiceReads=false por padrão;
+  // esta fixture habilita leitura para os demais testes.
+  const disabled=buildApp({
+    workspaceService: new WorkspaceService({
+      async listForUser(){return []},
+      async createOwnedBy(){throw Error('unused')},
+      async hasMembership(){return true},
+    }),
+    auth:{async verifyAccessToken(){return {userId:ownerId,assuranceLevel:'aal2' as const}}},
+    checkDatabase:async()=>true,
+    allowInvoiceReads:false,
+  })
+  try {
+    const res=await disabled.inject({method:'GET',url,headers:auth('owner:aal2')})
+    expect(res.statusCode).toBe(503)
+    expect(calls).toHaveLength(0)
+  } finally { await app.close(); await disabled.close() }
+ })
+
  it('não lista faturas sem autenticação', async () => {
   const {app,calls}=fixture()
   try {
