@@ -11,6 +11,8 @@ import BudgetsPage from '../presentation/pages/BudgetsPage.vue'
 import ComingSoonPage from '../presentation/pages/ComingSoonPage.vue'
 import CalendarPage from '../presentation/pages/CalendarPage.vue'
 import OnlineFinancePage from '../presentation/pages/OnlineFinancePage.vue'
+import LegacyDataAccessPage from '../presentation/pages/LegacyDataAccessPage.vue'
+import { localLegacyAccess, setVerifiedLocalUser } from '../infrastructure/persistence/legacyAccess'
 import AuthPage from '../presentation/pages/AuthPage.vue'
 import MfaChallengePage from '../presentation/pages/MfaChallengePage.vue'
 import { supabase } from '../infrastructure/auth/supabase'
@@ -22,6 +24,7 @@ const router = createRouter({
   routes: [{
     path: '/',
     component: AppLayout,
+    meta: { requiresLegacyData: true },
     children: [
       { path: '', component: DashboardPage, meta: { title: 'Dashboard' } },
       { path: 'contas-mensais', component: BillsPage, meta: { title: 'Contas mensais' } },
@@ -37,6 +40,7 @@ const router = createRouter({
     ],
   },
   { path: '/verificar-2fa', component: MfaChallengePage, meta: { title: 'Verificar código' } },
+  { path: '/vincular-dados-locais', component: LegacyDataAccessPage, meta: { title: 'Proteção dos dados locais' } },
   { path: '/entrar', component: AuthPage, props: { mode: 'login' }, meta: { title: 'Entrar' } },
   { path: '/cadastro', component: AuthPage, props: { mode: 'signup' }, meta: { title: 'Criar conta' } },
   { path: '/recuperar-senha', component: AuthPage, props: { mode: 'forgot' }, meta: { title: 'Recuperar senha' } },
@@ -48,6 +52,7 @@ const router = createRouter({
 // Frontend controla a navegação, mas APIs financeiras devem validar AAL2
 // no SERVIDOR antes de consultar dados, mesmo se alguém ignorar o roteador.
 router.beforeEach(async (to) => {
+  setVerifiedLocalUser(null)
   if (!supabase) {
     return canAccessWithoutSession(to.path) ? true : { path: '/entrar', replace: true }
   }
@@ -58,6 +63,7 @@ router.beforeEach(async (to) => {
     // getUser() consulta o Supabase Auth e valida o token antes de abrir rotas privadas.
     const { data, error } = await supabase.auth.getUser()
     authenticated = !error && !!data.user
+    if (authenticated && data.user) setVerifiedLocalUser(data.user.id)
   } catch {
     // Não mostrar telas financeiras se a sessão não puder ser restaurada.
   }
@@ -96,6 +102,23 @@ router.beforeEach(async (to) => {
       if (!isFarolAdmin(data.user)) return { path: '/', replace: true }
     } catch {
       return { path: '/entrar', replace: true }
+    }
+  }
+
+  if (to.meta.requiresLegacyData || to.path === '/vincular-dados-locais') {
+    // Nunca carregar o layout, a sidebar ou os composables locais antes
+    // de verificar o vínculo da conta; eles leem localStorage no setup.
+    const { data, error } = await supabase.auth.getUser()
+    if (error || !data.user) {
+      setVerifiedLocalUser(null)
+      return { path: '/entrar', replace: true }
+    }
+    const access = localLegacyAccess(data.user.id)
+    if (to.meta.requiresLegacyData && access !== 'allowed') {
+      return { path: '/vincular-dados-locais', replace: true }
+    }
+    if (to.path === '/vincular-dados-locais' && access === 'allowed') {
+      return { path: '/', replace: true }
     }
   }
 
