@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import UiIcon from '../components/UiIcon.vue'
 import OnlineWorkspacesSidebar from '../components/OnlineWorkspacesSidebar.vue'
@@ -7,12 +7,14 @@ import { downloadLocalFinancialBackup } from '../../application/use-cases/export
 import { useTheme } from '../composables/useTheme'
 import { useWorkspaces } from '../composables/useWorkspaces'
 import { useAuth } from '../composables/useAuth'
+import { localLegacyAccess } from '../../infrastructure/persistence/legacyAccess'
 import { DEFAULT_WORKSPACE_ID } from '../../domain/entities/FinancialWorkspace'
 import type { FinancialWorkspace } from '../../domain/entities/FinancialWorkspace'
 
 const route = useRoute()
 const router = useRouter()
 const { isLoggedIn, isAdmin, user, profile, signOut } = useAuth()
+const localAccessAllowed = computed(() => !!user.value && localLegacyAccess(user.value.id) === 'allowed')
 const profileMenuOpen = ref(false)
 const profileBusy = ref(false)
 const profileError = ref('')
@@ -154,7 +156,7 @@ function removeWorkspace(space: FinancialWorkspace): void {
 </script>
 
 <template>
-  <div class="shell">
+  <div v-if="localAccessAllowed" class="shell">
     <aside id="farol-sidebar" ref="sidebarRef" class="sidebar" :class="{ 'sidebar--open': mobileMenuOpen }"
       aria-label="Barra lateral do Farol" :role="mobileMenuOpen ? 'dialog' : undefined"
       :aria-modal="mobileMenuOpen ? 'true' : undefined"
@@ -273,4 +275,5 @@ function removeWorkspace(space: FinancialWorkspace): void {
       <main class="content" :key="activeWorkspaceId"><RouterView /></main>
     </div>
   </div>
+  <div v-else class="auth-screen"><section class="auth-card"><p class="auth-warning">Sessão alterada. Os dados locais foram ocultados.</p><RouterLink to="/vincular-dados-locais" class="primary auth-full-button">Verificar acesso</RouterLink></section></div>
 </template>
