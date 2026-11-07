@@ -22,7 +22,8 @@ describe('Espaços online na barra lateral do Farol', () => {
     expect(sidebar).toContain('requestId !== requestSequence')
     expect(sidebar).toContain('onBeforeUnmount(() => { requestSequence++ })')
   })
-  it('o backend desativa gravação no deployment Preview sem mudar Production', () => {
-    expect(serverEntry).toContain("allowWorkspaceWrites: process.env.VERCEL_ENV !== 'preview'")
+  it('o backend bloqueia gravações sem liberação explícita e sempre no Preview', () => {
+    expect(serverEntry).toContain("allowWorkspaceWrites: process.env.FAROL_FINANCIAL_WRITES_ENABLED === 'true'")
+    expect(serverEntry).toContain("process.env.VERCEL_ENV !== 'preview'")
   })
 })
