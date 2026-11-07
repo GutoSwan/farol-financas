@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "node scripts/generate-pwa-icons.mjs && vite",
-    "build": "node scripts/generate-pwa-icons.mjs && vue-tsc --noEmit && vite build",
+    "build": "node scripts/dependency-audit-diagnostic.mjs && node scripts/generate-pwa-icons.mjs && vue-tsc --noEmit && vite build",
     "typecheck": "vue-tsc --noEmit",
     "test": "vitest run",
     "mobile:add:android": "npm run build && npx cap add android",
