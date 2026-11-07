@@ -1,5 +1,5 @@
 import type { PrismaClient } from '@prisma/client'
-import type { NewTransaction, TransactionEntry, TransactionRepository } from '../../domain/repositories/TransactionRepository.js'
+import type { NewTransaction, TransactionChanges, TransactionEntry, TransactionRepository } from '../../domain/repositories/TransactionRepository.js'
 
 function toEntry(item: { id: string; workspaceId: string; description: string; category: string; amountCents: number; kind: 'EXPENSE'|'INCOME'; occurredOn: Date }): TransactionEntry {
   return {
@@ -31,4 +31,31 @@ export class PrismaTransactionRepository implements TransactionRepository {
     })
     return toEntry(saved)
   }
+
+  async updateWithinWorkspace(workspaceId: string, transactionId: string, changes: TransactionChanges): Promise<TransactionEntry | null> {
+    const data = {
+      ...changes,
+      ...(changes.occurredOn === undefined ? {} : { occurredOn: new Date(changes.occurredOn + 'T00:00:00.000Z') }),
+    }
+    // O predicado inclui workspaceId para bloquear modificações entre espaços,
+    // mesmo quando o ID de uma transação de outra pessoa é conhecido.
+    const result = await this.prisma.transaction.updateMany({
+      where: { id: transactionId, workspaceId },
+      data,
+    })
+    if (result.count !== 1) return null
+    const updated = await this.prisma.transaction.findFirst({
+      where: { id: transactionId, workspaceId },
+      select: { id: true, workspaceId: true, description: true, category: true, amountCents: true, kind: true, occurredOn: true },
+    })
+    return updated ? toEntry(updated) : null
+  }
+
+  async deleteWithinWorkspace(workspaceId: string, transactionId: string): Promise<boolean> {
+    const result = await this.prisma.transaction.deleteMany({
+      where: { id: transactionId, workspaceId },
+    })
+    return result.count === 1
+  }
+
 }
