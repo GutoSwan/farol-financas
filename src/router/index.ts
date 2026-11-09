@@ -125,6 +125,11 @@ router.beforeEach(async (to) => {
       return { path: '/entrar', replace: true }
     }
     const access = localLegacyAccess(data.user.id)
+    // Se este navegador pertence a outra identidade, abrir somente a nuvem
+    // sem inicializar telas nem repositórios financeiros locais.
+    if (to.meta.requiresLegacyData && access === 'different-user') {
+      return { path: '/dados-online', replace: true }
+    }
     if (to.meta.requiresLegacyData && access !== 'allowed') {
       return { path: '/vincular-dados-locais', replace: true }
     }
