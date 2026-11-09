@@ -35,7 +35,9 @@ async function hash(value: unknown): Promise<string> {
     throw new Error('Não é possível verificar as identidades locais sem criptografia segura.')
   }
   const bytes = encoder.encode(JSON.stringify(value))
-  const digest = await globalThis.crypto.subtle.digest('SHA-256', bytes)
+  const owned = new ArrayBuffer(bytes.byteLength)
+  new Uint8Array(owned).set(bytes)
+  const digest = await globalThis.crypto.subtle.digest('SHA-256', owned)
   return Array.from(new Uint8Array(digest), v => v.toString(16).padStart(2, '0')).join('')
 }
 
