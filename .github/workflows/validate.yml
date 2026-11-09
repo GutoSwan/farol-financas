@@ -39,7 +39,7 @@ jobs:
         with:
           node-version: '22'
       - name: Instalar dependências
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Testes de regras financeiras
         run: npm run test
       - name: Validar tipos e gerar build
@@ -71,7 +71,7 @@ jobs:
           node-version: '22'
       - name: Instalar backend
         working-directory: backend
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Validar modelo Prisma
         working-directory: backend
         run: npx prisma validate
