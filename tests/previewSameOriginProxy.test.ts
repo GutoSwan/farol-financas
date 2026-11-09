@@ -10,6 +10,7 @@ describe('Proxy protegido do Farol Preview', () => {
     expect(proxy).toContain("res.statusCode = 405")
     expect(proxy).toContain("const SIMPLE_PATHS = new Set(")
     expect(proxy).toContain("SPACE_PATH.test(target.pathname)")
+    expect(proxy).toContain("['...path', 'workspaceId', 'kind']")
   })
 
   it('encaminha token de identidade OIDC da Vercel sem segredo de bypass', () => {
