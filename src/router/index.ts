@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import AppLayout from '../presentation/layouts/AppLayout.vue'
+import CloudOnlyLayout from '../presentation/layouts/CloudOnlyLayout.vue'
 import DashboardPage from '../presentation/pages/DashboardPage.vue'
 import BillsPage from '../presentation/pages/BillsPage.vue'
 import FixedExpensesPage from '../presentation/pages/FixedExpensesPage.vue'
@@ -10,7 +11,6 @@ import MonthlyExpensesPage from '../presentation/pages/MonthlyExpensesPage.vue'
 import BudgetsPage from '../presentation/pages/BudgetsPage.vue'
 import ComingSoonPage from '../presentation/pages/ComingSoonPage.vue'
 import CalendarPage from '../presentation/pages/CalendarPage.vue'
-import OnlineFinancePage from '../presentation/pages/OnlineFinancePage.vue'
 import LegacyDataAccessPage from '../presentation/pages/LegacyDataAccessPage.vue'
 import { localLegacyAccess, setVerifiedLocalUser } from '../infrastructure/persistence/legacyAccess'
 import AuthPage from '../presentation/pages/AuthPage.vue'
@@ -37,11 +37,12 @@ const router = createRouter({
       { path: 'orcamentos', component: BudgetsPage, meta: { title: 'Orçamentos' } },
       { path: 'relatorios', component: ReportsPage, meta: { title: 'Relatórios' } },
       { path: 'calendario', component: CalendarPage, meta: { title: 'Calendário' } },
-      { path: 'dados-online', component: OnlineFinancePage, meta: { title: 'Dados na nuvem' } },
       { path: 'presentes', component: GiftsPage, meta: { title: 'Presentes', requiresAdmin: true } },
       { path: 'relatorios/detalhes', component: MonthlyExpensesPage, meta: { title: 'Detalhes do mês' } },
     ],
   },
+  // A tela online fica fora do AppLayout: não lê/mostra dados locais de outra conta.
+  { path: '/dados-online', component: CloudOnlyLayout, meta: { title: 'Dados na nuvem', requiresFinancialData: true } },
   { path: '/verificar-2fa', component: MfaChallengePage, meta: { title: 'Verificar código' } },
   { path: '/configurar-2fa', component: MfaSetupPage, meta: { title: 'Configurar autenticador' } },
   { path: '/vincular-dados-locais', component: LegacyDataAccessPage, meta: { title: 'Proteção dos dados locais' } },
@@ -91,7 +92,7 @@ router.beforeEach(async (to) => {
       const factors = await listVerifiedTotpFactors()
       const target = requiredMfaRedirect(
         to.path,
-        Boolean(to.meta.requiresLegacyData) || to.path === '/vincular-dados-locais',
+        Boolean(to.meta.requiresLegacyData || to.meta.requiresFinancialData) || to.path === '/vincular-dados-locais',
         data.currentLevel,
         data.nextLevel,
         factors.length,
