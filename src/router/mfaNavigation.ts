@@ -14,7 +14,9 @@ export function requiredMfaRedirect(
   verifiedFactors: number | null = null,
 ): '/configurar-2fa' | '/verificar-2fa' | '/' | null {
   if (verifiedFactors === null) {
+    // AAL não é evidência de ausência do fator: em falha de rede, não autorizar novo cadastro.
     if (path === '/configurar-2fa' || path === '/verificar-2fa') return null
+    if (nextLevel === 'aal2' && currentLevel !== 'aal2') return '/verificar-2fa'
     if (requiresFinancialData || path === '/conta') return '/verificar-2fa'
     return null
   }
