@@ -135,9 +135,16 @@ async function simulateMigration(): Promise<void> {
     const owner = await confirmedOwner()
     // A API recebe apenas o JWT necessário a GET /me e GET /workspaces.
     // Nenhum lançamento, histórico, orçamento ou snapshot é enviado.
-    const identity = await getOnlineIdentity()
-    if (identity.id !== owner) throw new Error('Identidade da API diferente da conta autenticada.')
-    const onlineSpaces = await listOnlineWorkspaces()
+    let onlineSpaces: Awaited<ReturnType<typeof listOnlineWorkspaces>> | null = null
+    try {
+      const identity = await getOnlineIdentity()
+      if (identity.id !== owner) throw new Error('Identidade da API diferente da conta autenticada.')
+      onlineSpaces = await listOnlineWorkspaces()
+    } catch (cause) {
+      // Preview sem API permite análise LOCAL, mas nunca declara a nuvem verificada.
+      if (cause instanceof Error && cause.message.includes('Identidade da API diferente')) throw cause
+      onlineSpaces = null
+    }
     if (await confirmedOwner() !== owner) throw new Error('Sessão alterada durante a análise.')
     const result = analyzeLegacyMigration(buildLocalFinancialBackup(), onlineSpaces)
     if (await confirmedOwner() !== owner) throw new Error('Sessão alterada durante a análise.')
@@ -278,8 +285,9 @@ onBeforeUnmount(disposeDownload)
         Existem incompatibilidades a revisar antes de importar. Nenhum registro foi enviado, criado ou excluído.
       </p>
       <p class="auth-muted">
-        A comparação online cobre apenas nomes de espaços. Duplicações de lançamentos
-        dentro da nuvem ainda não podem ser descartadas.
+        {{ preview.cloudComparison === 'not-checked'
+          ? 'Sem conexão com a API: somente os dados locais foram analisados. Não é seguro iniciar uma importação.'
+          : 'A comparação online cobre apenas nomes de espaços. Duplicações de lançamentos dentro da nuvem ainda não podem ser descartadas.' }}
       </p>
       <ul v-if="preview.issues.length" class="backup-issues">
         <li v-for="(issue, index) in preview.issues" :key="index">
