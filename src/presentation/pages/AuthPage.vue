@@ -6,6 +6,7 @@ import { useTheme } from '../composables/useTheme'
 import OnlineWorkspacesPanel from '../components/OnlineWorkspacesPanel.vue'
 import TotpSettings from '../components/TotpSettings.vue'
 import PhoneLinkPanel from '../components/PhoneLinkPanel.vue'
+import { phoneAuthEnabled } from '../../infrastructure/auth/phoneAuth'
 import { useAuth } from '../composables/useAuth'
 import { PROFILE_ICONS } from '../../domain/profile/profile'
 import type { ProfileIcon } from '../../domain/profile/profile'
@@ -284,7 +285,7 @@ async function logout(): Promise<void> {
         <div v-if="mode === 'login' || mode === 'signup' || mode === 'forgot'" class="auth-method-choice" aria-label="Escolha seu método de acesso">
           <span class="auth-method-active"><UiIcon name="mail" :size="16" /> E-mail</span>
           <RouterLink :to="mode === 'login' ? '/entrar/celular' : mode === 'signup' ? '/cadastro/celular' : '/recuperar-celular'">
-            <UiIcon name="smartphone" :size="16" /> Celular <small>Em preparação</small>
+            <UiIcon name="smartphone" :size="16" /> Celular <small v-if="!phoneAuthEnabled">Em preparação</small>
           </RouterLink>
         </div>
         <p class="auth-subtitle">{{ mode === 'login' ? 'Acesse com seu e-mail e sua senha.' : mode === 'signup' ? 'Crie seu acesso. Enviaremos um código de confirmação por e-mail.' : mode === 'forgot' ? 'Enviaremos um link de recuperação para seu e-mail.' : 'Digite a nova senha para sua conta.' }}</p>
