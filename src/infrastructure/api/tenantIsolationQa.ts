@@ -13,7 +13,7 @@ export const qaIsolationEnabled = uuid.test(qaSpaceA) && uuid.test(qaSpaceB) &&
 
 export type IsolationStatus = 'passed' | 'failed' | 'inconclusive'
 export type QaModule = 'transactions' | 'recurring-bills' | 'fixed-expenses' | 'budgets'
-export interface IsolationCheck { module: QaModule; status: IsolationStatus; httpStatus?: number }
+export interface IsolationCheck { module: QaModule; status: IsolationStatus; ownHttpStatus?: number; httpStatus?: number }
 export interface IsolationReport {
   own: 'A' | 'B'
   status: IsolationStatus
@@ -25,12 +25,15 @@ const modules: QaModule[] = ['transactions', 'recurring-bills', 'fixed-expenses'
 function chooseFixture(workspaces: OnlineWorkspace[], a: string, b: string): {
   own: 'A' | 'B'
   foreignId: string
+  ownId: string
 } {
   const ownA = workspaces.some(w => w.id === a && w.name === 'QA - Conta atual')
   const ownB = workspaces.some(w => w.id === b && w.name === 'QA - Conta B')
-  if (ownA && ownB) throw new Error('ALERTA: esta conta lista os dois espaços privados de QA. O isolamento falhou.')
-  if (ownA) return { own: 'A', foreignId: b }
-  if (ownB) return { own: 'B', foreignId: a }
+  if (workspaces.some(w => w.id === a) && workspaces.some(w => w.id === b)) {
+    throw new Error('ALERTA: esta conta lista os dois espaços privados de QA. O isolamento falhou.')
+  }
+  if (ownA) return { own: 'A', ownId: a, foreignId: b }
+  if (ownB) return { own: 'B', ownId: b, foreignId: a }
   throw new Error('Esta conta não possui um espaço QA reconhecido. Teste indisponível.')
 }
 
@@ -38,7 +41,7 @@ function chooseFixture(workspaces: OnlineWorkspace[], a: string, b: string): {
  * Execute a live read-only IDOR/BOLA probe with the CURRENT user's real AAL2
  * Supabase session, against the opposite test workspace UUID.
  *
- * 404 => correct authorization denial.
+ * Own workspace 200 AND foreign workspace 404 => authorization enforced.
  * 200 => security failure; do not parse or display the returned body.
  * 401/403/other => inconclusive (an expired JWT is NOT proof of isolation).
  * No tokens, keys or foreign content are persisted, printed or transmitted
@@ -70,22 +73,33 @@ export async function runTenantIsolationQa(
     throw new Error('Identidade da API divergente. Teste interrompido.')
   }
   const workspaces = await listOnlineWorkspaces()
-  const { own, foreignId } = chooseFixture(workspaces, fixtureA, fixtureB)
+  const { own, ownId, foreignId } = chooseFixture(workspaces, fixtureA, fixtureB)
 
   const checks: IsolationCheck[] = []
   for (const module of modules) {
+    let ownStatus: number | undefined
     try {
-      const response = await fetch(
-        apiEndpoint('/api/v1/workspaces/' + foreignId + '/' + module + '?limit=1'),
-        { method: 'GET', cache: 'no-store', credentials: 'same-origin', redirect: 'error',
-          headers: { Authorization: 'Bearer ' + session.session.access_token } },
-      )
-      // Deliberately do not parse, read, log or display an unauthorized payload.
-      checks.push({ module, httpStatus: response.status,
-        status: response.status === 404 ? 'passed' :
-          response.status === 200 ? 'failed' : 'inconclusive' })
+      const fetchOptions = {
+        method: 'GET', cache: 'no-store' as const, credentials: 'same-origin' as const,
+        redirect: 'error' as const,
+        headers: { Authorization: 'Bearer ' + session.session.access_token },
+      }
+      // Control: own workspace must work. A broken route must not falsely pass QA.
+      const ownResponse = await fetch(
+        apiEndpoint('/api/v1/workspaces/' + ownId + '/' + module + '?limit=1'), fetchOptions)
+      ownStatus = ownResponse.status
+      if (ownStatus !== 200) {
+        checks.push({ module, ownHttpStatus: ownStatus, status: 'inconclusive' })
+        continue
+      }
+      const foreignResponse = await fetch(
+        apiEndpoint('/api/v1/workspaces/' + foreignId + '/' + module + '?limit=1'), fetchOptions)
+      // Never parse, read, log, or render an unauthorized payload, even on 200.
+      checks.push({ module, ownHttpStatus: ownStatus, httpStatus: foreignResponse.status,
+        status: foreignResponse.status === 404 ? 'passed' :
+          foreignResponse.status === 200 ? 'failed' : 'inconclusive' })
     } catch {
-      checks.push({ module, status: 'inconclusive' })
+      checks.push({ module, ownHttpStatus: ownStatus, status: 'inconclusive' })
     }
   }
 
@@ -94,9 +108,9 @@ export async function runTenantIsolationQa(
   return {
     own, checks, status,
     message: status === 'passed'
-      ? 'A API negou as quatro consultas ao espaço da outra conta com HTTP 404.'
+      ? 'A API permitiu as quatro consultas próprias (200) e negou as quatro alheias (404).'
       : status === 'failed'
         ? 'FALHA DE SEGURANÇA: a API permitiu consultar um espaço de outra conta. Não cadastre dados reais.'
-        : 'Teste inconclusivo. Apenas HTTP 404 comprova bloqueio do espaço alheio.',
+        : 'Teste inconclusivo. Exigimos HTTP 200 no próprio espaço e HTTP 404 no espaço alheio.',
   }
 }
