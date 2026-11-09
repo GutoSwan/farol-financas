@@ -14,6 +14,7 @@ import CalendarPage from '../presentation/pages/CalendarPage.vue'
 import LegacyDataAccessPage from '../presentation/pages/LegacyDataAccessPage.vue'
 import { localLegacyAccess, setVerifiedLocalUser } from '../infrastructure/persistence/legacyAccess'
 import AuthPage from '../presentation/pages/AuthPage.vue'
+import PhoneAuthPage from '../presentation/pages/PhoneAuthPage.vue'
 import MfaChallengePage from '../presentation/pages/MfaChallengePage.vue'
 import MfaSetupPage from '../presentation/pages/MfaSetupPage.vue'
 import { supabase } from '../infrastructure/auth/supabase'
@@ -43,6 +44,9 @@ const router = createRouter({
   },
   // A tela online fica fora do AppLayout: não lê/mostra dados locais de outra conta.
   { path: '/dados-online', component: CloudOnlyLayout, meta: { title: 'Dados na nuvem', requiresFinancialData: true } },
+  { path: '/entrar/celular', component: PhoneAuthPage, props: { mode: 'login' }, meta: { title: 'Entrar por celular' } },
+  { path: '/cadastro/celular', component: PhoneAuthPage, props: { mode: 'signup' }, meta: { title: 'Criar conta por celular' } },
+  { path: '/recuperar-celular', component: PhoneAuthPage, props: { mode: 'recovery' }, meta: { title: 'Recuperação por celular' } },
   { path: '/verificar-2fa', component: MfaChallengePage, meta: { title: 'Verificar código' } },
   { path: '/configurar-2fa', component: MfaSetupPage, meta: { title: 'Configurar autenticador' } },
   { path: '/vincular-dados-locais', component: LegacyDataAccessPage, meta: { title: 'Proteção dos dados locais' } },
