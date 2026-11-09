@@ -49,6 +49,30 @@ export async function verifyTotpCode(factorId: string, code: string): Promise<vo
   if (error) throw new Error('Código inválido ou expirado. Abra o autenticador e tente novamente.')
 }
 
+/**
+ * Exclui SOMENTE fator verificado pertencente à conta atual, após nova
+ * confirmação remota de AAL2. A API do Supabase também exige AAL2.
+ * Nunca usar credenciais administrativas nem confiar em campos do navegador.
+ */
+export async function removeVerifiedTotpFactor(factorId: string): Promise<void> {
+  if (!/^[0-9a-f-]{36}$/i.test(factorId)) throw new Error('Autenticador inválido. Atualize a lista.')
+  const auth = requireClient().auth
+  const [{ data: identity, error: identityError }, { data: aal, error: aalError }] = await Promise.all([
+    auth.getUser(),
+    auth.mfa.getAuthenticatorAssuranceLevel(),
+  ])
+  if (identityError || !identity.user) throw new Error('Entre novamente antes de alterar os autenticadores.')
+  if (aalError || aal?.currentLevel !== 'aal2') {
+    throw new Error('Confirme seu segundo fator antes de remover ou substituir um autenticador.')
+  }
+  const factors = await listVerifiedTotpFactors()
+  if (!factors.some((factor) => factor.id === factorId)) {
+    throw new Error('Este autenticador não está mais vinculado à sua conta. Atualize a lista.')
+  }
+  const { error } = await auth.mfa.unenroll({ factorId })
+  if (error) throw new Error('Não foi possível remover o autenticador no Supabase. Tente novamente.')
+}
+
 /** Limpeza de cadastro ainda não validado; não remove fatores verificados. */
 export async function discardUnverifiedTotpFactor(factorId: string): Promise<void> {
   const { data, error } = await requireClient().auth.mfa.listFactors()
