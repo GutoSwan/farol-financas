@@ -189,7 +189,7 @@ function removeWorkspace(space: FinancialWorkspace): void {
           <option v-for="space in workspaces" :key="space.id" :value="space.id">{{ space.name }}</option>
         </select>
         <button class="workspace-add" type="button" :aria-expanded="managing" @click="managing = !managing">
-          <UiIcon name="plus" :size="17" /> Gerenciar espaços
+          <UiIcon name="plus" :size="17" /> Novo espaço
         </button>
         <div v-if="managing" class="workspace-popover">
           <form @submit.prevent="submitWorkspace">
