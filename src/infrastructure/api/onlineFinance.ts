@@ -31,7 +31,10 @@ export async function readOnlineFinance(workspace: OnlineWorkspace, kind: Online
       headers: { Authorization: 'Bearer ' + data.session.access_token },
       method: 'GET',
       cache: 'no-store',
-      credentials: 'omit',
+      // O Preview usa a mesma origem e pode exigir o cookie da própria Vercel.
+      // Com 'omit' a Vercel redireciona para login e o fetch falha. O proxy só
+      // encaminha o Bearer Supabase, nunca os cookies do navegador ao backend.
+      credentials: 'same-origin',
       redirect: 'error',
     })
   } catch {
