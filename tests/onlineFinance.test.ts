@@ -46,6 +46,21 @@ describe('Cliente financeiro online: isolamento e proteção de leitura', () => 
     expect(options.headers.Authorization).toBe('Bearer test-token')
     expect(JSON.stringify(options)).not.toContain('Content-Type')
   })
+  it('preserva versão válida para evitar edição com dados obsoletos no futuro', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true, status: 200,
+      json: async () => ({ data: [{ id: 't1', workspaceId: space.id, description: 'QA', amountCents: 100, version: 2 }] }),
+    }))
+    const result = await readOnlineFinance(space, 'transactions', identityId)
+    expect(result[0].version).toBe(2)
+  })
+  it('rejeita versão financeira inválida retornada pela API', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true, status: 200,
+      json: async () => ({ data: [{ id: 't1', workspaceId: space.id, description: 'QA', amountCents: 100, version: 0 }] }),
+    }))
+    await expect(readOnlineFinance(space, 'transactions', identityId)).rejects.toThrow('Versão de registro inválida')
+  })
   it('rejeita resposta contendo registro de outro espaço', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true, status: 200,
