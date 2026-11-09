@@ -23,6 +23,9 @@ const end = ref('')
 const allDay = ref(false)
 const reminder = ref(-1)
 let timer: ReturnType<typeof setInterval>|undefined
+let refreshTimer: ReturnType<typeof setInterval>|undefined
+type ReminderRow = Pick<EventRow, 'id' | 'starts_at' | 'reminder_minutes'>
+const upcomingReminders = ref<ReminderRow[]>([])
 const notified = new Set<string>()
 
 function localDate(d:Date):string {
@@ -114,6 +117,7 @@ async function save():Promise<void> {
   editorOpen.value=false;message.value='Evento salvo.'
   month.value=new Date(startDate.getFullYear(),startDate.getMonth(),1);selectedDay.value=localDate(startDate)
   await load()
+  await loadUpcomingReminders()
  }catch(cause){error.value=cause instanceof Error?cause.message:'Falha ao salvar o evento.'}
  finally{busy.value=false}
 }
@@ -126,19 +130,36 @@ async function remove():Promise<void> {
   const result=await supabase.from('calendar_events').delete().eq('id',editing.value).eq('user_id',user.id).select('id')
   if(result.error)throw result.error
   if(!result.data?.length)throw new Error('Evento não encontrado ou sem permissão.')
-  editorOpen.value=false;message.value='Evento excluído.';await load()
+  editorOpen.value=false;message.value='Evento excluído.';await load();await loadUpcomingReminders()
  }catch(cause){error.value=cause instanceof Error?cause.message:'Falha ao excluir.'}
  finally{busy.value=false}
+}
+async function loadUpcomingReminders():Promise<void> {
+ if(!supabase)return
+ try{
+  const {data:{user},error:userError}=await supabase.auth.getUser()
+  if(userError||!user){upcomingReminders.value=[];return}
+  const startIso=new Date(Date.now()-2*60000).toISOString()
+  const endIso=new Date(Date.now()+25*3600000).toISOString()
+  const {data,error:queryError}=await supabase.from('calendar_events')
+   .select('id,starts_at,reminder_minutes').eq('user_id',user.id)
+   .not('reminder_minutes','is',null).gte('starts_at',startIso).lt('starts_at',endIso)
+  if(queryError)throw queryError
+  upcomingReminders.value=(data??[]) as ReminderRow[]
+ }catch{
+  // Falha de consulta não pode expor eventos de uma sessão anterior.
+  upcomingReminders.value=[]
+ }
 }
 async function enableNotifications():Promise<void> {
  if(!('Notification' in window)){message.value='Notificações não são suportadas neste navegador.';return}
  const permission=await Notification.requestPermission()
- message.value=permission==='granted'?'Notificações autorizadas enquanto o Farol estiver aberto.':'As notificações não foram autorizadas.'
+ message.value=permission==='granted'?'Notificações autorizadas enquanto a tela do Calendário estiver aberta.':'As notificações não foram autorizadas.'
 }
 async function notifyDue():Promise<void> {
  if(!('Notification' in window)||Notification.permission!=='granted')return
  const current=Date.now()
- for(const event of events.value){
+ for(const event of upcomingReminders.value){
   if(event.reminder_minutes===null)continue
   const trigger=new Date(event.starts_at).getTime()-event.reminder_minutes*60000
   const key=event.id+':'+event.starts_at
@@ -158,9 +179,11 @@ watch(month,()=>{void load()})
 onMounted(()=>{
  try{const saved=localStorage.getItem('farol:calendar:region');region.value=saved==='SP'||saved==='SOROCABA'?saved:'BR'}catch{/* localStorage indisponível */}
  void load()
+ void loadUpcomingReminders()
  timer=setInterval(()=>{void notifyDue()},30000)
+ refreshTimer=setInterval(()=>{void loadUpcomingReminders()},180000)
 })
-onUnmounted(()=>{if(timer)clearInterval(timer)})
+onUnmounted(()=>{if(timer)clearInterval(timer);if(refreshTimer)clearInterval(refreshTimer)})
 function setRegion(value:CalendarRegion):void {
  region.value=value
  try{localStorage.setItem('farol:calendar:region',value)}catch{/* preferências não persistidas */}
