@@ -19,5 +19,5 @@ export function canAccessWithoutSession(path: string): boolean {
 
 /** Usuários com sessão ativa começam na Visão geral, não no login/cadastro. */
 export function shouldRedirectLoggedInVisitor(path: string, authenticated: boolean): boolean {
-  return authenticated && (path === '/entrar' || path === '/cadastro')
+  return authenticated && ['/entrar', '/cadastro', '/entrar/celular', '/cadastro/celular', '/recuperar-celular'].includes(path)
 }
