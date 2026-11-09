@@ -50,10 +50,11 @@ const days=computed(()=>{
  const length=new Date(y,m+1,0).getDate()
  return [...Array(offset).fill(null),...Array.from({length},(_,i)=>localDate(new Date(y,m,i+1)))] as (string|null)[]
 })
-const dayEvents=computed(()=>events.value.filter(e=>eventOccursOnDay(e,selectedDay.value)).sort((a,b)=>a.starts_at.localeCompare(b.starts_at)))
+function eventsOnDay(day:string):EventRow[] { return events.value.filter(e=>eventOccursOnDay(e,day)).sort((a,b)=>a.starts_at.localeCompare(b.starts_at)) }
+const dayEvents=computed(()=>eventsOnDay(selectedDay.value))
 const dayHolidays=computed(()=>holidays.value.filter(h=>h.date===selectedDay.value))
 function holidayOn(day:string):Holiday|undefined {return holidays.value.find(h=>h.date===day)}
-function countOn(day:string):number { return events.value.filter(e=>eventOccursOnDay(e,day)).length }
+function countOn(day:string):number { return eventsOnDay(day).length }
 let loadSequence=0
 async function load():Promise<void> {
  const sequence=++loadSequence
@@ -218,7 +219,8 @@ function setRegion(value:CalendarRegion):void {
      <button v-if="day" type="button" :aria-label="'Selecionar '+day" @click="selectedDay=day">
       <span class="calendar-number">{{ Number(day.slice(-2)) }}</span>
       <span v-if="holidayOn(day)" class="calendar-holiday" :title="holidayOn(day)?.name">{{ holidayOn(day)?.name }}</span>
-      <span v-if="countOn(day)" class="calendar-event-count">{{ countOn(day) }} evento(s)</span>
+      <span v-for="event in eventsOnDay(day).slice(0,2)" :key="event.id" class="calendar-event-chip" :title="event.title">{{ event.title }}</span>
+      <span v-if="countOn(day)>2" class="calendar-event-count">+{{ countOn(day)-2 }} eventos</span>
      </button>
     </div>
    </div>
