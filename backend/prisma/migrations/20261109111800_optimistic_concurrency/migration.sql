@@ -1,19 +1,23 @@
--- Versionamento otimista: evita sobrescrita de edições simultâneas.
--- Adição não destrutiva, mantém os registros atuais em version = 1.
--- Somente aplicar ao banco Supabase DEV; produção requer migração aprovada separadamente.
-ALTER TABLE public."Transaction"
-  ADD COLUMN IF NOT EXISTS "version" INTEGER NOT NULL DEFAULT 1;
-ALTER TABLE public."RecurringBill"
-  ADD COLUMN IF NOT EXISTS "version" INTEGER NOT NULL DEFAULT 1;
-ALTER TABLE public."FixedExpense"
-  ADD COLUMN IF NOT EXISTS "version" INTEGER NOT NULL DEFAULT 1;
-ALTER TABLE public."BudgetProject"
-  ADD COLUMN IF NOT EXISTS "version" INTEGER NOT NULL DEFAULT 1;
-ALTER TABLE public."Transaction"
-  ADD CONSTRAINT "Transaction_version_positive" CHECK ("version" >= 1);
-ALTER TABLE public."RecurringBill"
-  ADD CONSTRAINT "RecurringBill_version_positive" CHECK ("version" >= 1);
-ALTER TABLE public."FixedExpense"
-  ADD CONSTRAINT "FixedExpense_version_positive" CHECK ("version" >= 1);
-ALTER TABLE public."BudgetProject"
-  ADD CONSTRAINT "BudgetProject_version_positive" CHECK ("version" >= 1);
+-- Versionamento otimista. Alterações aditivas e seguras em ambientes já migrados.
+-- Para cada edição, o backend compara id + workspaceId + version.
+ALTER TABLE public."Transaction" ADD COLUMN IF NOT EXISTS "version" INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE public."RecurringBill" ADD COLUMN IF NOT EXISTS "version" INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE public."FixedExpense" ADD COLUMN IF NOT EXISTS "version" INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE public."BudgetProject" ADD COLUMN IF NOT EXISTS "version" INTEGER NOT NULL DEFAULT 1;
+
+DO $$
+DECLARE
+  target text;
+  cname text;
+BEGIN
+  FOREACH target IN ARRAY ARRAY['Transaction','RecurringBill','FixedExpense','BudgetProject']
+  LOOP
+    cname := target || '_version_positive';
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_constraint
+      WHERE conname = cname AND conrelid = format('public.%I',target)::regclass
+    ) THEN
+      EXECUTE format('ALTER TABLE public.%I ADD CONSTRAINT %I CHECK ("version" >= 1)',target,cname);
+    END IF;
+  END LOOP;
+END $$;
