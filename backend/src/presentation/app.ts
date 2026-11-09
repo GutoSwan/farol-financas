@@ -409,7 +409,7 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
       if (identity.assuranceLevel !== 'aal2') return reply.code(403).send({ error: 'Autenticação em duas etapas necessária.' })
       const space = z.string().uuid().safeParse(request.params.workspaceId)
       if (!space.success) return reply.code(404).send({ error: 'Registro não encontrado.' })
-      if (deps.allowWorkspaceWrites === false) return reply.code(403).send({ error: 'Gravação desativada neste Preview.' })
+      if (deps.allowWorkspaceWrites !== true) return reply.code(403).send({ error: 'Gravação desativada neste Preview.' })
       const parsed = parseCatalogInput(kind, request.body, false)
       if (!parsed.success) return reply.code(400).send({ error: 'Dados inválidos.' })
       try {
@@ -432,7 +432,7 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
       const space = z.string().uuid().safeParse(request.params.workspaceId)
       const record = z.string().uuid().safeParse(request.params.recordId)
       if (!space.success || !record.success) return reply.code(404).send({ error: 'Registro não encontrado.' })
-      if (deps.allowWorkspaceWrites === false) return reply.code(403).send({ error: 'Gravação desativada neste Preview.' })
+      if (deps.allowWorkspaceWrites !== true) return reply.code(403).send({ error: 'Gravação desativada neste Preview.' })
       const parsed = parseCatalogInput(kind, request.body, true)
       if (!parsed.success) return reply.code(400).send({ error: 'Alterações inválidas.' })
       try {
@@ -455,7 +455,7 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
       const space = z.string().uuid().safeParse(request.params.workspaceId)
       const record = z.string().uuid().safeParse(request.params.recordId)
       if (!space.success || !record.success) return reply.code(404).send({ error: 'Registro não encontrado.' })
-      if (deps.allowWorkspaceWrites === false) return reply.code(403).send({ error: 'Gravação desativada neste Preview.' })
+      if (deps.allowWorkspaceWrites !== true) return reply.code(403).send({ error: 'Gravação desativada neste Preview.' })
       try {
         await deps.workspaceService.requireMember(identity.userId, space.data, ['OWNER', 'EDITOR'])
       } catch (error) {
@@ -505,7 +505,7 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
       const workspaceId = z.string().uuid().safeParse(request.params.workspaceId)
       if (!workspaceId.success) return reply.code(404).send({ error: 'Espaço não encontrado.' })
       // Preview nunca grava dados financeiros reais, independentemente do token.
-      if (deps.allowWorkspaceWrites === false) {
+      if (deps.allowWorkspaceWrites !== true) {
         return reply.code(403).send({ error: 'Gravação financeira desativada neste ambiente de testes.' })
       }
       const parsed = transactionInputSchema.safeParse(request.body)
@@ -537,7 +537,7 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
       const workspaceId = z.string().uuid().safeParse(request.params.workspaceId)
       const transactionId = z.string().uuid().safeParse(request.params.transactionId)
       if (!workspaceId.success || !transactionId.success) return reply.code(404).send({ error: 'Lançamento não encontrado.' })
-      if (deps.allowWorkspaceWrites === false) {
+      if (deps.allowWorkspaceWrites !== true) {
         return reply.code(403).send({ error: 'Gravação financeira desativada neste ambiente de testes.' })
       }
       const parsed = transactionPatchSchema.safeParse(request.body)
@@ -567,7 +567,7 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
       const workspaceId = z.string().uuid().safeParse(request.params.workspaceId)
       const transactionId = z.string().uuid().safeParse(request.params.transactionId)
       if (!workspaceId.success || !transactionId.success) return reply.code(404).send({ error: 'Lançamento não encontrado.' })
-      if (deps.allowWorkspaceWrites === false) {
+      if (deps.allowWorkspaceWrites !== true) {
         return reply.code(403).send({ error: 'Gravação financeira desativada neste ambiente de testes.' })
       }
       try {
@@ -589,7 +589,7 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
     if (identity.assuranceLevel !== 'aal2') {
       return reply.code(403).send({ error: 'Autenticação em duas etapas necessária para alterar dados financeiros.' })
     }
-    if (deps.allowWorkspaceWrites === false) {
+    if (deps.allowWorkspaceWrites !== true) {
       return reply.code(403).send({ error: 'Criação de espaços desativada neste ambiente de testes.' })
     }
     const parsed = createWorkspaceSchema.safeParse(request.body)
