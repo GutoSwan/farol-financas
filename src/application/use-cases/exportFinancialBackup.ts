@@ -30,24 +30,3 @@ export function buildLocalFinancialBackup() {
   }
 }
 
-/** Baixa um JSON revisável antes de migrar do navegador para o Supabase. */
-export function downloadLocalFinancialBackup(): string {
-  const backup = buildLocalFinancialBackup()
-  const text = JSON.stringify(backup, null, 2)
-  const fileName = 'farol-financas-backup-' + backup.exportedAt.slice(0, 10) + '.json'
-  const blob = new Blob([text], { type: 'application/json;charset=utf-8' })
-  const address = URL.createObjectURL(blob)
-  try {
-    const link = document.createElement('a')
-    link.href = address
-    link.download = fileName
-    link.style.display = 'none'
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-  } finally {
-    // Deixe o navegador iniciar o download antes de liberar o URL temporário.
-    setTimeout(() => URL.revokeObjectURL(address), 1000)
-  }
-  return fileName
-}
