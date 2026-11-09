@@ -12,7 +12,7 @@ import { StaleFinancialRecordError } from '../domain/errors/StaleFinancialRecord
 // A versão obrigatória vem da última leitura do registro: If-Match: "1".
  // Uma rota sem precondição nunca pode sobrescrever dados silenciosamente.
 const versionHeader = /^"([1-9][0-9]{0,9})"$/
-function parseExpectedVersion(raw: unknown): { status: 'ok'; version: number } | { status: 'missing' | 'invalid' } {
+function parseExpectedVersion(raw: unknown): { status: 'ok'; version: number } | { status: 'missing' } | { status: 'invalid' } {
   if (raw === undefined) return { status: 'missing' }
   if (typeof raw !== 'string') return { status: 'invalid' }
   const match = versionHeader.exec(raw)
