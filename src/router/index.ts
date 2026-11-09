@@ -15,7 +15,9 @@ import LegacyDataAccessPage from '../presentation/pages/LegacyDataAccessPage.vue
 import { localLegacyAccess, setVerifiedLocalUser } from '../infrastructure/persistence/legacyAccess'
 import AuthPage from '../presentation/pages/AuthPage.vue'
 import MfaChallengePage from '../presentation/pages/MfaChallengePage.vue'
+import MfaSetupPage from '../presentation/pages/MfaSetupPage.vue'
 import { supabase } from '../infrastructure/auth/supabase'
+import { listVerifiedTotpFactors } from '../infrastructure/auth/totpMfa'
 import { canAccessWithoutSession, shouldRedirectLoggedInVisitor } from './authNavigation'
 import { requiredMfaRedirect } from './mfaNavigation'
 import { isFarolAdmin } from '../domain/auth/adminAccess'
@@ -41,6 +43,7 @@ const router = createRouter({
     ],
   },
   { path: '/verificar-2fa', component: MfaChallengePage, meta: { title: 'Verificar código' } },
+  { path: '/configurar-2fa', component: MfaSetupPage, meta: { title: 'Configurar autenticador' } },
   { path: '/vincular-dados-locais', component: LegacyDataAccessPage, meta: { title: 'Proteção dos dados locais' } },
   { path: '/entrar', component: AuthPage, props: { mode: 'login' }, meta: { title: 'Entrar' } },
   { path: '/cadastro', component: AuthPage, props: { mode: 'signup' }, meta: { title: 'Criar conta' } },
@@ -78,22 +81,26 @@ router.beforeEach(async (to) => {
     return { path: '/', replace: true }
   }
 
-  const requiresAssurance = to.path === '/verificar-2fa' || !canAccessWithoutSession(to.path)
+  const requiresAssurance = to.path === '/verificar-2fa' || to.path === '/configurar-2fa' || !canAccessWithoutSession(to.path)
   if (requiresAssurance) {
     try {
       const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
       if (error || !data) throw new Error('Não foi possível conferir o segundo fator.')
+      // A lista de fatores verificados é consultada no Supabase, nunca em
+      // localStorage: apagar o app do celular não desativa o TOTP no servidor.
+      const factors = await listVerifiedTotpFactors()
       const target = requiredMfaRedirect(
         to.path,
         Boolean(to.meta.requiresLegacyData) || to.path === '/vincular-dados-locais',
         data.currentLevel,
         data.nextLevel,
+        factors.length,
       )
       if (target) return { path: target, replace: true }
     } catch {
       // Em falha da verificação MFA, NÃO liberar dados financeiros.
-      if (to.path !== '/conta' && to.path !== '/verificar-2fa') {
-        return { path: '/conta', replace: true }
+      if (to.path !== '/verificar-2fa' && to.path !== '/configurar-2fa') {
+        return { path: '/verificar-2fa', replace: true }
       }
     }
   }
