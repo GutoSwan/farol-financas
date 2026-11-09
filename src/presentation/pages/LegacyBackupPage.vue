@@ -2,6 +2,9 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { supabase } from '../../infrastructure/auth/supabase'
 import { localLegacyAccess } from '../../infrastructure/persistence/legacyAccess'
+import { getOnlineIdentity, listOnlineWorkspaces } from '../../infrastructure/api/onlineWorkspaces'
+import { analyzeLegacyMigration } from '../../application/use-cases/analyzeLegacyMigration'
+import type { MigrationPreview } from '../../application/use-cases/analyzeLegacyMigration'
 import { buildLocalFinancialBackup } from '../../application/use-cases/exportFinancialBackup'
 import {
   encryptFinancialBackup, inspectEncryptedFinancialBackup, summarizeFinancialBackup,
@@ -10,6 +13,9 @@ import type { FinancialBackupSummary } from '../../infrastructure/backup/encrypt
 
 const summary = ref<FinancialBackupSummary | null>(null)
 const inspected = ref<FinancialBackupSummary | null>(null)
+const preview = ref<MigrationPreview | null>(null)
+const analyzing = ref(false)
+const analysisError = ref('')
 const loading = ref(true)
 const busy = ref(false)
 const errorText = ref('')
@@ -99,6 +105,7 @@ function selectBackupFile(event: Event): void {
 }
 
 async function inspectBackupFile(): Promise<void> {
+  preview.value = null
   if (busy.value || !selectedFile.value) return
   busy.value = true
   errorText.value = ''
@@ -116,6 +123,36 @@ async function inspectBackupFile(): Promise<void> {
   } finally {
     inspectionPassword.value = ''
     busy.value = false
+  }
+}
+
+async function simulateMigration(): Promise<void> {
+  if (busy.value || analyzing.value || !inspected.value || loading.value) return
+  analyzing.value = true
+  analysisError.value = ''
+  preview.value = null
+  try {
+    const owner = await confirmedOwner()
+    // A API recebe apenas o JWT necessário a GET /me e GET /workspaces.
+    // Nenhum lançamento, histórico, orçamento ou snapshot é enviado.
+    let onlineSpaces: Awaited<ReturnType<typeof listOnlineWorkspaces>> | null = null
+    try {
+      const identity = await getOnlineIdentity()
+      if (identity.id !== owner) throw new Error('Identidade da API diferente da conta autenticada.')
+      onlineSpaces = await listOnlineWorkspaces()
+    } catch (cause) {
+      // Preview sem API permite análise LOCAL, mas nunca declara a nuvem verificada.
+      if (cause instanceof Error && cause.message.includes('Identidade da API diferente')) throw cause
+      onlineSpaces = null
+    }
+    if (await confirmedOwner() !== owner) throw new Error('Sessão alterada durante a análise.')
+    const result = analyzeLegacyMigration(buildLocalFinancialBackup(), onlineSpaces)
+    if (await confirmedOwner() !== owner) throw new Error('Sessão alterada durante a análise.')
+    preview.value = result
+  } catch (cause) {
+    analysisError.value = cause instanceof Error ? cause.message : 'Não foi possível simular a migração.'
+  } finally {
+    analyzing.value = false
   }
 }
 
@@ -216,6 +253,53 @@ onBeforeUnmount(disposeDownload)
     </p>
     <p class="auth-muted">Conferir não grava no navegador nem importa para o Supabase. A migração com autorização e prevenção de duplicações será uma etapa separada.</p>
   </section>
+  <section class="panel backup-stage" aria-label="Simulação da migração">
+    <div class="panel-title">
+      <div>
+        <h2>4. Simular a migração sem gravar nada</h2>
+        <p>Confira limites de valores, datas, vínculos dos orçamentos e possíveis conflitos de espaços.</p>
+      </div>
+    </div>
+    <p class="auth-muted">
+      Primeiro confirme a integridade do arquivo no passo 3. A simulação lê os
+      dados atuais deste navegador; caso tenham mudado após o backup, gere outra cópia.
+      A API recebe apenas consultas de identidade e nomes dos espaços já salvos na sua conta.
+      Nenhuma informação financeira local é enviada.
+    </p>
+    <button type="button" class="primary" :disabled="!inspected || analyzing || busy || loading"
+      @click="simulateMigration">
+      {{ analyzing ? 'Analisando...' : 'Verificar compatibilidade da migração' }}
+    </button>
+    <p v-if="analysisError" class="error" role="alert">{{ analysisError }}</p>
+    <template v-if="preview">
+      <p class="backup-result" role="status">
+        <strong>{{ preview.blockers }} impedimentos</strong> ·
+        <strong>{{ preview.warnings }} avisos</strong> ·
+        <strong>{{ preview.requiresRemapping }} identificadores a mapear</strong>
+      </p>
+      <p v-if="preview.readyForImportDesign" class="success">
+        A estrutura analisada não apresentou impedimentos conhecidos.
+        Isso ainda NÃO autoriza a importação, que depende de implementação, comparação por registro e testes.
+      </p>
+      <p v-else class="auth-warning">
+        Existem incompatibilidades a revisar antes de importar. Nenhum registro foi enviado, criado ou excluído.
+      </p>
+      <p class="auth-muted">
+        {{ preview.cloudComparison === 'not-checked'
+          ? 'Sem conexão com a API: somente os dados locais foram analisados. Não é seguro iniciar uma importação.'
+          : 'A comparação online cobre apenas nomes de espaços. Duplicações de lançamentos dentro da nuvem ainda não podem ser descartadas.' }}
+      </p>
+      <ul v-if="preview.issues.length" class="backup-issues">
+        <li v-for="(issue, index) in preview.issues" :key="index">
+          <strong>{{ issue.severity === 'blocker' ? 'Impedimento' : 'Aviso' }} · {{ issue.code }}</strong>
+          <span>{{ issue.location }}: {{ issue.message }}</span>
+        </li>
+      </ul>
+      <p v-if="preview.truncated" class="auth-warning">
+        Há mais ocorrências além das exibidas. Nenhum dado será importado automaticamente.
+      </p>
+    </template>
+  </section>
   <p v-if="message" class="success" role="status">{{ message }}</p>
   <p v-if="errorText" class="error" role="alert">{{ errorText }}</p>
 </template>
@@ -228,4 +312,7 @@ onBeforeUnmount(disposeDownload)
 .backup-form label:not(.calendar-check) { display: grid; gap: .3rem; }
 .backup-form input[type="password"], .backup-form input[type="file"] { max-width: 100%; min-width: 0; }
 .backup-stage .success a { display: inline-flex; margin: .5rem 0; padding: .6rem .9rem; text-decoration: none; }
+.backup-result { margin-top: 1rem; }
+.backup-issues { display: grid; gap: .65rem; margin-top: 1rem; padding-left: 1.2rem; }
+.backup-issues li { display: grid; gap: .25rem; overflow-wrap: anywhere; }
 </style>

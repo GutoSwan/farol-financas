@@ -4,6 +4,7 @@ on:
     branches:
       - security/v0.14-auth-hardening
       - security/v0.16-legacy-backup-staging
+      - security/v0.17-legacy-dry-run
   pull_request:
   workflow_dispatch:
 permissions:
