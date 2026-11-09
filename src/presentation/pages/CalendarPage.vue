@@ -2,13 +2,15 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { supabase } from '../../infrastructure/auth/supabase'
 import { getHolidays } from '../../domain/calendar/holidays'
-import type { Holiday } from '../../domain/calendar/holidays'
+import type { CalendarRegion, Holiday } from '../../domain/calendar/holidays'
+import { eventDateRangeFromInputs, eventOccursOnDay } from '../../domain/calendar/eventDates'
+import { canUseNativeCalendarNotifications, isNativeCalendar, requestNativeCalendarNotifications, syncNativeCalendarNotifications } from '../../infrastructure/notifications/nativeCalendar'
 
 type EventRow = { id:string; user_id:string; title:string; description:string; starts_at:string; ends_at:string; all_day:boolean; reminder_minutes:number|null }
 const now = new Date()
 const month = ref(new Date(now.getFullYear(),now.getMonth(),1))
 const selectedDay = ref(localDate(now))
-const region = ref<'BR'|'SP'>('BR')
+const region = ref<CalendarRegion>('BR')
 const events = ref<EventRow[]>([])
 const busy = ref(false)
 const error = ref('')
@@ -22,6 +24,10 @@ const end = ref('')
 const allDay = ref(false)
 const reminder = ref(-1)
 let timer: ReturnType<typeof setInterval>|undefined
+let refreshTimer: ReturnType<typeof setInterval>|undefined
+let reminderSequence = 0
+type ReminderRow = Pick<EventRow, 'id' | 'starts_at' | 'reminder_minutes'>
+const upcomingReminders = ref<ReminderRow[]>([])
 const notified = new Set<string>()
 
 function localDate(d:Date):string {
@@ -32,6 +38,12 @@ function localInput(d:Date):string {
 }
 function dayFromIso(iso:string):string { return localDate(new Date(iso)) }
 function displayTime(iso:string):string { return new Intl.DateTimeFormat('pt-BR',{hour:'2-digit',minute:'2-digit'}).format(new Date(iso)) }
+function eventTiming(event:EventRow):string {
+ if(event.all_day) return 'Dia inteiro'
+ if(dayFromIso(event.starts_at)===dayFromIso(event.ends_at)) return displayTime(event.starts_at)+' às '+displayTime(event.ends_at)
+ const fmt=new Intl.DateTimeFormat('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})
+ return fmt.format(new Date(event.starts_at))+' até '+fmt.format(new Date(event.ends_at))
+}
 const monthLabel=computed(()=>new Intl.DateTimeFormat('pt-BR',{month:'long',year:'numeric'}).format(month.value))
 const holidays=computed(()=>getHolidays(month.value.getFullYear(),region.value))
 const days=computed(()=>{
@@ -40,22 +52,27 @@ const days=computed(()=>{
  const length=new Date(y,m+1,0).getDate()
  return [...Array(offset).fill(null),...Array.from({length},(_,i)=>localDate(new Date(y,m,i+1)))] as (string|null)[]
 })
-const dayEvents=computed(()=>events.value.filter(e=>dayFromIso(e.starts_at)===selectedDay.value).sort((a,b)=>a.starts_at.localeCompare(b.starts_at)))
+function eventsOnDay(day:string):EventRow[] { return events.value.filter(e=>eventOccursOnDay(e,day)).sort((a,b)=>a.starts_at.localeCompare(b.starts_at)) }
+const dayEvents=computed(()=>eventsOnDay(selectedDay.value))
 const dayHolidays=computed(()=>holidays.value.filter(h=>h.date===selectedDay.value))
 function holidayOn(day:string):Holiday|undefined {return holidays.value.find(h=>h.date===day)}
-function countOn(day:string):number { return events.value.filter(e=>dayFromIso(e.starts_at)===day).length }
+function countOn(day:string):number { return eventsOnDay(day).length }
+let loadSequence=0
 async function load():Promise<void> {
+ const sequence=++loadSequence
  if(!supabase){error.value='Supabase não configurado.';return}
  busy.value=true;error.value=''
  const startIso=new Date(month.value.getFullYear(),month.value.getMonth()-1,1).toISOString()
  const endIso=new Date(month.value.getFullYear(),month.value.getMonth()+2,1).toISOString()
  try{
+  const {data:{user},error:userError}=await supabase.auth.getUser()
+  if(userError||!user)throw new Error('Sua sessão precisa ser validada novamente.')
   const {data,error:queryError}=await supabase.from('calendar_events').select('id,user_id,title,description,starts_at,ends_at,all_day,reminder_minutes')
-   .gte('starts_at',startIso).lt('starts_at',endIso).order('starts_at')
+   .eq('user_id',user.id).lt('starts_at',endIso).gt('ends_at',startIso).order('starts_at')
   if(queryError)throw queryError
-  events.value=(data??[]) as EventRow[]
- }catch(cause){events.value=[];error.value=cause instanceof Error?cause.message:'Não foi possível carregar eventos.'}
- finally{busy.value=false}
+  if(sequence===loadSequence)events.value=(data??[]) as EventRow[]
+ }catch(cause){if(sequence===loadSequence){events.value=[];error.value=cause instanceof Error?cause.message:'Não foi possível carregar eventos.'}}
+ finally{if(sequence===loadSequence)busy.value=false}
 }
 function changeMonth(delta:number):void {
  month.value=new Date(month.value.getFullYear(),month.value.getMonth()+delta,1)
@@ -70,14 +87,25 @@ function openNew():void {
 }
 function openEdit(event:EventRow):void {
  editing.value=event.id;title.value=event.title;description.value=event.description
- start.value=localInput(new Date(event.starts_at));end.value=localInput(new Date(event.ends_at))
+ start.value=event.all_day?dayFromIso(event.starts_at):localInput(new Date(event.starts_at))
+ end.value=event.all_day?dayFromIso(new Date(new Date(event.ends_at).getTime()-1).toISOString()):localInput(new Date(event.ends_at))
  allDay.value=event.all_day;reminder.value=event.reminder_minutes??-1;editorOpen.value=true;error.value=''
+}
+function setAllDay(value:boolean):void {
+ if(value===allDay.value)return
+ start.value=value?start.value.slice(0,10):start.value.slice(0,10)+'T09:00'
+ end.value=value?end.value.slice(0,10):end.value.slice(0,10)+'T10:00'
+ allDay.value=value
 }
 async function save():Promise<void> {
  if(!supabase)return
  if(!title.value.trim()||!start.value||!end.value){error.value='Preencha título, início e fim.';return}
- const startDate=new Date(start.value),endDate=new Date(end.value)
- if(!Number.isFinite(startDate.getTime())||!Number.isFinite(endDate.getTime())||endDate<=startDate){error.value='O término deve ser posterior ao início.';return}
+ let startDate:Date
+ let endDate:Date
+ try{
+  const range=eventDateRangeFromInputs(start.value,end.value,allDay.value)
+  startDate=range.startDate;endDate=range.endDate
+ }catch(cause){error.value=cause instanceof Error?cause.message:'Datas inválidas.';return}
  busy.value=true;error.value='';message.value=''
  try{
   const {data:{user},error:userError}=await supabase.auth.getUser()
@@ -92,6 +120,7 @@ async function save():Promise<void> {
   editorOpen.value=false;message.value='Evento salvo.'
   month.value=new Date(startDate.getFullYear(),startDate.getMonth(),1);selectedDay.value=localDate(startDate)
   await load()
+  await loadUpcomingReminders()
  }catch(cause){error.value=cause instanceof Error?cause.message:'Falha ao salvar o evento.'}
  finally{busy.value=false}
 }
@@ -104,19 +133,64 @@ async function remove():Promise<void> {
   const result=await supabase.from('calendar_events').delete().eq('id',editing.value).eq('user_id',user.id).select('id')
   if(result.error)throw result.error
   if(!result.data?.length)throw new Error('Evento não encontrado ou sem permissão.')
-  editorOpen.value=false;message.value='Evento excluído.';await load()
+  editorOpen.value=false;message.value='Evento excluído.';await load();await loadUpcomingReminders()
  }catch(cause){error.value=cause instanceof Error?cause.message:'Falha ao excluir.'}
  finally{busy.value=false}
 }
+async function loadUpcomingReminders():Promise<void> {
+ const sequence=++reminderSequence
+ if(!supabase)return
+ const native=isNativeCalendar()
+ try{
+  const allowed=native?await canUseNativeCalendarNotifications():
+   ('Notification' in window && Notification.permission==='granted')
+  if(!allowed){upcomingReminders.value=[];return}
+  const {data:{user},error:userError}=await supabase.auth.getUser()
+  if(userError||!user){upcomingReminders.value=[];return}
+  const startIso=new Date(Date.now()-2*60000).toISOString()
+  const endIso=new Date(Date.now()+(native?61*24:25)*3600000).toISOString()
+  const {data,error:queryError}=await supabase.from('calendar_events')
+   .select('id,starts_at,reminder_minutes').eq('user_id',user.id)
+   .not('reminder_minutes','is',null).gte('starts_at',startIso).lt('starts_at',endIso)
+   .order('starts_at').limit(native?200:100)
+  if(queryError)throw queryError
+  if(sequence!==reminderSequence)return
+  // Evita agendar compromissos da identidade anterior se a conta mudou durante o fetch.
+  const {data:confirmed,error:identityError}=await supabase.auth.getUser()
+  if(identityError||confirmed.user?.id!==user.id)return
+  const loaded=(data??[]) as ReminderRow[]
+  if(native){
+   await syncNativeCalendarNotifications(loaded)
+  }else{
+   upcomingReminders.value=loaded
+  }
+ }catch{
+  // Nunca mostrar nem agendar detalhes quando a consulta não foi validada.
+  if(sequence===reminderSequence)upcomingReminders.value=[]
+ }
+}
 async function enableNotifications():Promise<void> {
+ if(isNativeCalendar()){
+  try{
+   const allowed=await requestNativeCalendarNotifications()
+   message.value=allowed
+    ?'Lembretes nativos autorizados. Os próximos compromissos serão agendados no dispositivo, inclusive com o Farol fechado.'
+    :'As notificações do iPhone não foram autorizadas.'
+   if(allowed)await loadUpcomingReminders()
+  }catch{
+   message.value='Não foi possível configurar lembretes nativos neste aparelho.'
+  }
+  return
+ }
  if(!('Notification' in window)){message.value='Notificações não são suportadas neste navegador.';return}
  const permission=await Notification.requestPermission()
- message.value=permission==='granted'?'Notificações autorizadas enquanto o Farol estiver aberto.':'As notificações não foram autorizadas.'
+ message.value=permission==='granted'?'Notificações autorizadas enquanto a tela do Calendário estiver aberta.':'As notificações não foram autorizadas.'
+ if(permission==='granted')await loadUpcomingReminders()
 }
 async function notifyDue():Promise<void> {
- if(!('Notification' in window)||Notification.permission!=='granted')return
+ if(isNativeCalendar()||!('Notification' in window)||Notification.permission!=='granted')return
  const current=Date.now()
- for(const event of events.value){
+ for(const event of upcomingReminders.value){
   if(event.reminder_minutes===null)continue
   const trigger=new Date(event.starts_at).getTime()-event.reminder_minutes*60000
   const key=event.id+':'+event.starts_at
@@ -134,12 +208,14 @@ async function notifyDue():Promise<void> {
 }
 watch(month,()=>{void load()})
 onMounted(()=>{
- try{region.value=localStorage.getItem('farol:calendar:region')==='SP'?'SP':'BR'}catch{/* localStorage indisponível */}
+ try{const saved=localStorage.getItem('farol:calendar:region');region.value=saved==='SP'||saved==='SOROCABA'?saved:'BR'}catch{/* localStorage indisponível */}
  void load()
+ void loadUpcomingReminders()
  timer=setInterval(()=>{void notifyDue()},30000)
+ refreshTimer=setInterval(()=>{void loadUpcomingReminders()},180000)
 })
-onUnmounted(()=>{if(timer)clearInterval(timer)})
-function setRegion(value:'BR'|'SP'):void {
+onUnmounted(()=>{reminderSequence++;if(timer)clearInterval(timer);if(refreshTimer)clearInterval(refreshTimer)})
+function setRegion(value:CalendarRegion):void {
  region.value=value
  try{localStorage.setItem('farol:calendar:region',value)}catch{/* preferências não persistidas */}
 }
@@ -159,10 +235,11 @@ function setRegion(value:'BR'|'SP'):void {
      <button class="calendar-small" type="button" aria-label="Próximo mês" @click="changeMonth(1)">›</button>
      <button class="calendar-small" type="button" @click="today">Hoje</button>
     </div>
-    <label class="calendar-region">Feriados de
-     <select :value="region" @change="setRegion(($event.target as HTMLSelectElement).value as 'BR'|'SP')">
+    <label class="calendar-region">Feriados da região
+     <select :value="region" @change="setRegion(($event.target as HTMLSelectElement).value as CalendarRegion)">
       <option value="BR">Brasil (nacionais)</option>
       <option value="SP">São Paulo (estado)</option>
+      <option value="SOROCABA">Sorocaba (SP)</option>
      </select>
     </label>
    </div>
@@ -172,11 +249,12 @@ function setRegion(value:'BR'|'SP'):void {
      <button v-if="day" type="button" :aria-label="'Selecionar '+day" @click="selectedDay=day">
       <span class="calendar-number">{{ Number(day.slice(-2)) }}</span>
       <span v-if="holidayOn(day)" class="calendar-holiday" :title="holidayOn(day)?.name">{{ holidayOn(day)?.name }}</span>
-      <span v-if="countOn(day)" class="calendar-event-count">{{ countOn(day) }} evento(s)</span>
+      <span v-for="event in eventsOnDay(day).slice(0,2)" :key="event.id" class="calendar-event-chip" :title="event.title">{{ event.title }}</span>
+      <span v-if="countOn(day)>2" class="calendar-event-count">+{{ countOn(day)-2 }} eventos</span>
      </button>
     </div>
    </div>
-   <p class="calendar-footnote">Feriados nacionais e o feriado estadual de SP. Os feriados municipais ainda não estão integrados. Carnaval e Corpus Christi não são exibidos automaticamente como feriados nacionais.</p>
+   <p class="calendar-footnote">Selecione sua região manualmente. O calendário mostra feriados nacionais e os locais validados para São Paulo e Sorocaba. Carnaval e outros pontos facultativos não são confundidos com feriados.</p>
   </section>
   <section class="panel calendar-agenda">
    <div class="panel-title"><div><h2>{{ new Intl.DateTimeFormat('pt-BR',{dateStyle:'full'}).format(new Date(selectedDay+'T12:00:00')) }}</h2><p>Compromissos do dia selecionado</p></div><button type="button" class="calendar-small" @click="openNew">+ Adicionar</button></div>
@@ -185,20 +263,20 @@ function setRegion(value:'BR'|'SP'):void {
    <p v-if="message" class="success" role="status">{{ message }}</p>
    <article v-for="holiday in dayHolidays" :key="holiday.date+holiday.name" class="calendar-agenda-entry calendar-agenda-holiday"><strong>Feriado: {{ holiday.name }}</strong><span>{{ holiday.level }}</span></article>
    <article v-for="event in dayEvents" :key="event.id" class="calendar-agenda-entry">
-    <div><strong>{{ event.title }}</strong><p>{{ event.all_day?'Dia inteiro':displayTime(event.starts_at)+' às '+displayTime(event.ends_at) }}</p><p v-if="event.description">{{ event.description }}</p></div>
+    <div><strong>{{ event.title }}</strong><p>{{ eventTiming(event) }}</p><p v-if="event.description">{{ event.description }}</p></div>
     <button type="button" class="calendar-small" @click="openEdit(event)">Editar</button>
    </article>
    <p v-if="!dayEvents.length&&!dayHolidays.length" class="empty">Nenhum compromisso neste dia.</p>
-   <div class="calendar-notice"><button type="button" class="secondary-action" @click="enableNotifications">Ativar notificações</button><p>Os lembretes desta versão funcionam enquanto o Farol estiver aberto. Avisos com aplicativo fechado e no iPhone precisarão de push ou notificações nativas.</p></div>
+   <div class="calendar-notice"><button type="button" class="secondary-action" @click="enableNotifications">Ativar notificações</button><p>{{ isNativeCalendar() ? 'No aplicativo nativo, o iPhone pode entregar lembretes já agendados mesmo com o Farol fechado, desde que as notificações estejam autorizadas. Abra o Calendário periodicamente para atualizar a agenda do aparelho.' : 'No navegador ou PWA, os lembretes desta versão funcionam somente enquanto a tela do Calendário estiver aberta. Não há push em segundo plano.' }}</p></div>
   </section>
   <div v-if="editorOpen" class="calendar-backdrop" @click.self="editorOpen=false">
    <section class="calendar-dialog" role="dialog" aria-modal="true" aria-label="Editar evento">
     <h2>{{ editing?'Editar evento':'Novo evento' }}</h2>
     <form class="form" @submit.prevent="save">
      <label>Título<input v-model="title" maxlength="160" required autocomplete="off" /></label>
-     <label>Início<input v-model="start" type="datetime-local" required /></label>
-     <label>Término<input v-model="end" type="datetime-local" required /></label>
-     <label class="calendar-check"><input v-model="allDay" type="checkbox" /> Dia inteiro</label>
+     <label>Início<input v-model="start" :type="allDay ? 'date' : 'datetime-local'" required /></label>
+     <label>Término<input v-model="end" :type="allDay ? 'date' : 'datetime-local'" required /></label>
+     <label class="calendar-check"><input :checked="allDay" type="checkbox" @change="setAllDay(($event.target as HTMLInputElement).checked)" /> Dia inteiro</label>
      <label>Lembrar<select v-model.number="reminder"><option :value="-1">Sem lembrete</option><option :value="0">No horário</option><option :value="5">5 minutos antes</option><option :value="15">15 minutos antes</option><option :value="30">30 minutos antes</option><option :value="60">1 hora antes</option><option :value="1440">1 dia antes</option></select></label>
      <label>Observações<textarea v-model="description" rows="3" maxlength="4000" /></label>
      <p v-if="error" class="error" role="alert">{{ error }}</p>

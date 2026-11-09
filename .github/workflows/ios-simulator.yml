@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - feat/frontend-preview-auth-api-20261104
+      - feat/calendar-regional-20261109
     paths:
       - 'src/**'
       - 'public/**'
