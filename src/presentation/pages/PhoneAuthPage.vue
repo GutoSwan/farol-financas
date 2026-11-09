@@ -2,12 +2,14 @@
 import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import UiIcon from '../components/UiIcon.vue'
+import { useTheme } from '../composables/useTheme'
 import { authConfigured } from '../../infrastructure/auth/supabase'
 import { phoneAuthEnabled, sendPhoneOtp, verifyPhoneOtp } from '../../infrastructure/auth/phoneAuth'
 import type { PhoneFlow } from '../../infrastructure/auth/phoneAuth'
 
 const props = defineProps<{ mode: PhoneFlow }>()
 const router = useRouter()
+const { isDark, toggleTheme } = useTheme()
 const phone = ref('')
 const pendingPhone = ref('')
 const code = ref('')
@@ -69,6 +71,9 @@ async function confirm(): Promise<void> {
   <div class="auth-screen">
     <section class="auth-card auth-card--phone">
       <RouterLink class="auth-brand" to="/entrar">◈ Farol <span>Finanças</span></RouterLink>
+      <button type="button" class="auth-theme-button" :aria-label="isDark ? 'Ativar tema claro' : 'Ativar tema escuro'" :title="isDark ? 'Ativar tema claro' : 'Ativar tema escuro'" @click="toggleTheme">
+        <UiIcon :name="isDark ? 'sun' : 'moon'" :size="19" />
+      </button>
       <p class="auth-kicker">ACESSO SEGURO PELO CELULAR</p>
 
       <div class="auth-flow-tabs" role="navigation" aria-label="Tipo de acesso por celular">
