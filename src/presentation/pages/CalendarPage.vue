@@ -136,7 +136,9 @@ async function remove():Promise<void> {
  finally{busy.value=false}
 }
 async function loadUpcomingReminders():Promise<void> {
- if(!supabase)return
+ if(!supabase || !('Notification' in window) || Notification.permission!=='granted'){
+  upcomingReminders.value=[];return
+ }
  try{
   const {data:{user},error:userError}=await supabase.auth.getUser()
   if(userError||!user){upcomingReminders.value=[];return}
@@ -156,6 +158,7 @@ async function enableNotifications():Promise<void> {
  if(!('Notification' in window)){message.value='Notificações não são suportadas neste navegador.';return}
  const permission=await Notification.requestPermission()
  message.value=permission==='granted'?'Notificações autorizadas enquanto a tela do Calendário estiver aberta.':'As notificações não foram autorizadas.'
+ if(permission==='granted')await loadUpcomingReminders()
 }
 async function notifyDue():Promise<void> {
  if(!('Notification' in window)||Notification.permission!=='granted')return
