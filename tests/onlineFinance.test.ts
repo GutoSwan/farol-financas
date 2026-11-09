@@ -31,7 +31,7 @@ describe('Cliente financeiro online: isolamento e proteção de leitura', () => 
     await expect(readOnlineFinance(space, 'transactions', identityId)).rejects.toThrow('sessão mudou')
     expect(fetchMock).not.toHaveBeenCalled()
   })
-  it('faz GET sem cache, sem cookies e somente com Bearer, sem escrita', async () => {
+  it('faz GET com cookie apenas da mesma origem e Bearer Supabase, sem cache nem escrita', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true, status: 200,
       json: async () => ({ data: [{ id: 't1', workspaceId: space.id, description: 'Teste', amountCents: 100 }] }),
@@ -42,7 +42,7 @@ describe('Cliente financeiro online: isolamento e proteção de leitura', () => 
     expect(fetchMock).toHaveBeenCalledOnce()
     const [url, options] = fetchMock.mock.calls[0]
     expect(url).toContain('/api/v1/workspaces/' + space.id + '/transactions?limit=50')
-    expect(options).toMatchObject({ method: 'GET', cache: 'no-store', credentials: 'omit', redirect: 'error' })
+    expect(options).toMatchObject({ method: 'GET', cache: 'no-store', credentials: 'same-origin', redirect: 'error' })
     expect(options.headers.Authorization).toBe('Bearer test-token')
     expect(JSON.stringify(options)).not.toContain('Content-Type')
   })
