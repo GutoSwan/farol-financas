@@ -3,7 +3,6 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import UiIcon from '../components/UiIcon.vue'
 import OnlineWorkspacesSidebar from '../components/OnlineWorkspacesSidebar.vue'
-import { downloadLocalFinancialBackup } from '../../application/use-cases/exportFinancialBackup'
 import { useTheme } from '../composables/useTheme'
 import { useWorkspaces } from '../composables/useWorkspaces'
 import { useAuth } from '../composables/useAuth'
@@ -83,20 +82,6 @@ onBeforeUnmount(() => {
 })
 const newName = ref('')
 const notice = ref('')
-const backupNotice = ref('')
-const backupError = ref('')
-
-function exportFinancialData(): void {
-  backupNotice.value = ''
-  backupError.value = ''
-  try {
-    const file = downloadLocalFinancialBackup()
-    backupNotice.value = 'Backup preparado: ' + file
-  } catch (cause) {
-    backupError.value = cause instanceof Error ? cause.message : 'Não foi possível baixar o backup.'
-  }
-}
-
 const links = [
   { to: '/', label: 'Visão geral', icon: 'dashboard' as const },
   { to: '/contas-mensais', label: 'Contas mensais', icon: 'receipt' as const },
@@ -107,6 +92,7 @@ const links = [
   { to: '/relatorios', label: 'Relatórios', icon: 'chart' as const },
   { to: '/calendario', label: 'Calendário', icon: 'calendar' as const },
   { to: '/dados-online', label: 'Dados na nuvem', icon: 'folder' as const },
+  { to: '/backup-local', label: 'Backup seguro', icon: 'archive' as const },
 ]
 
 watch(() => route.fullPath, () => {
@@ -211,11 +197,9 @@ function removeWorkspace(space: FinancialWorkspace): void {
           <section class="sidebar-backup-section" aria-label="Backup dos dados financeiros">
             <h3><UiIcon name="folder" :size="16" /> Segurança dos seus dados</h3>
             <p>Antes de migrarmos seus registros para a nuvem, salve uma cópia dos espaços financeiros deste navegador.</p>
-            <button class="sidebar-backup-button" type="button" @click="exportFinancialData">
-              Baixar backup financeiro (JSON)
-            </button>
-            <p v-if="backupNotice" class="sidebar-backup-notice" role="status">{{ backupNotice }}</p>
-            <p v-if="backupError" class="sidebar-backup-error" role="alert">{{ backupError }}</p>
+            <RouterLink class="sidebar-backup-button" to="/backup-local" @click="managing = false; closeMobileMenu(true)">
+              Preparar backup criptografado
+            </RouterLink>
           </section>
           <OnlineWorkspacesSidebar />
           <p v-if="notice" class="success" role="status">{{ notice }}</p>
