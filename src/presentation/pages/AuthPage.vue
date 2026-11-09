@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import UiIcon from '../components/UiIcon.vue'
 import OnlineWorkspacesPanel from '../components/OnlineWorkspacesPanel.vue'
 import TotpSettings from '../components/TotpSettings.vue'
+import PhoneLinkPanel from '../components/PhoneLinkPanel.vue'
 import { useAuth } from '../composables/useAuth'
 import { PROFILE_ICONS } from '../../domain/profile/profile'
 import type { ProfileIcon } from '../../domain/profile/profile'
@@ -83,7 +84,7 @@ async function submit(): Promise<void> {
       verificationEmail.value = email.value.trim()
       signupStep.value = hasSession ? 'success' : 'verification'
       if (hasSession) message.value = 'Cadastro realizado! Sua conta já está confirmada.'
-      else message.value = 'Enviamos um e-mail de confirmação. Se ele trouxer um código, digite-o aqui. Se trouxer o botão Confirm address, confirme pelo link e depois entre no Farol.'
+      else message.value = 'Se este e-mail puder ser cadastrado, enviaremos instruções de confirmação. Se já tiver uma conta, entre normalmente ou recupere sua senha.'
     } else if (props.mode === 'forgot') {
       await requestPasswordReset(email.value)
       message.value = 'Se esse e-mail estiver cadastrado, enviaremos um link para redefinir a senha.'
@@ -224,6 +225,7 @@ async function logout(): Promise<void> {
             <span>O acesso às telas financeiras exige login. Porém, os espaços e lançamentos ainda ficam neste dispositivo, sem separação por usuário ou sincronização entre dispositivos.</span>
           </div>
           <TotpSettings />
+          <PhoneLinkPanel />
           <OnlineWorkspacesPanel />
           <button type="button" class="secondary-action auth-full-button" :disabled="busy" @click="logout">
             <UiIcon name="log-out" :size="16" /> Sair da conta
@@ -247,7 +249,7 @@ async function logout(): Promise<void> {
       </template>
 
       <template v-else-if="mode === 'signup' && signupStep === 'verification'">
-        <h1>Confirme seu e-mail</h1>
+        <h1>Verifique seu e-mail</h1>
         <p class="auth-subtitle">Enviamos uma mensagem de confirmação para <strong>{{ verificationEmail }}</strong>. Caso ela tenha um código numérico, digite-o abaixo. Se tiver o botão <strong>Confirm address</strong>, use o link e depois volte ao login. Não compartilhe o link nem o código.</p>
         <form class="auth-form" @submit.prevent="confirmEmail">
           <label>E-mail que recebeu o código
@@ -264,7 +266,8 @@ async function logout(): Promise<void> {
           </button>
         </form>
         <button type="button" class="auth-inline-link" :disabled="busy" @click="resendCode">Reenviar e-mail de confirmação</button>
-        <RouterLink class="auth-inline-link" to="/entrar">Já confirmei pelo link. Ir para o login</RouterLink>
+        <RouterLink class="auth-inline-link" to="/entrar">Já tenho cadastro ou confirmei pelo link. Ir para o login</RouterLink>
+        <RouterLink class="auth-inline-link" to="/recuperar-senha">Este e-mail já era meu. Recuperar senha</RouterLink>
         <button type="button" class="auth-inline-link" :disabled="busy" @click="signupStep = 'form'; code = ''; resetMessages()">
           Corrigir e-mail ou voltar ao cadastro
         </button>
@@ -273,6 +276,12 @@ async function logout(): Promise<void> {
 
       <template v-else>
         <h1>{{ mode === 'login' ? 'Entrar no Farol' : mode === 'signup' ? 'Criar uma conta' : mode === 'forgot' ? 'Recuperar minha senha' : 'Definir nova senha' }}</h1>
+        <div v-if="mode === 'login' || mode === 'signup' || mode === 'forgot'" class="auth-method-choice" aria-label="Escolha seu método de acesso">
+          <span class="auth-method-active"><UiIcon name="mail" :size="16" /> E-mail</span>
+          <RouterLink :to="mode === 'login' ? '/entrar/celular' : mode === 'signup' ? '/cadastro/celular' : '/recuperar-celular'">
+            <UiIcon name="smartphone" :size="16" /> Celular <small>Em preparação</small>
+          </RouterLink>
+        </div>
         <p class="auth-subtitle">{{ mode === 'login' ? 'Acesse com seu e-mail e sua senha.' : mode === 'signup' ? 'Crie seu acesso. Enviaremos um código de confirmação por e-mail.' : mode === 'forgot' ? 'Enviaremos um link de recuperação para seu e-mail.' : 'Digite a nova senha para sua conta.' }}</p>
         <div v-if="isLoggedIn && mode !== 'reset'" class="auth-info">Você já está autenticado. <RouterLink to="/conta">Ver meu perfil</RouterLink>.</div>
 
@@ -307,6 +316,10 @@ async function logout(): Promise<void> {
           @click="verificationEmail = email.trim(); signupStep = 'verification'; resetMessages()">
           Já tenho um código de confirmação
         </button>
+        <p v-if="mode === 'signup'" class="auth-account-hint">
+          Já usou este e-mail no Farol? Por segurança não verificamos publicamente se um endereço tem cadastro.
+          <RouterLink to="/entrar">Entrar</RouterLink> ou <RouterLink to="/recuperar-senha">recuperar acesso</RouterLink>.
+        </p>
         <div class="auth-links">
           <RouterLink v-if="mode !== 'login'" to="/entrar">Já tenho uma conta</RouterLink>
           <RouterLink v-if="mode === 'login'" to="/cadastro">Criar conta</RouterLink>
