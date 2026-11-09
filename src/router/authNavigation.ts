@@ -7,6 +7,9 @@ const PUBLIC_AUTH_ROUTES = new Set([
   '/cadastro',
   '/recuperar-senha',
   '/redefinir-senha',
+  '/entrar/celular',
+  '/cadastro/celular',
+  '/recuperar-celular',
 ])
 
 /** Todo o restante do Farol, inclusive '/' e '/conta', exige login. */
