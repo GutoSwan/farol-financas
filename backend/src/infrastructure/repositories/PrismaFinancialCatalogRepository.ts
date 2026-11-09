@@ -8,7 +8,7 @@ export class PrismaFinancialCatalogRepository implements FinancialCatalogReposit
   async listRecurringBills(workspaceId: string, limit: number) {
     return this.prisma.recurringBill.findMany({
       where: { workspaceId },
-      select: { id: true, workspaceId: true, name: true, dueDay: true, active: true },
+      select: { id: true, workspaceId: true, name: true, dueDay: true, active: true, version: true },
       orderBy: [{ dueDay: 'asc' }, { id: 'asc' }],
       take: limit,
     })
@@ -19,7 +19,7 @@ export class PrismaFinancialCatalogRepository implements FinancialCatalogReposit
       where: { workspaceId },
       select: {
         id: true, workspaceId: true, name: true, amountCents: true, dueDay: true,
-        startMonth: true, endBeforeMonth: true,
+        startMonth: true, endBeforeMonth: true, version: true,
       },
       orderBy: [{ dueDay: 'asc' }, { id: 'asc' }],
       take: limit,
@@ -29,7 +29,7 @@ export class PrismaFinancialCatalogRepository implements FinancialCatalogReposit
   async listBudgets(workspaceId: string, limit: number) {
     return this.prisma.budgetProject.findMany({
       where: { workspaceId },
-      select: { id: true, workspaceId: true, title: true, category: true, targetCents: true, status: true },
+      select: { id: true, workspaceId: true, title: true, category: true, targetCents: true, status: true, version: true },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: limit,
     })
