@@ -79,7 +79,7 @@ describe('Escritas financeiras: autorização de contas, gastos e orçamentos', 
      it(kind + ' ' + method + ': permite EDITOR autorizado', async () => {
        const { app, calls } = makeFixture()
        try {
-         const res = await app.inject({ method, url: path, headers: { authorization: 'Bearer editor' }, ...(method !== 'DELETE' ? { payload: body } : {}) })
+         const res = await app.inject({ method, url: path, headers: { authorization: 'Bearer editor', 'if-match': '"1"' }, ...(method !== 'DELETE' ? { payload: body } : {}) })
          expect(res.statusCode).toBe(method === 'POST' ? 201 : method === 'PATCH' ? 200 : 204)
          expect(calls).toEqual([method.toLowerCase().replace('post','create').replace('patch','update') + ':' + kind + ':' + space])
        } finally { await app.close() }
