@@ -73,6 +73,10 @@
       "destination": "/index.html"
     },
     {
+      "source": "/backup-local",
+      "destination": "/index.html"
+    },
+    {
       "source": "/configurar-2fa",
       "destination": "/index.html"
     },
