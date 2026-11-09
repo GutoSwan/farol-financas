@@ -132,6 +132,27 @@ export function summarizeFinancialBackup(raw: unknown): FinancialBackupSummary {
   return summary
 }
 
+/**
+ * Identifica o conteúdo de um snapshot sem depender da hora da exportação.
+ * O digest não contém senha, chave e não substitui autenticação ou backup.
+ */
+export async function fingerprintFinancialBackup(raw: unknown): Promise<string> {
+  summarizeFinancialBackup(raw)
+  if (!record(raw)) throw new Error('Snapshot financeiro inválido.')
+  const { exportedAt: _exportedAt, ...financialContent } = raw
+  const bytes = ownedBytes(encoder.encode(JSON.stringify(financialContent)))
+  if (bytes.byteLength > MAX_BACKUP_BYTES) {
+    throw new Error('Backup maior que 6 MB. Nenhuma informação foi alterada.')
+  }
+  const digest = await cryptoApi().subtle.digest('SHA-256', bytes)
+  return base64(new Uint8Array(digest))
+}
+
+export interface InspectedFinancialBackup {
+  summary: FinancialBackupSummary
+  fingerprint: string
+}
+
 export async function encryptFinancialBackup(
   backup: FinancialBackup, password: string, ownerUserId: string,
 ): Promise<EncryptedBackupEnvelope> {
@@ -163,10 +184,10 @@ export async function encryptFinancialBackup(
   }
 }
 
-/** Descriptografa apenas para conferir integridade e contagens, sem escrever dados. */
-export async function inspectEncryptedFinancialBackup(
+/** Descriptografa somente em memória para verificar conteúdo e fingerprint. */
+export async function inspectEncryptedFinancialBackupWithFingerprint(
   raw: unknown, password: string, expectedUserId: string,
-): Promise<FinancialBackupSummary> {
+): Promise<InspectedFinancialBackup> {
   validUserId(expectedUserId)
   if (!record(raw) || raw.format !== 'farol-financas-encrypted-backup' ||
       raw.version !== 1 || raw.ownerUserId !== expectedUserId ||
@@ -197,5 +218,14 @@ export async function inspectEncryptedFinancialBackup(
   } catch {
     throw new Error('Conteúdo do backup está danificado.')
   }
-  return summarizeFinancialBackup(parsed)
+  const summary = summarizeFinancialBackup(parsed)
+  const fingerprint = await fingerprintFinancialBackup(parsed)
+  return { summary, fingerprint }
+}
+
+/** Mantém o contrato anterior para chamadas que apenas precisam do inventário. */
+export async function inspectEncryptedFinancialBackup(
+  raw: unknown, password: string, expectedUserId: string,
+): Promise<FinancialBackupSummary> {
+  return (await inspectEncryptedFinancialBackupWithFingerprint(raw, password, expectedUserId)).summary
 }
