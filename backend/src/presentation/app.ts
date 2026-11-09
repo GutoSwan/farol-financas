@@ -7,6 +7,20 @@ import { randomUUID } from 'node:crypto'
 import type { InvoiceRepository } from '../domain/repositories/InvoiceRepository.js'
 import type { FinancialCatalogRepository } from '../domain/repositories/FinancialCatalogRepository.js'
 import type { CatalogKind, CatalogCreate, CatalogUpdate, FinancialCatalogMutations } from '../domain/repositories/FinancialCatalogMutations.js'
+import { StaleFinancialRecordError } from '../domain/errors/StaleFinancialRecordError.js'
+
+// A versão obrigatória vem da última leitura do registro: If-Match: "1".
+ // Uma rota sem precondição nunca pode sobrescrever dados silenciosamente.
+const versionHeader = /^"([1-9][0-9]{0,9})"$/
+function parseExpectedVersion(raw: unknown): { status: 'ok'; version: number } | { status: 'missing' | 'invalid' } {
+  if (raw === undefined) return { status: 'missing' }
+  if (typeof raw !== 'string') return { status: 'invalid' }
+  const match = versionHeader.exec(raw)
+  if (!match) return { status: 'invalid' }
+  const version = Number(match[1])
+  if (!Number.isSafeInteger(version) || version > 2147483646) return { status: 'invalid' }
+  return { status: 'ok', version }
+}
 
 const createWorkspaceSchema = z.object({
   name: z.string().min(2).max(60),
@@ -122,7 +136,7 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
         return reply.code(403).send({ error: 'Origem não autorizada.' })
       }
       reply.header('Access-Control-Allow-Origin', allowed)
-      reply.header('Access-Control-Allow-Headers', 'Authorization, Content-Type')
+      reply.header('Access-Control-Allow-Headers', 'Authorization, Content-Type, If-Match')
       reply.header('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS')
       reply.header('Access-Control-Max-Age', '600')
       if (request.method === 'OPTIONS') return reply.code(204).send()
@@ -442,10 +456,19 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
         return reply.code(404).send({ error: 'Registro não encontrado.' })
       }
       if (!deps.financialCatalogMutations) return reply.code(503).send({ error: 'Módulo indisponível.' })
-      const input = { kind, workspaceId: space.data, id: record.data, data: parsed.data } as CatalogUpdate
-      const data = await deps.financialCatalogMutations.update(input)
-      if (!data) return reply.code(404).send({ error: 'Registro não encontrado.' })
-      return { data }
+      const expected = parseExpectedVersion(request.headers['if-match'])
+      if (expected.status === 'missing') return reply.code(428).send({ error: 'Envie If-Match com a versão atual do registro.' })
+      if (expected.status === 'invalid') return reply.code(400).send({ error: 'Versão inválida.' })
+      try {
+        const input = { kind, workspaceId: space.data, id: record.data,
+          expectedVersion: expected.version, data: parsed.data } as CatalogUpdate
+        const data = await deps.financialCatalogMutations.update(input)
+        if (!data) return reply.code(404).send({ error: 'Registro não encontrado.' })
+        return { data }
+      } catch (error) {
+        if (error instanceof StaleFinancialRecordError) return reply.code(409).send({ error: error.message, code: 'VERSION_CONFLICT' })
+        throw error
+      }
     })
 
     app.delete<{ Params: { workspaceId: string; recordId: string } }>(base + '/:recordId', async (request, reply) => {
@@ -463,10 +486,18 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
         return reply.code(404).send({ error: 'Registro não encontrado.' })
       }
       if (!deps.financialCatalogMutations) return reply.code(503).send({ error: 'Módulo indisponível.' })
-      if (!await deps.financialCatalogMutations.delete(kind, space.data, record.data)) {
-        return reply.code(404).send({ error: 'Registro não encontrado.' })
+      const expected = parseExpectedVersion(request.headers['if-match'])
+      if (expected.status === 'missing') return reply.code(428).send({ error: 'Envie If-Match com a versão atual do registro.' })
+      if (expected.status === 'invalid') return reply.code(400).send({ error: 'Versão inválida.' })
+      try {
+        if (!await deps.financialCatalogMutations.delete(kind, space.data, record.data, expected.version)) {
+          return reply.code(404).send({ error: 'Registro não encontrado.' })
+        }
+        return reply.code(204).send()
+      } catch (error) {
+        if (error instanceof StaleFinancialRecordError) return reply.code(409).send({ error: error.message, code: 'VERSION_CONFLICT' })
+        throw error
       }
-      return reply.code(204).send()
     })
   }
 
@@ -549,11 +580,19 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
         return reply.code(404).send({ error: 'Lançamento não encontrado.' })
       }
       if (!deps.transactionRepository) return reply.code(503).send({ error: 'Módulo indisponível.' })
-      const updated = await deps.transactionRepository.updateWithinWorkspace(
-        workspaceId.data, transactionId.data, parsed.data,
-      )
-      if (!updated) return reply.code(404).send({ error: 'Lançamento não encontrado.' })
-      return { data: updated }
+      const expected = parseExpectedVersion(request.headers['if-match'])
+      if (expected.status === 'missing') return reply.code(428).send({ error: 'Envie If-Match com a versão atual do lançamento.' })
+      if (expected.status === 'invalid') return reply.code(400).send({ error: 'Versão inválida.' })
+      try {
+        const updated = await deps.transactionRepository.updateWithinWorkspace(
+          workspaceId.data, transactionId.data, parsed.data, expected.version,
+        )
+        if (!updated) return reply.code(404).send({ error: 'Lançamento não encontrado.' })
+        return { data: updated }
+      } catch (error) {
+        if (error instanceof StaleFinancialRecordError) return reply.code(409).send({ error: error.message, code: 'VERSION_CONFLICT' })
+        throw error
+      }
     },
   )
 
@@ -577,9 +616,19 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
         return reply.code(404).send({ error: 'Lançamento não encontrado.' })
       }
       if (!deps.transactionRepository) return reply.code(503).send({ error: 'Módulo indisponível.' })
-      const deleted = await deps.transactionRepository.deleteWithinWorkspace(workspaceId.data, transactionId.data)
-      if (!deleted) return reply.code(404).send({ error: 'Lançamento não encontrado.' })
-      return reply.code(204).send()
+      const expected = parseExpectedVersion(request.headers['if-match'])
+      if (expected.status === 'missing') return reply.code(428).send({ error: 'Envie If-Match com a versão atual do lançamento.' })
+      if (expected.status === 'invalid') return reply.code(400).send({ error: 'Versão inválida.' })
+      try {
+        const deleted = await deps.transactionRepository.deleteWithinWorkspace(
+          workspaceId.data, transactionId.data, expected.version,
+        )
+        if (!deleted) return reply.code(404).send({ error: 'Lançamento não encontrado.' })
+        return reply.code(204).send()
+      } catch (error) {
+        if (error instanceof StaleFinancialRecordError) return reply.code(409).send({ error: error.message, code: 'VERSION_CONFLICT' })
+        throw error
+      }
     },
   )
 
