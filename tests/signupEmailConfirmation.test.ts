@@ -12,7 +12,7 @@ describe('Confirmação de cadastro no Preview', () => {
   })
   it('explica e-mail com link e permite voltar ao login sem solicitar outro cadastro', () => {
     expect(signupSource).toContain('Confirm address')
-    expect(signupSource).toContain('Já confirmei pelo link. Ir para o login')
+    expect(signupSource).toContain('Já tenho cadastro ou confirmei pelo link. Ir para o login')
     expect(signupSource).toContain('to="/entrar"')
   })
   it('não promete código quando o projeto utiliza modelo com link', () => {
