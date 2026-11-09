@@ -53,6 +53,12 @@ function cryptoApi(): Crypto {
   }
   return globalThis.crypto
 }
+/** WebCrypto no TS 5.8 exige BufferSource com ArrayBuffer, nunca SharedArrayBuffer. */
+function ownedBytes(bytes: Uint8Array): Uint8Array<ArrayBuffer> {
+  const result = new Uint8Array(new ArrayBuffer(bytes.byteLength))
+  result.set(bytes)
+  return result
+}
 function base64(bytes: Uint8Array): string {
   const parts: string[] = []
   for (let i = 0; i < bytes.length; i += 8192) {
@@ -60,17 +66,17 @@ function base64(bytes: Uint8Array): string {
   }
   return btoa(parts.join(''))
 }
-function unbase64(value: string, exactLength?: number): Uint8Array {
+function unbase64(value: string, exactLength?: number): Uint8Array<ArrayBuffer> {
   if (!/^[A-Za-z0-9+/]+={0,2}$/.test(value)) throw new Error('Backup criptografado inválido.')
-  const bytes = Uint8Array.from(atob(value), (character) => character.charCodeAt(0))
+  const bytes = ownedBytes(Uint8Array.from(atob(value), (character) => character.charCodeAt(0)))
   if (exactLength !== undefined && bytes.length !== exactLength) {
     throw new Error('Parâmetros de criptografia inválidos.')
   }
   return bytes
 }
-async function deriveKey(password: string, salt: Uint8Array): Promise<CryptoKey> {
+async function deriveKey(password: string, salt: Uint8Array<ArrayBuffer>): Promise<CryptoKey> {
   const subtle = cryptoApi().subtle
-  const secret = await subtle.importKey('raw', encoder.encode(password), 'PBKDF2', false, ['deriveKey'])
+  const secret = await subtle.importKey('raw', ownedBytes(encoder.encode(password)), 'PBKDF2', false, ['deriveKey'])
   return subtle.deriveKey(
     { name: 'PBKDF2', hash: 'SHA-256', salt, iterations: ITERATIONS },
     secret,
@@ -79,8 +85,8 @@ async function deriveKey(password: string, salt: Uint8Array): Promise<CryptoKey>
     ['encrypt', 'decrypt'],
   )
 }
-function associatedData(userId: string): Uint8Array {
-  return encoder.encode('farol-financas-encrypted-backup|v1|' + userId)
+function associatedData(userId: string): Uint8Array<ArrayBuffer> {
+  return ownedBytes(encoder.encode('farol-financas-encrypted-backup|v1|' + userId))
 }
 
 /**
@@ -132,13 +138,13 @@ export async function encryptFinancialBackup(
   validPassword(password)
   validUserId(ownerUserId)
   summarizeFinancialBackup(backup)
-  const plaintext = encoder.encode(JSON.stringify(backup))
+  const plaintext = ownedBytes(encoder.encode(JSON.stringify(backup)))
   if (plaintext.byteLength > MAX_BACKUP_BYTES) {
     throw new Error('Backup maior que 6 MB. Não houve alteração nos registros.')
   }
   const provider = cryptoApi()
-  const salt = provider.getRandomValues(new Uint8Array(16))
-  const iv = provider.getRandomValues(new Uint8Array(12))
+  const salt = provider.getRandomValues(new Uint8Array(new ArrayBuffer(16)))
+  const iv = provider.getRandomValues(new Uint8Array(new ArrayBuffer(12)))
   const key = await deriveKey(password, salt)
   const ciphertext = await provider.subtle.encrypt({
     name: 'AES-GCM', iv, additionalData: associatedData(ownerUserId), tagLength: 128,
