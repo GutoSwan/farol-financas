@@ -38,7 +38,7 @@ function setup() {
       calls.push('transactions:' + workspaceId)
       const s = spaces.find(x => x.id === workspaceId)
       return s ? [{ id: s.userId, workspaceId, description: s.name,
-        category: 'QA', amountCents: s.amount, kind: 'EXPENSE' as const, occurredOn: '2026-11-09' }] : []
+        category: 'QA', amountCents: s.amount, kind: 'EXPENSE' as const, occurredOn: '2026-11-09', version: 1 }] : []
     },
     async createForWorkspace() { throw new Error('Gravação inesperada') },
     async updateWithinWorkspace() { throw new Error('Gravação inesperada') },
