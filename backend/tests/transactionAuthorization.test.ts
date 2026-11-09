@@ -12,7 +12,7 @@ const viewer = '44444444-4444-4444-8444-444444444444'
 const record: TransactionEntry = {
   id: '55555555-5555-4555-8555-555555555555', workspaceId: spaceId,
   description: 'Mercado', category: 'Alimentos', amountCents: 12999, kind: 'EXPENSE',
-  occurredOn: '2026-11-07',
+  occurredOn: '2026-11-07', version: 1,
 }
 
 function fixture(write = true) {
@@ -217,7 +217,7 @@ describe('Transações: edição e exclusão protegidas', () => {
   it('OWNER com MFA pode editar e excluir somente registro do próprio espaço', async () => {
     const { app, calls } = fixture()
     try {
-      const headers = { authorization: 'Bearer alice:aal2' }
+      const headers = { authorization: 'Bearer alice:aal2', 'if-match': '"1"' }
       const updated = await app.inject({ method: 'PATCH', url: transactionUrl, headers, payload: { description: 'Compra editada' } })
       expect(updated.statusCode).toBe(200)
       expect(updated.json().data.description).toBe('Compra editada')
@@ -230,7 +230,7 @@ describe('Transações: edição e exclusão protegidas', () => {
   it('não revela IDs inexistentes em PATCH ou DELETE', async () => {
     const { app } = fixture()
     try {
-      const headers = { authorization: 'Bearer alice:aal2' }
+      const headers = { authorization: 'Bearer alice:aal2', 'if-match': '"1"' }
       const nonexistent = '66666666-6666-4666-8666-666666666666'
       const updated = await app.inject({ method: 'PATCH', url: url + '/' + nonexistent, headers, payload: { description: 'Novo' } })
       const deleted = await app.inject({ method: 'DELETE', url: url + '/' + nonexistent, headers })
