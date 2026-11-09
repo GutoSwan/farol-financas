@@ -7,6 +7,7 @@ import {
 import { totpQrImageSource } from '../../infrastructure/auth/totpQrImage'
 
 type PendingEnrollment = { factorId: string; qrSvg: string; secret: string }
+const emit = defineEmits<{ activated: [] }>()
 const pending = ref<PendingEnrollment | null>(null)
 const verifiedCount = ref(0)
 const assurance = ref<string | null>(null)
@@ -64,6 +65,7 @@ async function confirmEnrollment() {
     code.value = ''
     await refresh()
     message.value = 'Autenticador ativado! A partir do próximo login, o código será obrigatório.'
+    if (assurance.value === 'aal2') emit('activated')
   } catch (error) { errorText.value = safeError(error) }
   finally { busy.value = false }
 }
