@@ -76,11 +76,21 @@ async function exit(): Promise<void> {
           Estes dados locais já estão vinculados a outra conta neste navegador.
           Para proteger a privacidade, o Farol não vai mostrá-los nem transferi-los automaticamente.
         </div>
-        <p class="auth-muted">Entre com a conta que vinculou os registros. A recuperação e migração entre contas exigirão um fluxo próprio.</p>
+        <p class="auth-muted">Entre com a conta que vinculou os registros para acessar os dados antigos. A recuperação e migração entre contas exigirão um fluxo próprio.</p>
+        <RouterLink class="primary auth-full-button" to="/dados-online">
+          Continuar somente com meus dados na nuvem
+        </RouterLink>
+        <RouterLink class="secondary-action auth-full-button" to="/conta">
+          Minha conta e segurança
+        </RouterLink>
+        <p class="auth-muted">Essas opções não transferem, apagam nem liberam os registros locais de outra conta.</p>
       </template>
       <p v-if="error || status === 'unavailable'" class="error" role="alert">
         {{ error || 'O armazenamento local está indisponível. Os dados existentes não foram apagados.' }}
       </p>
+      <RouterLink v-if="status === 'unclaimed' || status === 'unavailable'" class="secondary-action auth-full-button" to="/dados-online">
+        Continuar apenas com dados na nuvem, sem vincular registros locais
+      </RouterLink>
       <button class="secondary-action auth-full-button" type="button" :disabled="busy" @click="exit">Sair da conta</button>
     </section>
   </div>
