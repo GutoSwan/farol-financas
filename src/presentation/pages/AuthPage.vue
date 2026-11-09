@@ -2,6 +2,7 @@
 import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import UiIcon from '../components/UiIcon.vue'
+import { useTheme } from '../composables/useTheme'
 import OnlineWorkspacesPanel from '../components/OnlineWorkspacesPanel.vue'
 import TotpSettings from '../components/TotpSettings.vue'
 import PhoneLinkPanel from '../components/PhoneLinkPanel.vue'
@@ -13,6 +14,7 @@ type AuthMode = 'login' | 'signup' | 'forgot' | 'reset' | 'profile'
 type SignupStep = 'form' | 'verification' | 'success'
 const props = defineProps<{ mode: AuthMode }>()
 const router = useRouter()
+const { isDark, toggleTheme } = useTheme()
 const {
   configured, ready, user, profile, isLoggedIn, signIn, signUp, verifySignupCode, resendSignupCode,
   updateProfile, signOut, requestPasswordReset, updatePassword,
@@ -177,6 +179,9 @@ async function logout(): Promise<void> {
   <div class="auth-screen">
     <div class="auth-card">
       <RouterLink class="auth-brand" to="/">◈ Farol <span>Finanças</span></RouterLink>
+      <button type="button" class="auth-theme-button" :aria-label="isDark ? 'Ativar tema claro' : 'Ativar tema escuro'" :title="isDark ? 'Ativar tema claro' : 'Ativar tema escuro'" @click="toggleTheme">
+        <UiIcon :name="isDark ? 'sun' : 'moon'" :size="19" />
+      </button>
       <p class="auth-kicker">SUA VIDA FINANCEIRA MAIS CLARA</p>
 
       <div v-if="!configured" class="auth-warning" role="alert">
