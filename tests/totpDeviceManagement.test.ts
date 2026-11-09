@@ -35,7 +35,8 @@ describe('Remoção de TOTP exige autorização remota', () => {
 
   it('remove apenas fator verificado e pertencente à sessão autenticada', async () => {
     await removeVerifiedTotpFactor(factorId)
-    expect(fake.unenroll).toHaveBeenCalledExactlyOnceWith({ factorId })
+    expect(fake.unenroll).toHaveBeenCalledTimes(1)
+    expect(fake.unenroll).toHaveBeenCalledWith({ factorId })
   })
 
   it('bloqueia remoção com AAL1, inclusive após senha correta', async () => {
