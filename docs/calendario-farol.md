@@ -28,7 +28,7 @@ Esta tela utiliza a tabela `public.calendar_events` do projeto Supabase de DESEN
 
 Na inspeção de 09/11/2026, a tabela **não existia no projeto de produção**. Não publique esta funcionalidade em produção antes de criar e revisar a estrutura e políticas correspondentes, testar isolamento entre duas contas e confirmar o projeto Supabase apontado pelas variáveis de ambiente. Nenhuma alteração de schema ou migração de dados foi executada nesta etapa.
 
-**Notificações:** são avisos locais via API de Notificações do navegador, enquanto a página Calendário permanece aberta e autorizada. Não constituem push em segundo plano, não funcionam de forma garantida quando o dispositivo está bloqueado e não dependem de título ou observações na tela bloqueada. Para notificar com o PWA fechado ou o app iOS em segundo plano, será necessário implementar Web Push (com assinatura por dispositivo e entrega segura) ou notificações nativas Capacitor, com testes reais no iPhone. Não há essa infraestrutura nesta etapa.
+**Notificações:** no navegador/PWA, são avisos locais via API de Notificações enquanto a página Calendário permanece aberta. No aplicativo **nativo** Capacitor, o projeto utiliza `@capacitor/local-notifications@8.3.1` e agenda no aparelho até 50 lembretes futuros após permissão explícita, com título e texto **genéricos** (nunca o nome/descrição). Os alertas agendados podem ser entregues mesmo com o app fechado, sujeitos às configurações do iOS. Ao sair ou trocar de conta, os lembretes do Farol são cancelados. A agenda é sincronizada ao abrir o Calendário, a cada 3 minutos enquanto a tela permanece aberta, e após edições/exclusões. O PWA NÃO herda essas capacidades do plugin nativo. Ainda faltam o teste no iPhone real e a validação de release.
 
 ## Checklist de QA
 
@@ -45,6 +45,6 @@ Na inspeção de 09/11/2026, a tabela **não existia no projeto de produção**.
 
 ## Próximas evoluções
 
-- Notificações confiáveis com o aplicativo fechado no iOS e no PWA.
+- Validar entrega nativa com o aplicativo fechado no iPhone real; o PWA exigirá Web Push separado.
 - Lista de regiões ampliada por fontes oficiais, com revisão anual dos feriados.
 - Repetição de eventos (semanal/mensal/anual) e convites compartilhados, somente após definir regras de privacidade e autorização.
