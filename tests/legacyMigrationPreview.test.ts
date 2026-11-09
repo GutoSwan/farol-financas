@@ -27,6 +27,16 @@ describe('Simulação segura da migração financeira local', () => {
     expect(backup).toEqual(previous)
   })
 
+  it('permite diagnóstico offline sem dar autorização falsa para importar', () => {
+    const result = analyzeLegacyMigration(buildLocalFinancialBackup(), null)
+    expect(result.blockers).toBe(0)
+    expect(result.warnings).toBe(1)
+    expect(result.cloudComparison).toBe('not-checked')
+    expect(result.readyForImportDesign).toBe(false)
+    expect(result.issues[0].code).toBe('CLOUD_COMPARISON_UNAVAILABLE')
+    expect(data.size).toBe(0)
+  })
+
   it('bloqueia importação cega de espaços com nomes iguais na nuvem', () => {
     const backup = buildLocalFinancialBackup()
     const result = analyzeLegacyMigration(backup, [{
