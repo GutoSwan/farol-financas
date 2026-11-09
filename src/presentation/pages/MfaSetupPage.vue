@@ -81,7 +81,7 @@ async function logout(): Promise<void> {
         Antes de abrir seus dados financeiros, cadastre um novo aplicativo autenticador e confirme o código.
       </p>
       <p v-if="loading" role="status" class="auth-muted">Verificando fatores no servidor...</p>
-      <TotpSettings v-else-if="canEnroll" @activated="onActivated" />
+      <TotpSettings v-else-if="canEnroll" setup-only @activated="onActivated" />
       <p v-if="errorText" class="error" role="alert">{{ errorText }}</p>
       <button type="button" class="secondary-action auth-full-button" :disabled="busy" @click="logout">
         Sair da conta
