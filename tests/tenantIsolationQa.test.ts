@@ -38,53 +38,69 @@ function login(identity: string, own: typeof a | typeof b) {
   mocks.workspaces.mockResolvedValue([own])
 }
 
-describe('Teste real de isolamento por sessão AAL2 e UUID estrangeiro', () => {
+function responseByOwnership(owned: string) {
+  return vi.fn().mockImplementation(async (url: string) => ({
+    status: url.includes('/workspaces/' + owned + '/') ? 200 : 404,
+  }))
+}
+
+describe('Teste real de isolamento: controle 200 próprio + bloqueio 404 alheio', () => {
   beforeEach(() => {
     vi.resetAllMocks()
     login(userA, a)
   })
   afterEach(() => vi.unstubAllGlobals())
 
-  it('Conta A: quatro HTTP 404 vindos da Conta B são aprovação', async () => {
-    const requests = vi.fn().mockResolvedValue({ status: 404 })
+  it('Conta A: própria 200, Conta B 404 em todos os módulos', async () => {
+    const requests = responseByOwnership(spaceA)
     vi.stubGlobal('fetch', requests)
     const result = await runTenantIsolationQa(userA, spaceA, spaceB)
     expect(result.status).toBe('passed')
     expect(result.own).toBe('A')
     expect(result.checks).toHaveLength(4)
-    expect(result.checks.every(x => x.status === 'passed' && x.httpStatus === 404)).toBe(true)
-    expect(requests).toHaveBeenCalledTimes(4)
-    for (const call of requests.mock.calls) {
-      const [url, options] = call
-      expect(url).toContain('/workspaces/' + spaceB + '/')
-      expect(url).not.toContain(spaceA)
+    expect(result.checks.every(x => x.status === 'passed' && x.ownHttpStatus === 200 && x.httpStatus === 404)).toBe(true)
+    expect(requests).toHaveBeenCalledTimes(8)
+    for (let i = 0; i < 8; i++) {
+      const [url, options] = requests.mock.calls[i]
+      expect(url).toContain('/workspaces/' + (i % 2 === 0 ? spaceA : spaceB) + '/')
       expect(options).toMatchObject({ method: 'GET', cache: 'no-store', credentials: 'same-origin', redirect: 'error' })
       expect(options.headers.Authorization).toBe('Bearer qa-jwt-token')
     }
   })
 
-  it('Conta B: testa A de modo simétrico e exige quatro bloqueios', async () => {
+  it('Conta B: própria 200, Conta A 404 em todos os módulos', async () => {
     login(userB, b)
-    const requests = vi.fn().mockResolvedValue({ status: 404 })
+    const requests = responseByOwnership(spaceB)
     vi.stubGlobal('fetch', requests)
     const result = await runTenantIsolationQa(userB, spaceA, spaceB)
     expect(result.status).toBe('passed')
     expect(result.own).toBe('B')
-    expect(requests).toHaveBeenCalledTimes(4)
-    expect(requests.mock.calls.every(([url]) => url.includes('/workspaces/' + spaceA + '/'))).toBe(true)
+    expect(requests).toHaveBeenCalledTimes(8)
+    for (let i = 0; i < 8; i++) {
+      expect(requests.mock.calls[i][0]).toContain('/workspaces/' + (i % 2 === 0 ? spaceB : spaceA) + '/')
+    }
   })
 
-  it('HTTP 200 no espaço alheio é FALHA; não interpreta o corpo da resposta', async () => {
+  it('HTTP 200 no espaço alheio é FALHA sem abrir corpo da resposta', async () => {
     const json = vi.fn()
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({ status: 200, json })
-      .mockResolvedValue({ status: 404 }))
+    const requests = vi.fn().mockResolvedValue({ status: 200, json })
+    vi.stubGlobal('fetch', requests)
     const result = await runTenantIsolationQa(userA, spaceA, spaceB)
     expect(result.status).toBe('failed')
-    expect(result.checks[0]).toMatchObject({ status: 'failed', httpStatus: 200 })
+    expect(result.checks[0]).toMatchObject({ status: 'failed', ownHttpStatus: 200, httpStatus: 200 })
     expect(json).not.toHaveBeenCalled()
   })
 
-  it('401, 403, 500 e erro de rede são inconclusivos, não aprovados', async () => {
+  it('rota própria 404 não significa sucesso no isolamento', async () => {
+    const requests = vi.fn().mockResolvedValue({ status: 404 })
+    vi.stubGlobal('fetch', requests)
+    const result = await runTenantIsolationQa(userA, spaceA, spaceB)
+    expect(result.status).toBe('inconclusive')
+    expect(requests).toHaveBeenCalledTimes(4)
+    expect(result.checks.every(x => x.status === 'inconclusive' && x.ownHttpStatus === 404)).toBe(true)
+  })
+
+  it('401, 403, 500 e erro de rede no controle próprio são inconclusivos', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({ status: 401 })
       .mockResolvedValueOnce({ status: 403 })
       .mockResolvedValueOnce({ status: 500 })
@@ -94,15 +110,15 @@ describe('Teste real de isolamento por sessão AAL2 e UUID estrangeiro', () => {
     expect(result.checks.every(x => x.status === 'inconclusive')).toBe(true)
   })
 
-  it('uma conta que lista ambos os espaços falha ANTES de qualquer consulta', async () => {
-    mocks.workspaces.mockResolvedValue([a, b])
+  it('se ambos os IDs aparecem na lista própria, interrompe sem consultar registros', async () => {
+    mocks.workspaces.mockResolvedValue([a, { ...b, name: 'Renomeado' }])
     const requests = vi.fn()
     vi.stubGlobal('fetch', requests)
     await expect(runTenantIsolationQa(userA, spaceA, spaceB)).rejects.toThrow(/isolamento falhou/i)
     expect(requests).not.toHaveBeenCalled()
   })
 
-  it('sem AAL2 não envia nem uma consulta financeira', async () => {
+  it('sem AAL2 não envia consultas financeiras', async () => {
     mocks.assurance.mockResolvedValue({ data: { currentLevel: 'aal1', nextLevel: 'aal2' }, error: null })
     const requests = vi.fn()
     vi.stubGlobal('fetch', requests)
@@ -110,7 +126,7 @@ describe('Teste real de isolamento por sessão AAL2 e UUID estrangeiro', () => {
     expect(requests).not.toHaveBeenCalled()
   })
 
-  it('bloqueia se sessão mudou ou identidade da API diverge', async () => {
+  it('bloqueia sessão trocada e identidade divergente', async () => {
     const requests = vi.fn()
     vi.stubGlobal('fetch', requests)
     mocks.getUser.mockResolvedValueOnce({ data: { user: { id: userB } }, error: null })
