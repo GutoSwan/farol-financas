@@ -27,6 +27,7 @@ const qrDisplayFailed = ref(false)
 const replacementId = ref<string | null>(null)
 const removalId = ref<string | null>(null)
 const confirmation = ref('')
+const newDeviceName = ref('')
 const proofFactorId = ref('')
 const proofCode = ref('')
 const replacementRequestId = ref<string | null>(null)
@@ -77,7 +78,7 @@ async function beginEnrollment(replaceFactorId: string | null = null): Promise<v
       'Primeiro você cadastrará e verificará um novo autenticador. Somente depois o antigo será removido. Você precisará entrar novamente. Deseja continuar?'
     )) return
     replacementId.value = replaceFactorId
-    pending.value = await beginTotpEnrollment()
+    pending.value = await beginTotpEnrollment(newDeviceName.value)
     showSecret.value = false
     qrDisplayFailed.value = false
     code.value = ''
@@ -110,6 +111,7 @@ async function confirmEnrollment(): Promise<void> {
     pending.value = null
     code.value = ''
     showSecret.value = false
+    newDeviceName.value = ''
     const oldId = replacementId.value
     replacementId.value = null
     await refresh()
@@ -309,7 +311,11 @@ async function confirmRemoval(): Promise<void> {
           Cancelar cadastro
         </button>
       </div>
-      <button v-else-if="!removalId && !replacementRequestId && (verifiedCount === 0 || canManage)" type="button"
+      <label v-if="!pending && !removalId && !replacementRequestId && (verifiedCount === 0 || canManage)" class="factor-name-label">
+        Nome deste dispositivo (opcional)
+        <input v-model.trim="newDeviceName" type="text" maxlength="40" :disabled="busy" placeholder="Ex.: iPhone principal ou celular reserva" />
+      </label>
+      <button v-if="!pending && !removalId && !replacementRequestId && (verifiedCount === 0 || canManage)" type="button"
         class="primary auth-full-button" :disabled="busy" @click="beginEnrollment()">
         {{ verifiedCount ? 'Adicionar outro autenticador' : 'Ativar autenticador' }}
       </button>
@@ -346,5 +352,7 @@ async function confirmRemoval(): Promise<void> {
 .factor-remove-form { display: grid; gap: .75rem; padding: 1rem; border: 1px solid #b42332; border-radius: 10px; }
 .factor-remove-form label { display: grid; gap: .4rem; }
 .factor-remove-form input { width: 100%; }
+.factor-name-label { display: grid; gap: .35rem; margin: .5rem 0; }
+.factor-name-label input { width: 100%; }
 .factor-recovery { margin: 1rem 0; padding: .8rem; border: 1px solid var(--border-color, #8885); border-radius: 10px; }
 </style>
