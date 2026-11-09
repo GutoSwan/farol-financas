@@ -163,6 +163,9 @@ function getVerifier(): Promise<AuthVerifier> {
               WHERE s.id = ${sessionId}::uuid
                 AND s.user_id = ${userId}::uuid
                 AND (s.not_after IS NULL OR s.not_after > NOW())
+                AND u.deleted_at IS NULL
+                AND (u.banned_until IS NULL OR u.banned_until <= NOW())
+                AND u.is_anonymous IS NOT TRUE
             ) AS active
           `
           return rows.length === 1 && rows[0].active === true
