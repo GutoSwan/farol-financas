@@ -7,6 +7,8 @@ import type { OnlineWorkspace } from '../../infrastructure/api/onlineWorkspaces'
 import { readOnlineFinance } from '../../infrastructure/api/onlineFinance'
 import type { OnlineFinanceKind, OnlineFinanceRecord } from '../../infrastructure/api/onlineFinance'
 import { formatBRL } from '../../domain/value-objects/Money'
+import { qaIsolationEnabled } from '../../infrastructure/api/tenantIsolationQa'
+import TenantIsolationQaPanel from '../components/TenantIsolationQaPanel.vue'
 
 const { user } = useAuth()
 const modules: { key: OnlineFinanceKind; label: string }[] = [
@@ -123,4 +125,9 @@ onBeforeUnmount(clearRecords)
       </div>
     </template>
   </section>
+  <TenantIsolationQaPanel
+    v-if="qaIsolationEnabled && user?.id && workspaces.some(w => w.name === 'QA - Conta atual' || w.name === 'QA - Conta B')"
+    :user-id="user.id"
+    :workspaces="workspaces"
+  />
 </template>
