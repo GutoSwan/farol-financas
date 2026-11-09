@@ -8,11 +8,11 @@ export type CatalogCreate =
  | { kind: 'fixed-expenses'; workspaceId: string; data: FixedInput }
  | { kind: 'budgets'; workspaceId: string; data: BudgetInput }
 export type CatalogUpdate =
- | { kind: 'recurring-bills'; workspaceId: string; id: string; data: Partial<BillInput> }
- | { kind: 'fixed-expenses'; workspaceId: string; id: string; data: Partial<FixedInput> }
- | { kind: 'budgets'; workspaceId: string; id: string; data: Partial<BudgetInput> }
+ | { kind: 'recurring-bills'; workspaceId: string; id: string; expectedVersion: number; data: Partial<BillInput> }
+ | { kind: 'fixed-expenses'; workspaceId: string; id: string; expectedVersion: number; data: Partial<FixedInput> }
+ | { kind: 'budgets'; workspaceId: string; id: string; expectedVersion: number; data: Partial<BudgetInput> }
 export interface FinancialCatalogMutations {
  create(input: CatalogCreate): Promise<unknown>
  update(input: CatalogUpdate): Promise<unknown | null>
- delete(kind: CatalogKind, workspaceId: string, id: string): Promise<boolean>
+ delete(kind: CatalogKind, workspaceId: string, id: string, expectedVersion: number): Promise<boolean>
 }
