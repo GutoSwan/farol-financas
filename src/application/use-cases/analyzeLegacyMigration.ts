@@ -25,7 +25,7 @@ export interface MigrationPreview {
   truncated: boolean
   requiresRemapping: number
   readyForImportDesign: boolean
-  cloudComparison: 'workspace-names-only'
+  cloudComparison: 'workspace-names-only' | 'not-checked'
 }
 
 const DATE = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/
@@ -71,7 +71,7 @@ function idCollection(
 }
 
 export function analyzeLegacyMigration(
-  backup: FinancialBackup, onlineSpaces: readonly ExistingOnlineSpace[],
+  backup: FinancialBackup, onlineSpaces: readonly ExistingOnlineSpace[] | null,
 ): MigrationPreview {
   const total = summarizeFinancialBackup(backup)
   let blockers = 0
@@ -84,7 +84,12 @@ export function analyzeLegacyMigration(
   }
 
   const existing = new Map<string, ExistingOnlineSpace[]>()
-  for (const space of onlineSpaces) {
+  if (onlineSpaces === null) report({
+    severity: 'warning', code: 'CLOUD_COMPARISON_UNAVAILABLE',
+    location: 'Espaços online',
+    message: 'A API está indisponível; os nomes e registros existentes na nuvem ainda precisam ser comparados.',
+  })
+  for (const space of onlineSpaces ?? []) {
     if (!str(space.name, 60) || !str(space.id, 90) ||
         !['OWNER', 'EDITOR', 'VIEWER'].includes(space.role)) {
       throw new Error('A consulta de espaços online retornou dados inesperados.')
@@ -239,7 +244,7 @@ export function analyzeLegacyMigration(
     total, blockers, warnings, issues,
     truncated: issues.length < blockers + warnings,
     requiresRemapping,
-    readyForImportDesign: blockers === 0,
-    cloudComparison: 'workspace-names-only',
+    readyForImportDesign: blockers === 0 && onlineSpaces !== null,
+    cloudComparison: onlineSpaces === null ? 'not-checked' : 'workspace-names-only',
   }
 }
