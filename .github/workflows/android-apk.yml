@@ -27,7 +27,7 @@ jobs:
           java-version: '21'
       - uses: android-actions/setup-android@v3
       - name: Instalar dependencias
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Compilar aplicativo web
         run: npm run build
       - name: Criar projeto Android quando necessario

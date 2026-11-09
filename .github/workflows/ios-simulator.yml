@@ -29,7 +29,7 @@ jobs:
       - name: Versao do Xcode
         run: xcodebuild -version
       - name: Instalar dependencias
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Rodar testes do Farol
         run: npm run test
       - name: Gerar projeto iOS do Capacitor
