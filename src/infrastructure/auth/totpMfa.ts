@@ -25,10 +25,11 @@ export async function listVerifiedTotpFactors() {
 }
 
 /** O QR e o segredo existem apenas na memória do componente de cadastro. */
-export async function beginTotpEnrollment() {
+export async function beginTotpEnrollment(displayName = '') {
+  const sanitized = displayName.trim().replace(/\\s+/g, ' ').slice(0, 40)
   const { data, error } = await requireClient().auth.mfa.enroll({
     factorType: 'totp',
-    friendlyName: 'Farol Finanças',
+    friendlyName: sanitized || 'Farol Finanças',
   })
   if (error || !data?.totp) throw new Error('Não foi possível iniciar a autenticação em duas etapas.')
   return {
