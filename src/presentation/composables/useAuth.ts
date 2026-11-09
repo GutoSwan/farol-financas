@@ -68,7 +68,14 @@ export function useAuth() {
         data: { display_name: displayName, avatar_icon: 'user' },
       },
     })
-    if (error) throw new Error(error.message)
+    // Supabase pode devolver identidades ofuscadas no cadastro duplicado.
+    // Evitar consulta de existência de e-mail e mensagens de enumeração.
+    if (error) {
+      if (/rate limit|too many|over_request/i.test(error.message)) {
+        throw new Error('Muitas tentativas de cadastro. Aguarde antes de tentar novamente.')
+      }
+      throw new Error('Não foi possível concluir o cadastro. Confira o e-mail; se já tiver conta, entre ou recupere a senha.')
+    }
     // Sem sessão, o usuário precisa digitar o código do modelo "Confirm signup".
     return !!data.session
   }
