@@ -8,7 +8,8 @@ describe('Proteção do histórico de migrações Prisma', () => {
   it('não sinaliza tabela isolada sem grants a clientes', () => {
     expect(isMigrationMetadataExposed(false, false)).toBe(false)
   })
-  it('não classifica como diretamente exposta uma tabela protegida por RLS', () => {
-    expect(isMigrationMetadataExposed(true, true)).toBe(false)
+  it('não aceita grants públicos nem quando o metadata tem RLS', () => {
+    expect(isMigrationMetadataExposed(true, true)).toBe(true)
+    expect(isMigrationMetadataExposed(true, false)).toBe(false)
   })
 })
