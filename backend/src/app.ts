@@ -80,11 +80,11 @@ const lazyTransactions: TransactionRepository = {
   async createForWorkspace(entry) {
     return (await getTransactionRepository()).createForWorkspace(entry)
   },
-  async updateWithinWorkspace(workspaceId, transactionId, changes) {
-    return (await getTransactionRepository()).updateWithinWorkspace(workspaceId, transactionId, changes)
+  async updateWithinWorkspace(workspaceId, transactionId, changes, expectedVersion) {
+    return (await getTransactionRepository()).updateWithinWorkspace(workspaceId, transactionId, changes, expectedVersion)
   },
-  async deleteWithinWorkspace(workspaceId, transactionId) {
-    return (await getTransactionRepository()).deleteWithinWorkspace(workspaceId, transactionId)
+  async deleteWithinWorkspace(workspaceId, transactionId, expectedVersion) {
+    return (await getTransactionRepository()).deleteWithinWorkspace(workspaceId, transactionId, expectedVersion)
   },
 }
 
@@ -125,7 +125,7 @@ function getMutations(): Promise<FinancialCatalogMutations> {
 const lazyMutations: FinancialCatalogMutations = {
   async create(input) { return (await getMutations()).create(input) },
   async update(input) { return (await getMutations()).update(input) },
-  async delete(kind, workspaceId, id) { return (await getMutations()).delete(kind, workspaceId, id) },
+  async delete(kind, workspaceId, id, expectedVersion) { return (await getMutations()).delete(kind, workspaceId, id, expectedVersion) },
 }
 
 let invoiceRepositoryPromise: Promise<InvoiceRepository> | undefined
