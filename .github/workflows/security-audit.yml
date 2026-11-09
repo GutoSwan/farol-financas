@@ -30,7 +30,7 @@ jobs:
         if: matrix.directory == '.'
         run: node scripts/security-static-scan.mjs
       - name: Install dependencies
-        run: npm install --ignore-scripts --no-audit --no-fund
+        run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Audit high/critical dependencies
         run: npm audit --audit-level=high
       - name: Typecheck frontend
