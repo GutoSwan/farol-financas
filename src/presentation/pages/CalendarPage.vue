@@ -4,6 +4,7 @@ import { supabase } from '../../infrastructure/auth/supabase'
 import { getHolidays } from '../../domain/calendar/holidays'
 import type { CalendarRegion, Holiday } from '../../domain/calendar/holidays'
 import { eventDateRangeFromInputs, eventOccursOnDay } from '../../domain/calendar/eventDates'
+import { canUseNativeCalendarNotifications, isNativeCalendar, requestNativeCalendarNotifications, syncNativeCalendarNotifications } from '../../infrastructure/notifications/nativeCalendar'
 
 type EventRow = { id:string; user_id:string; title:string; description:string; starts_at:string; ends_at:string; all_day:boolean; reminder_minutes:number|null }
 const now = new Date()
@@ -24,6 +25,7 @@ const allDay = ref(false)
 const reminder = ref(-1)
 let timer: ReturnType<typeof setInterval>|undefined
 let refreshTimer: ReturnType<typeof setInterval>|undefined
+let reminderSequence = 0
 type ReminderRow = Pick<EventRow, 'id' | 'starts_at' | 'reminder_minutes'>
 const upcomingReminders = ref<ReminderRow[]>([])
 const notified = new Set<string>()
@@ -136,32 +138,57 @@ async function remove():Promise<void> {
  finally{busy.value=false}
 }
 async function loadUpcomingReminders():Promise<void> {
- if(!supabase || !('Notification' in window) || Notification.permission!=='granted'){
-  upcomingReminders.value=[];return
- }
+ const sequence=++reminderSequence
+ if(!supabase)return
+ const native=isNativeCalendar()
  try{
+  const allowed=native?await canUseNativeCalendarNotifications():
+   ('Notification' in window && Notification.permission==='granted')
+  if(!allowed){upcomingReminders.value=[];return}
   const {data:{user},error:userError}=await supabase.auth.getUser()
   if(userError||!user){upcomingReminders.value=[];return}
   const startIso=new Date(Date.now()-2*60000).toISOString()
-  const endIso=new Date(Date.now()+25*3600000).toISOString()
+  const endIso=new Date(Date.now()+(native?61*24:25)*3600000).toISOString()
   const {data,error:queryError}=await supabase.from('calendar_events')
    .select('id,starts_at,reminder_minutes').eq('user_id',user.id)
    .not('reminder_minutes','is',null).gte('starts_at',startIso).lt('starts_at',endIso)
+   .order('starts_at').limit(native?200:100)
   if(queryError)throw queryError
-  upcomingReminders.value=(data??[]) as ReminderRow[]
+  if(sequence!==reminderSequence)return
+  // Evita agendar compromissos da identidade anterior se a conta mudou durante o fetch.
+  const {data:confirmed,error:identityError}=await supabase.auth.getUser()
+  if(identityError||confirmed.user?.id!==user.id)return
+  const loaded=(data??[]) as ReminderRow[]
+  if(native){
+   await syncNativeCalendarNotifications(loaded)
+  }else{
+   upcomingReminders.value=loaded
+  }
  }catch{
-  // Falha de consulta não pode expor eventos de uma sessão anterior.
-  upcomingReminders.value=[]
+  // Nunca mostrar nem agendar detalhes quando a consulta não foi validada.
+  if(sequence===reminderSequence)upcomingReminders.value=[]
  }
 }
 async function enableNotifications():Promise<void> {
+ if(isNativeCalendar()){
+  try{
+   const allowed=await requestNativeCalendarNotifications()
+   message.value=allowed
+    ?'Lembretes nativos autorizados. Os próximos compromissos serão agendados no dispositivo, inclusive com o Farol fechado.'
+    :'As notificações do iPhone não foram autorizadas.'
+   if(allowed)await loadUpcomingReminders()
+  }catch{
+   message.value='Não foi possível configurar lembretes nativos neste aparelho.'
+  }
+  return
+ }
  if(!('Notification' in window)){message.value='Notificações não são suportadas neste navegador.';return}
  const permission=await Notification.requestPermission()
  message.value=permission==='granted'?'Notificações autorizadas enquanto a tela do Calendário estiver aberta.':'As notificações não foram autorizadas.'
  if(permission==='granted')await loadUpcomingReminders()
 }
 async function notifyDue():Promise<void> {
- if(!('Notification' in window)||Notification.permission!=='granted')return
+ if(isNativeCalendar()||!('Notification' in window)||Notification.permission!=='granted')return
  const current=Date.now()
  for(const event of upcomingReminders.value){
   if(event.reminder_minutes===null)continue
@@ -187,7 +214,7 @@ onMounted(()=>{
  timer=setInterval(()=>{void notifyDue()},30000)
  refreshTimer=setInterval(()=>{void loadUpcomingReminders()},180000)
 })
-onUnmounted(()=>{if(timer)clearInterval(timer);if(refreshTimer)clearInterval(refreshTimer)})
+onUnmounted(()=>{reminderSequence++;if(timer)clearInterval(timer);if(refreshTimer)clearInterval(refreshTimer)})
 function setRegion(value:CalendarRegion):void {
  region.value=value
  try{localStorage.setItem('farol:calendar:region',value)}catch{/* preferências não persistidas */}
@@ -240,7 +267,7 @@ function setRegion(value:CalendarRegion):void {
     <button type="button" class="calendar-small" @click="openEdit(event)">Editar</button>
    </article>
    <p v-if="!dayEvents.length&&!dayHolidays.length" class="empty">Nenhum compromisso neste dia.</p>
-   <div class="calendar-notice"><button type="button" class="secondary-action" @click="enableNotifications">Ativar notificações</button><p>Os lembretes desta versão funcionam enquanto a tela do Calendário estiver aberta. Para avisos com o aplicativo fechado e no iPhone, será necessária integração push ou nativa.</p></div>
+   <div class="calendar-notice"><button type="button" class="secondary-action" @click="enableNotifications">Ativar notificações</button><p>{{ isNativeCalendar() ? 'No aplicativo nativo, o iPhone pode entregar lembretes já agendados mesmo com o Farol fechado, desde que as notificações estejam autorizadas. Abra o Calendário periodicamente para atualizar a agenda do aparelho.' : 'No navegador ou PWA, os lembretes desta versão funcionam somente enquanto a tela do Calendário estiver aberta. Não há push em segundo plano.' }}</p></div>
   </section>
   <div v-if="editorOpen" class="calendar-backdrop" @click.self="editorOpen=false">
    <section class="calendar-dialog" role="dialog" aria-modal="true" aria-label="Editar evento">
