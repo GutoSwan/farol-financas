@@ -7,12 +7,15 @@ import { analyzeLegacyMigration } from '../../application/use-cases/analyzeLegac
 import type { MigrationPreview } from '../../application/use-cases/analyzeLegacyMigration'
 import { buildLocalFinancialBackup } from '../../application/use-cases/exportFinancialBackup'
 import {
-  encryptFinancialBackup, inspectEncryptedFinancialBackup, summarizeFinancialBackup,
+  encryptFinancialBackup, inspectEncryptedFinancialBackupWithFingerprint, fingerprintFinancialBackup,
+  summarizeFinancialBackup,
 } from '../../infrastructure/backup/encryptedFinancialBackup'
 import type { FinancialBackupSummary } from '../../infrastructure/backup/encryptedFinancialBackup'
 
 const summary = ref<FinancialBackupSummary | null>(null)
 const inspected = ref<FinancialBackupSummary | null>(null)
+const inspectedFingerprint = ref('')
+const inspectedOwner = ref('')
 const preview = ref<MigrationPreview | null>(null)
 const analyzing = ref(false)
 const analysisError = ref('')
@@ -43,6 +46,13 @@ async function confirmedOwner(): Promise<string> {
   return data.user.id
 }
 
+function clearInspectedBackup(): void {
+  inspected.value = null
+  inspectedFingerprint.value = ''
+  inspectedOwner.value = ''
+  preview.value = null
+}
+
 function disposeDownload(): void {
   if (fileUrl.value) URL.revokeObjectURL(fileUrl.value)
   fileUrl.value = ''
@@ -50,6 +60,7 @@ function disposeDownload(): void {
 }
 
 async function refreshInventory(): Promise<void> {
+  clearInspectedBackup()
   loading.value = true
   errorText.value = ''
   try {
@@ -65,6 +76,7 @@ async function refreshInventory(): Promise<void> {
 
 async function prepareBackup(): Promise<void> {
   if (busy.value || loading.value || !approved.value) return
+  clearInspectedBackup()
   errorText.value = ''
   message.value = ''
   busy.value = true
@@ -93,7 +105,7 @@ async function prepareBackup(): Promise<void> {
 }
 
 function selectBackupFile(event: Event): void {
-  inspected.value = null
+  clearInspectedBackup()
   errorText.value = ''
   const input = event.target as HTMLInputElement
   selectedFile.value = input.files?.[0] ?? null
@@ -105,18 +117,19 @@ function selectBackupFile(event: Event): void {
 }
 
 async function inspectBackupFile(): Promise<void> {
-  preview.value = null
   if (busy.value || !selectedFile.value) return
+  clearInspectedBackup()
   busy.value = true
   errorText.value = ''
-  inspected.value = null
   try {
     const owner = await confirmedOwner()
     const text = await selectedFile.value.text()
     const raw: unknown = JSON.parse(text)
-    const result = await inspectEncryptedFinancialBackup(raw, inspectionPassword.value, owner)
+    const result = await inspectEncryptedFinancialBackupWithFingerprint(raw, inspectionPassword.value, owner)
     if (await confirmedOwner() !== owner) throw new Error('A sessão mudou durante a conferência.')
-    inspected.value = result
+    inspected.value = result.summary
+    inspectedFingerprint.value = result.fingerprint
+    inspectedOwner.value = owner
     message.value = 'Integridade confirmada. O backup foi apenas conferido, sem restaurar ou enviar registros.'
   } catch (cause) {
     errorText.value = cause instanceof Error ? cause.message : 'Não foi possível conferir o backup.'
@@ -127,12 +140,19 @@ async function inspectBackupFile(): Promise<void> {
 }
 
 async function simulateMigration(): Promise<void> {
-  if (busy.value || analyzing.value || !inspected.value || loading.value) return
+  if (busy.value || analyzing.value || !inspected.value || !inspectedFingerprint.value || loading.value) return
   analyzing.value = true
   analysisError.value = ''
   preview.value = null
   try {
     const owner = await confirmedOwner()
+    if (inspectedOwner.value !== owner) {
+      throw new Error('O backup conferido pertence a outra sessão. Confira novamente o arquivo.')
+    }
+    const currentSnapshot = buildLocalFinancialBackup()
+    if (await fingerprintFinancialBackup(currentSnapshot) !== inspectedFingerprint.value) {
+      throw new Error('Os registros locais mudaram desde o backup conferido. Gere e confira um novo backup.')
+    }
     // A API recebe apenas o JWT necessário a GET /me e GET /workspaces.
     // Nenhum lançamento, histórico, orçamento ou snapshot é enviado.
     let onlineSpaces: Awaited<ReturnType<typeof listOnlineWorkspaces>> | null = null
@@ -146,7 +166,11 @@ async function simulateMigration(): Promise<void> {
       onlineSpaces = null
     }
     if (await confirmedOwner() !== owner) throw new Error('Sessão alterada durante a análise.')
-    const result = analyzeLegacyMigration(buildLocalFinancialBackup(), onlineSpaces)
+    const result = analyzeLegacyMigration(currentSnapshot, onlineSpaces)
+    // Se algo mudar enquanto a API responde, descartar o relatório anterior.
+    if (await fingerprintFinancialBackup(buildLocalFinancialBackup()) !== inspectedFingerprint.value) {
+      throw new Error('Os registros locais mudaram durante a análise. Gere um novo backup.')
+    }
     if (await confirmedOwner() !== owner) throw new Error('Sessão alterada durante a análise.')
     preview.value = result
   } catch (cause) {
@@ -261,8 +285,8 @@ onBeforeUnmount(disposeDownload)
       </div>
     </div>
     <p class="auth-muted">
-      Primeiro confirme a integridade do arquivo no passo 3. A simulação lê os
-      dados atuais deste navegador; caso tenham mudado após o backup, gere outra cópia.
+      Primeiro confirme a integridade do arquivo no passo 3. A simulação confere
+      que os dados atuais são exatamente os mesmos do backup validado; caso tenham mudado, gere outra cópia.
       A API recebe apenas consultas de identidade e nomes dos espaços já salvos na sua conta.
       Nenhuma informação financeira local é enviada.
     </p>
