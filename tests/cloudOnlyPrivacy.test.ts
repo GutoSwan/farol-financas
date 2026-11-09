@@ -10,6 +10,8 @@ describe('Consulta na nuvem não expõe registros de outros usuários do navegad
     expect(routerSource).toContain('requiresFinancialData: true')
     expect(routerSource).not.toContain("path: 'dados-online', component: OnlineFinancePage")
     expect(routerSource).toContain('Boolean(to.meta.requiresLegacyData || to.meta.requiresFinancialData)')
+    expect(routerSource).toContain("access === 'different-user'")
+    expect(routerSource).toContain("return { path: '/dados-online', replace: true }")
     expect(requiredMfaRedirect('/dados-online', true, 'aal1', 'aal2', 1)).toBe('/verificar-2fa')
     expect(requiredMfaRedirect('/dados-online', true, 'aal1', 'aal1', 0)).toBe('/configurar-2fa')
     expect(requiredMfaRedirect('/dados-online', true, 'aal2', 'aal2', 1)).toBe(null)
