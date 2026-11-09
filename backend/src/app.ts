@@ -150,7 +150,24 @@ let verifierPromise: Promise<AuthVerifier> | undefined
 function getVerifier(): Promise<AuthVerifier> {
   if (!verifierPromise) {
     verifierPromise = import('./infrastructure/auth/SupabaseJwtVerifier.js')
-      .then(({ SupabaseJwtVerifier }) => new SupabaseJwtVerifier(readConfig(process.env).SUPABASE_URL))
+      .then(({ SupabaseJwtVerifier }) => new SupabaseJwtVerifier(
+        readConfig(process.env).SUPABASE_URL,
+        async (userId, sessionId) => {
+          // Somente o servidor consulta auth.sessions; não expor service_role no frontend.
+          // Query parametrizada, que bloqueia o JWT após logout/remoção da conta.
+          const prisma = await getPrisma()
+          const rows = await prisma.$queryRaw<Array<{ active: boolean }>>`
+            SELECT EXISTS (
+              SELECT 1 FROM auth.sessions s
+              INNER JOIN auth.users u ON u.id = s.user_id
+              WHERE s.id = ${sessionId}::uuid
+                AND s.user_id = ${userId}::uuid
+                AND (s.not_after IS NULL OR s.not_after > NOW())
+            ) AS active
+          `
+          return rows.length === 1 && rows[0].active === true
+        },
+      ))
       .catch((error: unknown) => {
         verifierPromise = undefined
         console.error('[farol-api] falha na configuração da autenticação:',
