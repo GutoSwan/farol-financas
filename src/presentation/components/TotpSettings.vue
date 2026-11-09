@@ -27,6 +27,9 @@ const qrDisplayFailed = ref(false)
 const replacementId = ref<string | null>(null)
 const removalId = ref<string | null>(null)
 const confirmation = ref('')
+const proofFactorId = ref('')
+const proofCode = ref('')
+const replacementRequestId = ref<string | null>(null)
 
 const verifiedCount = computed(() => factors.value.length)
 const canManage = computed(() => assurance.value === 'aal2' && !props.setupOnly)
@@ -146,11 +149,37 @@ async function cancelEnrollment(): Promise<void> {
   finally { busy.value = false }
 }
 
+function requestReplacement(id: string): void {
+  if (!canManage.value || busy.value || pending.value) return
+  clearFeedback()
+  replacementRequestId.value = id
+  proofFactorId.value = factors.value[0]?.id ?? ''
+  proofCode.value = ''
+}
+
+async function authorizeReplacement(): Promise<void> {
+  const id = replacementRequestId.value
+  if (!id || busy.value || !proofFactorId.value) return
+  busy.value = true
+  clearFeedback()
+  try {
+    // Revalidar posse de um dos fatores ativos antes de substituí-lo.
+    await verifyTotpCode(proofFactorId.value, proofCode.value)
+    replacementRequestId.value = null
+    proofCode.value = ''
+    busy.value = false
+    await beginEnrollment(id)
+  } catch (error) { errorText.value = safeError(error) }
+  finally { busy.value = false }
+}
+
 function chooseRemoval(id: string): void {
   if (!canManage.value || busy.value || pending.value) return
   clearFeedback()
   removalId.value = id
   confirmation.value = ''
+  proofFactorId.value = factors.value[0]?.id ?? ''
+  proofCode.value = ''
 }
 
 async function confirmRemoval(): Promise<void> {
@@ -159,6 +188,8 @@ async function confirmRemoval(): Promise<void> {
   clearFeedback()
   busy.value = true
   try {
+    // Confirmar a posse de um autenticador com código NOVO antes de desvincular.
+    await verifyTotpCode(proofFactorId.value, proofCode.value)
     // Verifica novamente AAL2, identidade e propriedade no servidor.
     await removeVerifiedTotpFactor(id)
     removalId.value = null
@@ -192,8 +223,8 @@ async function confirmRemoval(): Promise<void> {
               <strong>{{ factorName(factor, index) }}</strong>
               <small>Aplicativo autenticador · Vinculado ao Supabase</small>
             </div>
-            <div v-if="canManage && !pending && !removalId" class="factor-actions">
-              <button type="button" class="secondary-action" :disabled="busy" @click="beginEnrollment(factor.id)">
+            <div v-if="canManage && !pending && !removalId && !replacementRequestId" class="factor-actions">
+              <button type="button" class="secondary-action" :disabled="busy" @click="requestReplacement(factor.id)">
                 Substituir
               </button>
               <button type="button" class="secondary-action factor-danger" :disabled="busy" @click="chooseRemoval(factor.id)">
@@ -202,6 +233,23 @@ async function confirmRemoval(): Promise<void> {
             </div>
           </div>
         </div>
+        <form v-if="replacementRequestId" class="factor-remove-form" @submit.prevent="authorizeReplacement">
+          <strong>Confirmar autenticador atual antes de substituir</strong>
+          <p>Informe um código válido de um dos autenticadores já cadastrados. Só após verificar esse código você poderá cadastrar o novo dispositivo.</p>
+          <label>Autenticador existente
+            <select v-model="proofFactorId" :disabled="busy">
+              <option v-for="(factor, index) in factors" :key="factor.id" :value="factor.id">{{ factorName(factor, index) }}</option>
+            </select>
+          </label>
+          <label>Código atual de seis dígitos
+            <input v-model.trim="proofCode" type="text" inputmode="numeric" autocomplete="one-time-code"
+              pattern="[0-9]{6}" minlength="6" maxlength="6" required :disabled="busy" placeholder="000000" />
+          </label>
+          <div class="factor-actions">
+            <button type="submit" class="primary" :disabled="busy || !/^[0-9]{6}$/.test(proofCode)">Verificar e continuar</button>
+            <button type="button" class="secondary-action" :disabled="busy" @click="replacementRequestId = null; proofCode = ''">Cancelar</button>
+          </div>
+        </form>
         <form v-if="removalId" class="factor-remove-form" @submit.prevent="confirmRemoval">
           <strong>Confirmar remoção de autenticador</strong>
           <p v-if="verifiedCount === 1">
@@ -210,14 +258,23 @@ async function confirmRemoval(): Promise<void> {
           <p v-else>
             O dispositivo escolhido será desvinculado. Você sairá da conta e poderá entrar novamente com um dos autenticadores restantes.
           </p>
+          <label>Autenticador usado para confirmar sua identidade
+            <select v-model="proofFactorId" :disabled="busy">
+              <option v-for="(factor, index) in factors" :key="factor.id" :value="factor.id">{{ factorName(factor, index) }}</option>
+            </select>
+          </label>
+          <label>Código atual de seis dígitos
+            <input v-model.trim="proofCode" type="text" inputmode="numeric" autocomplete="one-time-code"
+              pattern="[0-9]{6}" minlength="6" maxlength="6" required :disabled="busy" placeholder="000000" />
+          </label>
           <label>Para confirmar, digite <strong>REMOVER</strong>
             <input v-model="confirmation" type="text" autocomplete="off" maxlength="7" :disabled="busy" placeholder="REMOVER" required />
           </label>
           <div class="factor-actions">
-            <button type="submit" class="secondary-action factor-danger" :disabled="busy || confirmation !== 'REMOVER'">
+            <button type="submit" class="secondary-action factor-danger" :disabled="busy || confirmation !== 'REMOVER' || !/^[0-9]{6}$/.test(proofCode)">
               {{ busy ? 'Removendo...' : 'Confirmar remoção' }}
             </button>
-            <button type="button" class="secondary-action" :disabled="busy" @click="removalId = null; confirmation = ''">
+            <button type="button" class="secondary-action" :disabled="busy" @click="removalId = null; confirmation = ''; proofCode = ''">
               Cancelar
             </button>
           </div>
@@ -252,7 +309,7 @@ async function confirmRemoval(): Promise<void> {
           Cancelar cadastro
         </button>
       </div>
-      <button v-else-if="!removalId && (verifiedCount === 0 || canManage)" type="button"
+      <button v-else-if="!removalId && !replacementRequestId && (verifiedCount === 0 || canManage)" type="button"
         class="primary auth-full-button" :disabled="busy" @click="beginEnrollment()">
         {{ verifiedCount ? 'Adicionar outro autenticador' : 'Ativar autenticador' }}
       </button>
