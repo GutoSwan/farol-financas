@@ -71,6 +71,10 @@
     {
       "source": "/vincular-dados-locais",
       "destination": "/index.html"
+    },
+    {
+      "source": "/configurar-2fa",
+      "destination": "/index.html"
     }
   ],
   "headers": [
