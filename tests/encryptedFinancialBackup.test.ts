@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { webcrypto } from 'node:crypto'
 import { buildLocalFinancialBackup } from '../src/application/use-cases/exportFinancialBackup'
 import {
-  encryptFinancialBackup, inspectEncryptedFinancialBackup, summarizeFinancialBackup,
+  encryptFinancialBackup, inspectEncryptedFinancialBackup, inspectEncryptedFinancialBackupWithFingerprint,
+  fingerprintFinancialBackup, summarizeFinancialBackup,
 } from '../src/infrastructure/backup/encryptedFinancialBackup'
 
 const ownerId = '11111111-1111-4111-8111-111111111111'
@@ -36,6 +37,45 @@ describe('Backup financeiro local criptografado', () => {
     await expect(inspectEncryptedFinancialBackup(encrypted, passphrase, ownerId))
       .resolves.toMatchObject({ spaces: 1, bills: 1, monthlyEntries: 0 })
     expect(data).toEqual(before)
+  })
+
+  it('associa a conferência ao conteúdo real e detecta alterações com o mesmo número de registros', async () => {
+    const backup = buildLocalFinancialBackup()
+    backup.workspaces[0].transactions.push({
+      id: 'transacao-1', description: 'Mercado', amountCents: 9000,
+      category: 'Alimentação', kind: 'expense', occurredOn: '2026-11-09',
+      createdAt: '2026-11-09T11:00:00Z',
+    })
+    const encrypted = await encryptFinancialBackup(backup, passphrase, ownerId)
+    const verified = await inspectEncryptedFinancialBackupWithFingerprint(encrypted, passphrase, ownerId)
+    expect(verified.summary.transactions).toBe(1)
+    expect(verified.fingerprint).toBe(await fingerprintFinancialBackup(backup))
+
+    // Uma mudança de valor NÃO pode passar só porque o inventário tem 1 lançamento.
+    const changed = structuredClone(backup)
+    changed.workspaces[0].transactions[0].amountCents = 9100
+    expect((await fingerprintFinancialBackup(changed))).not.toBe(verified.fingerprint)
+    expect((await fingerprintFinancialBackup(changed))).not.toBe(await fingerprintFinancialBackup(backup))
+  })
+
+  it('ignora apenas a data de exportação, não o conteúdo financeiro ou o espaço ativo', async () => {
+    const backup = buildLocalFinancialBackup()
+    const changedTime = { ...backup, exportedAt: '2020-01-01T00:00:00.000Z' }
+    expect(await fingerprintFinancialBackup(changedTime)).toBe(await fingerprintFinancialBackup(backup))
+
+    const changedContent = structuredClone(backup)
+    changedContent.workspaces[0].workspace.name = 'Outro nome'
+    expect(await fingerprintFinancialBackup(changedContent)).not.toBe(await fingerprintFinancialBackup(backup))
+    expect(data.size).toBe(0)
+  })
+
+  it('mantém o contrato público anterior de conferência somente por inventário', async () => {
+    const backup = buildLocalFinancialBackup()
+    const encrypted = await encryptFinancialBackup(backup, passphrase, ownerId)
+    expect(await inspectEncryptedFinancialBackup(encrypted, passphrase, ownerId)).toMatchObject({
+      spaces: 1, transactions: 0,
+    })
+    expect(data.size).toBe(0)
   })
 
   it('não abre arquivo de outra conta nem com a senha certa', async () => {

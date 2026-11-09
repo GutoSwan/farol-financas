@@ -5,6 +5,7 @@ on:
       - security/v0.14-auth-hardening
       - security/v0.16-legacy-backup-staging
       - security/v0.17-legacy-dry-run
+      - security/v0.18-backup-snapshot-integrity
   pull_request:
   workflow_dispatch:
 permissions:

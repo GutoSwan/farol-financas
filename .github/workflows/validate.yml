@@ -25,9 +25,10 @@ on:
       - security/v0.15-audit-20261109
       - security/v0.16-legacy-backup-staging
       - security/v0.17-legacy-dry-run
+      - security/v0.18-backup-snapshot-integrity
       - main
   pull_request:
-    branches: [main, security/v0.14-auth-hardening, security/v0.15-audit-20261109, security/v0.16-legacy-backup-staging, feat/estrutura-base-clean-architecture, feat/v0.2-ux-contas-espacos-relatorios, feat/v0.3-orcamentos-projetos-cotacoes, feat/v0.4-backend-foundation, feat/v0.5-auth-frontend-supabase, feat/v0.6-email-otp-perfil, feat/v0.7-auth-api-espacos-online, feat/v0.8-sidebar-fixa-responsiva, feat/v0.9-sidebar-limpa-sem-scroll, feat/v0.10-menu-completo-mobile-drawer, feat/v0.11-tema-claro-preparacao-vercel]
+    branches: [main, security/v0.14-auth-hardening, security/v0.15-audit-20261109, security/v0.16-legacy-backup-staging, security/v0.17-legacy-dry-run, feat/estrutura-base-clean-architecture, feat/v0.2-ux-contas-espacos-relatorios, feat/v0.3-orcamentos-projetos-cotacoes, feat/v0.4-backend-foundation, feat/v0.5-auth-frontend-supabase, feat/v0.6-email-otp-perfil, feat/v0.7-auth-api-espacos-online, feat/v0.8-sidebar-fixa-responsiva, feat/v0.9-sidebar-limpa-sem-scroll, feat/v0.10-menu-completo-mobile-drawer, feat/v0.11-tema-claro-preparacao-vercel]
 
 permissions:
   contents: read
