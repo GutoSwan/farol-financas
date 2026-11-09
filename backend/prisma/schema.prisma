@@ -65,6 +65,7 @@ model WorkspaceMember {
 
 model RecurringBill {
   id          String             @id @default(uuid()) @db.Uuid
+  version     Int                 @default(1)
   workspaceId String             @db.Uuid
   name        String             @db.VarChar(80)
   dueDay      Int
@@ -89,6 +90,7 @@ model MonthlyBillEntry {
 
 model FixedExpense {
   id             String                @id @default(uuid()) @db.Uuid
+  version     Int                 @default(1)
   workspaceId    String                @db.Uuid
   name           String                @db.VarChar(80)
   amountCents    Int
@@ -112,6 +114,7 @@ model FixedExpensePayment {
 
 model Transaction {
   id              String          @id @default(uuid()) @db.Uuid
+  version     Int                 @default(1)
   workspaceId     String          @db.Uuid
   description     String          @db.VarChar(120)
   category        String          @db.VarChar(40)
@@ -130,6 +133,7 @@ model Transaction {
 
 model BudgetProject {
   id          String              @id @default(uuid()) @db.Uuid
+  version     Int                 @default(1)
   workspaceId String              @db.Uuid
   title       String              @db.VarChar(120)
   category    String              @db.VarChar(40)
