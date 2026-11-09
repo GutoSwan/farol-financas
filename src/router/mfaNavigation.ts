@@ -1,22 +1,34 @@
 /**
- * An enrolled TOTP factor enforces AAL2 through Supabase.
- * Accounts without a verified factor must enroll from /conta before
- * accessing any locally stored or cloud-backed financial interface.
+ * Só um login de senha (AAL1) não autoriza dados financeiros nem redefinição de MFA.
+ * O Supabase é a fonte de verdade para os fatores VERIFICADOS.
  *
- * This is a UI guard only. The backend still validates AAL2 for every request.
+ * - 0 fatores verificados: permitir inscrição de um NOVO TOTP em tela isolada.
+ * - >=1 fator: desafiar fator existente; jamais cadastrar substituto após senha.
+ * - fator desconhecido (falha na API): negar acesso financeiro (fail closed).
  */
 export function requiredMfaRedirect(
   path: string,
   requiresFinancialData: boolean,
   currentLevel: string | null,
   nextLevel: string | null,
-): '/conta' | '/verificar-2fa' | '/' | null {
-  if (nextLevel === 'aal2' && currentLevel !== 'aal2') {
+  verifiedFactors: number | null = null,
+): '/configurar-2fa' | '/verificar-2fa' | '/' | null {
+  if (verifiedFactors === null) {
+    if (path === '/configurar-2fa' || path === '/verificar-2fa') return null
+    if (requiresFinancialData || path === '/conta') return '/verificar-2fa'
+    return null
+  }
+  if (verifiedFactors === 0) {
+    if (path === '/configurar-2fa') return null
+    if (requiresFinancialData || path === '/conta' || path === '/verificar-2fa') {
+      return '/configurar-2fa'
+    }
+    return null
+  }
+  // Quem ainda tem TOTP no Supabase precisa provar posse do fator antigo.
+  if (currentLevel !== 'aal2') {
     return path === '/verificar-2fa' ? null : '/verificar-2fa'
   }
-  if (path === '/verificar-2fa') {
-    return currentLevel === 'aal2' ? '/' : '/conta'
-  }
-  if (requiresFinancialData && currentLevel !== 'aal2') return '/conta'
+  if (path === '/configurar-2fa' || path === '/verificar-2fa') return '/'
   return null
 }
