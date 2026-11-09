@@ -3,6 +3,7 @@ import type { Session } from '@supabase/supabase-js'
 import { authConfigured, supabase } from '../../infrastructure/auth/supabase'
 import { normalizeDisplayName, normalizeProfileIcon, readProfile } from '../../domain/profile/profile'
 import { isFarolAdmin } from '../../domain/auth/adminAccess'
+import { cancelNativeCalendarNotifications, isNativeCalendar } from '../../infrastructure/notifications/nativeCalendar'
 import type { ProfileIcon } from '../../domain/profile/profile'
 
 const session = ref<Session | null>(null)
@@ -27,6 +28,11 @@ async function refreshCurrentUser(): Promise<void> {
 
 if (supabase) {
   supabase.auth.onAuthStateChange((event, nextSession) => {
+    // Limpeza nativa ao sair ou trocar de conta: nenhum lembrete anterior persiste.
+    if (isNativeCalendar() && session.value?.user.id &&
+      (event === 'SIGNED_OUT' || nextSession?.user.id !== session.value.user.id)) {
+      void cancelNativeCalendarNotifications().catch(() => undefined)
+    }
     session.value = nextSession
     ready.value = true
     if (event === 'PASSWORD_RECOVERY') recoveringPassword.value = true
@@ -130,6 +136,10 @@ export function useAuth() {
   }
 
   async function signOut(): Promise<void> {
+    if (isNativeCalendar()) {
+      // Dados da tela bloqueada não devem continuar associados à sessão antiga.
+      await cancelNativeCalendarNotifications().catch(() => undefined)
+    }
     const { error } = await client().auth.signOut()
     if (error) throw new Error(error.message)
     // Não apaga os dados locais do Farol durante a migração.
