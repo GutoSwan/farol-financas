@@ -37,7 +37,16 @@ export default async function handler(req, res) {
   if (!allowed || [...target.searchParams.keys()].some(k => k !== 'limit') ||
       target.searchParams.getAll('limit').length > 1) {
     res.statusCode = 404
-    return res.end(JSON.stringify({ error: 'Rota não autorizada.' }))
+    // Dev Preview only. Never return authorization headers or query values.
+    return res.end(JSON.stringify({
+      error: 'Rota não autorizada.',
+      diagnostic: {
+        path: target.pathname.slice(0, 125),
+        queryKeys: [...target.searchParams.keys()].slice(0, 5),
+        simple: SIMPLE_PATHS.has(target.pathname),
+        space: SPACE_PATH.test(target.pathname),
+      },
+    }))
   }
 
   const token = req.headers.authorization
