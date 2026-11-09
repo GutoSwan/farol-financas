@@ -19,7 +19,7 @@ describe('Autenticação por telefone: contrato e barreiras de segurança', () =
   })
   it('recuperação por SMS não ignora o TOTP existente', () => {
     expect(phonePage).toContain("router.replace('/verificar-2fa')")
-    expect(phonePage).toContain('SMS nunca substitui')
+    expect(phonePage).toContain('SMS é usado apenas como primeiro fator')
   })
   it('associação de celular exige AAL2 e verificação phone_change', () => {
     expect(phoneSource.match(/currentLevel !== 'aal2'/g)?.length).toBe(2)
