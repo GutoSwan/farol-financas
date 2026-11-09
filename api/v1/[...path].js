@@ -33,20 +33,14 @@ export default async function handler(req, res) {
     res.statusCode = 400
     return res.end(JSON.stringify({ error: 'Endereço inválido.' }))
   }
+  // Vercel injeta "...path" como parâmetro interno do catch-all.
+  // Jamais encaminhar o parâmetro interno ao backend.
+  target.searchParams.delete('...path')
   const allowed = SIMPLE_PATHS.has(target.pathname) || SPACE_PATH.test(target.pathname)
   if (!allowed || [...target.searchParams.keys()].some(k => k !== 'limit') ||
       target.searchParams.getAll('limit').length > 1) {
     res.statusCode = 404
-    // Dev Preview only. Never return authorization headers or query values.
-    return res.end(JSON.stringify({
-      error: 'Rota não autorizada.',
-      diagnostic: {
-        path: target.pathname.slice(0, 125),
-        queryKeys: [...target.searchParams.keys()].slice(0, 5),
-        simple: SIMPLE_PATHS.has(target.pathname),
-        space: SPACE_PATH.test(target.pathname),
-      },
-    }))
+    return res.end(JSON.stringify({ error: 'Rota não autorizada.' }))
   }
 
   const token = req.headers.authorization
