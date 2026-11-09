@@ -5,7 +5,8 @@ import profilePhone from '../src/presentation/components/PhoneLinkPanel.vue?raw'
 import authSource from '../src/presentation/composables/useAuth.ts?raw'
 import loginPage from '../src/presentation/pages/AuthPage.vue?raw'
 import layout from '../src/presentation/layouts/AppLayout.vue?raw'
-import style from '../src/assets/styles/auth-redesign.css?raw'
+import { readFileSync } from 'node:fs'
+const style = readFileSync('src/assets/styles/auth-redesign.css', 'utf8')
 
 describe('Autenticação por telefone: contrato e barreiras de segurança', () => {
   it('não habilita SMS sem provedor explicitamente configurado', () => {
