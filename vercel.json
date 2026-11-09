@@ -75,6 +75,18 @@
     {
       "source": "/configurar-2fa",
       "destination": "/index.html"
+    },
+    {
+      "source": "/entrar/celular",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/cadastro/celular",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/recuperar-celular",
+      "destination": "/index.html"
     }
   ],
   "headers": [
