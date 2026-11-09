@@ -7,6 +7,8 @@ import { useAuth } from '../composables/useAuth'
 const router = useRouter()
 const { signOut } = useAuth()
 const factorId = ref('')
+const knownFactors = ref<{ id: string; name: string }[]>([])
+const showRecovery = ref(false)
 const code = ref('')
 const busy = ref(false)
 const loading = ref(true)
@@ -16,9 +18,13 @@ onMounted(async () => {
   try {
     const factors = await listVerifiedTotpFactors()
     if (!factors.length) {
-      errorText.value = 'Nenhum autenticador verificado foi encontrado. Saia e entre novamente.'
+      // Um fator removido no Supabase exige novo cadastro após a senha.
+      await router.replace('/configurar-2fa')
       return
     }
+    knownFactors.value = factors.map((factor, index) => ({
+      id: factor.id, name: factor.friendly_name || `Autenticador ${index + 1}`,
+    }))
     factorId.value = factors[0].id
   } catch {
     errorText.value = 'Não foi possível consultar o autenticador. Verifique a conexão e tente novamente.'
@@ -62,6 +68,11 @@ async function logout() {
       </p>
       <p v-if="loading" class="auth-muted">Consultando autenticação em duas etapas...</p>
       <form v-else-if="factorId" class="auth-form" @submit.prevent="submit">
+        <label v-if="knownFactors.length > 1">Escolha o autenticador
+          <select v-model="factorId" :disabled="busy">
+            <option v-for="factor in knownFactors" :key="factor.id" :value="factor.id">{{ factor.name }}</option>
+          </select>
+        </label>
         <label>Código do autenticador
           <input v-model.trim="code" type="text" inputmode="numeric" autocomplete="one-time-code"
             pattern="[0-9]{6}" maxlength="6" minlength="6" required autofocus :disabled="busy"
@@ -72,7 +83,15 @@ async function logout() {
         </button>
       </form>
       <p v-if="errorText" class="error" role="alert">{{ errorText }}</p>
-      <p class="auth-muted">Não tem acesso ao seu autenticador? Para sua segurança, não é possível pular esta verificação.</p>
+      <button type="button" class="auth-inline-link" :disabled="busy" @click="showRecovery = !showRecovery">
+        Perdi o acesso ao autenticador
+      </button>
+      <div v-if="showRecovery" class="auth-warning" role="status">
+        <strong>Recuperação do segundo fator</strong>
+        <p>Remover uma conta do aplicativo no celular não remove o autenticador do Supabase. Se ele ainda estiver vinculado, a senha sozinha não permite cadastrar outro, pois isso deixaria o 2FA vulnerável.</p>
+        <p>Primeiro, tente restaurar seu autenticador pelo backup do aplicativo ou usar outro autenticador já vinculado. Se não houver nenhum disponível, será necessária uma recuperação administrada com verificação de identidade. Depois que o fator antigo for removido no servidor, o Farol permitirá configurar um novo após entrar com a senha.</p>
+        <p>Não compartilhe códigos, chaves TOTP ou QR Codes.</p>
+      </div>
       <button type="button" class="secondary-action auth-full-button" :disabled="busy" @click="logout">
         Sair da conta
       </button>
