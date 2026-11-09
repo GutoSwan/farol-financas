@@ -16,6 +16,7 @@ initializeTheme()
 createApp(App).use(router).mount('#app')
 
 import './assets/styles/auth.css'
+import './assets/styles/auth-redesign.css'
 import './assets/styles/profile-otp.css'
 import './assets/styles/online-auth.css'
 import './assets/styles/sticky-sidebar.css'
