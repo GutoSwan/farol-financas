@@ -9,6 +9,8 @@ export interface OnlineFinanceRecord {
   label: string
   amountCents?: number
   dueDay?: number
+  /** Versão recebida do banco; futura edição deve enviar If-Match: \"N\". */
+  version?: number
 }
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
@@ -59,6 +61,12 @@ export async function readOnlineFinance(workspace: OnlineWorkspace, kind: Online
     const label = kind === 'transactions' ? row.description : kind === 'budgets' ? row.title : row.name
     if (typeof label !== 'string' || label.length > 160) throw new Error('Campo financeiro inesperado.')
     const record: OnlineFinanceRecord = { id: row.id, workspaceId: row.workspaceId, label }
+    if (row.version !== undefined) {
+      if (typeof row.version !== 'number' || !Number.isInteger(row.version) || row.version < 1 || row.version > 2147483647) {
+        throw new Error('Versão de registro inválida recebida da API.')
+      }
+      record.version = row.version
+    }
     if (kind === 'transactions' || kind === 'fixed-expenses' || kind === 'budgets') {
       const amount = kind === 'budgets' ? row.targetCents : row.amountCents
       if (typeof amount !== 'number' || !Number.isSafeInteger(amount) || amount < 0) {
