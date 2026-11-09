@@ -33,9 +33,12 @@ export default async function handler(req, res) {
     res.statusCode = 400
     return res.end(JSON.stringify({ error: 'Endereço inválido.' }))
   }
-  // Vercel injeta "...path" como parâmetro interno do catch-all.
-  // Jamais encaminhar o parâmetro interno ao backend.
-  target.searchParams.delete('...path')
+  // A Vercel injeta os parâmetros das rotas dinâmicas na query interna.
+  // Nunca encaminhar esses parâmetros ao backend. A autorização continua
+  // ancorada na URL real e no JWT validado pelo servidor.
+  for (const internal of ['...path', 'workspaceId', 'kind']) {
+    target.searchParams.delete(internal)
+  }
   const allowed = SIMPLE_PATHS.has(target.pathname) || SPACE_PATH.test(target.pathname)
   if (!allowed || [...target.searchParams.keys()].some(k => k !== 'limit') ||
       target.searchParams.getAll('limit').length > 1) {
