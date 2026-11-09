@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - security/v0.14-auth-hardening
+      - security/v0.16-legacy-backup-staging
   pull_request:
   workflow_dispatch:
 permissions:
