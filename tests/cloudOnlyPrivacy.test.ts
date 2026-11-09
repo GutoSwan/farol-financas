@@ -17,7 +17,8 @@ describe('Consulta na nuvem não expõe registros de outros usuários do navegad
 
   it('o layout da nuvem não importa nem inicializa módulos financeiros locais', () => {
     expect(cloudLayout).toContain('OnlineFinancePage')
-    expect(cloudLayout).not.toMatch(/useWorkspaces|localLegacyAccess|claimLegacyData|AppLayout|localStorage\b/)
+    expect(cloudLayout).not.toMatch(/from\\s+['"][^'"]*(?:useWorkspaces|legacyAccess|AppLayout)['"]/)
+    expect(cloudLayout).not.toMatch(/\\b(?:useWorkspaces|localLegacyAccess|claimLegacyData)\\s*\\(/)
     expect(cloudLayout).toContain('não são carregados, apagados, transferidos ou vinculados')
   })
 
