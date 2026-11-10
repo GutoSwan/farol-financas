@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { supabase } from '../../infrastructure/auth/supabase'
+import { isFarolSuperAdmin } from '../../domain/auth/adminAccess'
 import UiIcon from '../components/UiIcon.vue'
 import BackNavigation from '../components/BackNavigation.vue'
 import { useTheme } from '../composables/useTheme'
@@ -15,7 +17,7 @@ const props = defineProps<{ mode: AuthMode }>()
 const router = useRouter()
 const { isDark, toggleTheme } = useTheme()
 const {
-  configured, ready, user, profile, isLoggedIn, isSuperAdmin, signIn, signUp, verifySignupCode, resendSignupCode,
+  configured, ready, user, profile, isLoggedIn, signIn, signUp, verifySignupCode, resendSignupCode,
   updateProfile, signOut, requestPasswordReset, recoverFromEmailLink, recoveringPassword,
   recoveryMfaChecked, recoveryMfaRequired, recoveryMfaVerified, recoveryTotpFactors,
   prepareRecoveryMfa, verifyRecoveryMfa, updatePassword,
@@ -124,6 +126,11 @@ async function submit(): Promise<void> {
   try {
     if (props.mode === 'login') {
       await signIn(email.value, password.value)
+      const { data: identity } = await supabase!.auth.getUser()
+      if (isFarolSuperAdmin(identity.user)) {
+        await supabase!.auth.signOut({ scope: 'local' })
+        throw new Error('Esta conta pertence exclusivamente ao site Farol Admin.')
+      }
       password.value = ''
       // Após autenticar, abrir a Visão geral. O perfil continua no menu lateral.
       await router.replace('/')
@@ -304,9 +311,6 @@ async function logout(): Promise<void> {
           <nav class="profile-quick-links" aria-label="Opções da minha conta">
             <RouterLink to="/seguranca"><UiIcon name="settings" :size="17" /> Segurança e autenticadores</RouterLink>
             <RouterLink to="/dados-online"><UiIcon name="folder" :size="17" /> Meus dados na nuvem</RouterLink>
-            <RouterLink v-if="isSuperAdmin" to="/administracao">
-              <UiIcon name="archive" :size="17" /> Ferramentas de administração
-            </RouterLink>
           </nav>
           <button type="button" class="secondary-action auth-full-button" :disabled="busy" @click="logout">
             <UiIcon name="log-out" :size="16" /> Sair da conta
