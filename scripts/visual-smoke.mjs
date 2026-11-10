@@ -80,7 +80,15 @@ async function setup(browser,{role=null,viewport={width:1440,height:900}}={}){
 }
 async function visit(page,path,expectText){
   await page.goto(origin+path,{waitUntil:'domcontentloaded'})
-  await page.getByText(expectText,{exact:false}).first().waitFor({timeout:20000})
+  try {
+    await page.getByText(expectText,{exact:false}).first().waitFor({timeout:13000})
+  } catch (cause) {
+    // Diagnostic metadata only, never print user tokens or personal data.
+    const headings=await page.locator('h1').allTextContents()
+    console.error('UI diagnostic expected:',expectText,'path:',new URL(page.url()).pathname,
+      'visible headings:',headings.slice(0,3))
+    throw cause
+  }
   await page.waitForTimeout(500)
 }
 async function screenshot(page,name){
