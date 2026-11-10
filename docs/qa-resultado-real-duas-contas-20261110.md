@@ -57,6 +57,8 @@ flowchart TD
 | QA A | Sim | 1 | 1 | 0 |
 | QA B | Sim | 1 | 1 | 0 |
 
+Uma conferência adicional verificou que ambas as contas possuem **0 vínculos com espaços financeiros** do Farol Dev. Isso evita que os usuários fictícios participem de espaços existentes, mas não substitui testes da API financeira quando ela estiver disponível no ambiente de desenvolvimento.
+
 Essa conferência acessou **somente os registros necessários para validar as duas contas de QA**, sem alterar usuários existentes ou tabelas financeiras.
 
 ## 4. Como o processo foi executado
