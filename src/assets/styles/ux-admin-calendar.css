@@ -47,3 +47,13 @@
 .gift-chooser .gift-cancel-choice { display: block; margin: 18px auto 0; color: var(--farol-wine,#873c59); text-decoration: underline; font-weight: 750; font-size: 13px; }
 .gift-chooser .gift-cancel-choice:focus-visible { outline: 2px solid var(--farol-wine,#873c59); outline-offset: 3px; }
 @media(max-width:700px) { .farol-back-navigation { padding: 10px 17px 0; } .cloud-only-header .farol-back-navigation { padding: 0; } .calendar-page .calendar-number { font-size: 13px; } .calendar-page .calendar-event-count, .calendar-page .calendar-holiday { font-size: 10px; } }
+
+/* Tela administrativa separada dos dados financeiros salvos no aparelho. */
+.superadmin-shell { min-height: 100dvh; color: var(--farol-text,#27374d); background: var(--farol-page,#f4f6fa); }
+.superadmin-topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 14px max(22px,calc((100vw - 1200px)/2)); background: var(--farol-card,#fff); border-bottom: 1px solid var(--farol-border,#dce3ec); }
+.superadmin-brand { font-size: 23px; font-weight: 850; color: var(--farol-text,#27374d); }
+.superadmin-brand span { color: var(--farol-wine,#8e4058); }
+.superadmin-top-actions { display: flex; align-items: center; gap: 14px; font-size: 12px; color: var(--farol-muted,#66788c); }
+.superadmin-content { width: min(1200px,100%); margin: 0 auto; padding: 28px 22px 50px; }
+.superadmin-shell .farol-back-navigation { padding: 14px max(22px,calc((100vw - 1200px)/2)) 0; }
+@media(max-width:700px) { .superadmin-content { padding: 22px 15px 36px; } .superadmin-topbar { padding: 12px 15px; } }
