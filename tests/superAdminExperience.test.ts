@@ -4,6 +4,7 @@ import routes from '../src/router/index.ts?raw'
 import layout from '../src/presentation/layouts/AppLayout.vue?raw'
 import profile from '../src/presentation/pages/AuthPage.vue?raw'
 import admin from '../src/presentation/pages/AdminPage.vue?raw'
+import securityPage from '../src/presentation/pages/AccountSecurityPage.vue?raw'
 import gifts from '../src/presentation/pages/GiftsPage.vue?raw'
 import nav from '../src/presentation/components/BackNavigation.vue?raw'
 import { readFileSync } from 'node:fs'
@@ -33,6 +34,7 @@ describe('Navegação e separação dos privilégios', () => {
 
   it('o perfil fica simples e a segurança tem página separada', () => {
     expect(profile).toContain('to="/seguranca"')
+    expect(securityPage).toContain('<BackNavigation fallback="/conta" />')
     expect(profile).toContain('to="/dados-online"')
     expect(profile).not.toContain('<TotpSettings />')
     expect(profile).not.toContain('<PhoneLinkPanel />')
