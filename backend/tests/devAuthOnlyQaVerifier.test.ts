@@ -28,7 +28,7 @@ function mockAuth(
   factors: object = { totp:[{factor_type:'totp',status:'verified'}] },
   status = 200,
 ): typeof fetch {
-  return (async (input: RequestInfo | URL, init?: RequestInit) => {
+  return (async (input: string | URL, init?: RequestInit) => {
     const url = String(input)
     if (!url.startsWith(DEV+'/auth/v1/user')) throw Error('Wrong Auth host')
     if (init?.method !== 'GET' || init?.redirect !== 'error') throw Error('Wrong Auth request')
