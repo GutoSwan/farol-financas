@@ -208,6 +208,12 @@ function corsOrigin(): string | undefined {
 const guardedFastify = Fastify({ logger: false, bodyLimit: 100_000 })
 guardedFastify.addHook('onRequest', async (request, reply) => {
   const path = request.url.split('?')[0]
+  // Isolated Admin QA has no write privileges, including HTTP mutations.
+  if (process.env.FAROL_PREVIEW_ADMIN_QA_READONLY === 'true' &&
+      path.startsWith('/api/v1/') &&
+      !['GET', 'HEAD', 'OPTIONS'].includes(request.method)) {
+    return reply.code(403).send({ error: 'Preview administrativa somente leitura.' })
+  }
   if (path.startsWith('/api/v1/') &&
       path !== '/api/v1/health' && path !== '/api/v1/ready' &&
       !isVerifiedDevPreviewEnvironment(process.env)) {

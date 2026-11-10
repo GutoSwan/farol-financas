@@ -35,4 +35,31 @@ describe('Isolamento Dev do backend Vercel Preview', () => {
   it('não bloqueia aplicação fora de Preview', () => {
     expect(isVerifiedDevPreviewEnvironment({ VERCEL_ENV: 'production' })).toBe(true)
   })
+  it('aceita apenas a role de QA com acesso read-only ao Supabase Dev, com segredo presente', () => {
+    const env = {
+      ...base,
+      FAROL_PREVIEW_ADMIN_QA_READONLY: 'true',
+      DATABASE_URL: 'postgresql://farol_preview_adminqa_ro.' + REF + ':synthetic-password-for-qa-12345@aws-0-sa-east-1.pooler.supabase.com:6543/postgres',
+    }
+    expect(isVerifiedDevPreviewEnvironment(env)).toBe(true)
+    expect(isVerifiedDevPreviewEnvironment({ ...env, FAROL_FINANCIAL_WRITES_ENABLED: 'true' })).toBe(false)
+    expect(isVerifiedDevPreviewEnvironment({ ...env, FAROL_INVOICE_UPLOADS_ENABLED: 'true' })).toBe(false)
+    expect(isVerifiedDevPreviewEnvironment({ ...env, DATABASE_URL: base.DATABASE_URL })).toBe(false)
+    expect(isVerifiedDevPreviewEnvironment({
+      ...env, DATABASE_URL: env.DATABASE_URL.replace('farol_preview_adminqa_ro.', 'postgres.')
+    })).toBe(false)
+    expect(isVerifiedDevPreviewEnvironment({
+      ...env, DATABASE_URL: env.DATABASE_URL.replace(':6543/', ':5432/')
+    })).toBe(false)
+    expect(isVerifiedDevPreviewEnvironment({
+      ...env, DATABASE_URL: env.DATABASE_URL.replace(REF,'xwzbcabyjhmgggbkaxvt')
+    })).toBe(false)
+    expect(isVerifiedDevPreviewEnvironment({
+      ...env, DATABASE_URL: env.DATABASE_URL.replace('synthetic-password-for-qa-12345','short')
+    })).toBe(false)
+    expect(isVerifiedDevPreviewEnvironment({
+      ...env, SUPABASE_URL: 'https://xwzbcabyjhmgggbkaxvt.supabase.co'
+    })).toBe(false)
+  })
+
 })
