@@ -24,7 +24,6 @@ import './assets/styles/sidebar-theme.css'
 import './assets/styles/gifts.css'
 import './assets/styles/calendar.css'
 import './assets/styles/ux-admin-calendar.css'
-import './assets/styles/admin-inverted.css'
 
 
 // Atualiza apenas os arquivos estáticos. Dados financeiros e autenticação
