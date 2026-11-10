@@ -1,5 +1,5 @@
 <script setup lang="ts">
-type IconName = 'dashboard' | 'receipt' | 'repeat' | 'wallet' | 'card' | 'target' | 'chart' | 'trash' | 'edit' | 'archive' | 'restore' | 'plus' | 'users' | 'sun' | 'moon' | 'check' | 'folder' | 'arrow' | 'info' | 'settings' | 'user' | 'star' | 'heart' | 'rocket' | 'cat' | 'leaf' | 'gift' | 'log-out' | 'calendar' | 'mail' | 'smartphone'
+type IconName = 'dashboard' | 'receipt' | 'repeat' | 'wallet' | 'card' | 'target' | 'chart' | 'trash' | 'edit' | 'archive' | 'restore' | 'plus' | 'users' | 'sun' | 'moon' | 'check' | 'folder' | 'arrow' | 'info' | 'settings' | 'user' | 'star' | 'heart' | 'rocket' | 'cat' | 'leaf' | 'gift' | 'log-out' | 'calendar' | 'mail' | 'smartphone' | 'shield-check' | 'arrow-left'
 
 withDefaults(defineProps<{ name: IconName; size?: number }>(), { size: 18 })
 
@@ -31,6 +31,8 @@ const paths: Record<IconName, string[]> = {
   cat: ['M4 10V4l4 3a9 9 0 0 1 8 0l4-3v6a8 8 0 1 1-16 0z', 'M8 13h.01', 'M16 13h.01', 'M10 17c1 1 3 1 4 0'],
   leaf: ['M20 4c-11 0-16 4-16 11a5 5 0 0 0 5 5c7 0 11-5 11-16z', 'M4 20c2-5 6-8 12-11'],
   gift: ['M20 12v10H4V12', 'M2 7h20v5H2z', 'M12 22V7', 'M12 7H7.5a2.5 2.5 0 1 1 2.45-3C10.9 5.05 12 7 12 7z', 'M12 7h4.5a2.5 2.5 0 1 0-2.45-3C13.1 5.05 12 7 12 7z'],
+  'shield-check': ['M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z', 'M9 12l2 2 4-4'],
+  'arrow-left': ['M19 12H5', 'M11 18l-6-6 6-6'],
   'log-out': ['M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4', 'M16 17l5-5-5-5', 'M21 12H9'],
   calendar: ['M4 5h16v16H4z', 'M8 3v5', 'M16 3v5', 'M4 10h16', 'M8 14h2', 'M14 14h2', 'M8 18h2'],
   mail: ['M3 5h18v14H3z', 'M3 6l9 7 9-7'],

@@ -7,6 +7,7 @@ on:
     branches:
       - feat/v0.24-superadmin-ux-navigation
       - security/v0.27-auth-only-admin-preview
+      - feat/v0.28-superadmin-inverted-workspace
   workflow_dispatch:
 
 permissions:

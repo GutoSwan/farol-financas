@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { useRoute, useRouter } from 'vue-router'
 
-const props = withDefaults(defineProps<{ fallback?: string }>(), { fallback: '/' })
+const props = withDefaults(defineProps<{ fallback?: string; homeTo?: string; homeLabel?: string }>(), {
+  fallback: '/', homeTo: '/', homeLabel: 'Visão geral',
+})
 const router = useRouter()
 const route = useRoute()
 
@@ -22,6 +24,6 @@ function goBack(): void {
     <button type="button" class="farol-back-button" @click="goBack">
       <span aria-hidden="true">←</span> Voltar
     </button>
-    <RouterLink to="/" class="farol-home-link">Visão geral</RouterLink>
+    <RouterLink :to="props.homeTo" class="farol-home-link">{{ props.homeLabel }}</RouterLink>
   </nav>
 </template>

@@ -99,6 +99,18 @@
     {
       "source": "/recuperar-celular",
       "destination": "/index.html"
+    },
+    {
+      "source": "/administracao/backup",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/administracao/seguranca",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/administracao/dados",
+      "destination": "/index.html"
     }
   ],
   "headers": [

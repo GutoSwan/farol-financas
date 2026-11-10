@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import BackNavigation from '../components/BackNavigation.vue'
+import { useRoute } from 'vue-router'
+
+const route = useRoute()
 import TotpSettings from '../components/TotpSettings.vue'
 import PhoneLinkPanel from '../components/PhoneLinkPanel.vue'
 </script>
 
 <template>
   <div class="account-security-page">
-    <BackNavigation fallback="/conta" />
+    <BackNavigation v-if="!route.path.startsWith('/administracao')" fallback="/conta" />
     <div class="heading">
       <div>
         <p class="eyebrow">PROTEÇÃO DA CONTA</p>
