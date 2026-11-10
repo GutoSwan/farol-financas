@@ -59,8 +59,7 @@ async function checkOnlyOwn(client, identity, alias) {
   console.info(alias + ': não recebeu compromissos de outra conta na consulta.')
 }
 
-async function createFixture(client, userId, alias) {
-  const id = randomUUID()
+async function createFixture(client, userId, alias, id) {
   const startsAt = new Date(Date.now() + 6 * 3600_000).toISOString()
   const endsAt = new Date(Date.now() + 7 * 3600_000).toISOString()
   const entry = {
@@ -91,9 +90,15 @@ async function removeFixture(client, id, userId, alias) {
   const response = await client.from('calendar_events')
     .delete().eq('id', id).eq('user_id', userId).select('id')
   assertOk(response.error, alias + ': limpeza')
-  requireState(response.data?.length === 1 && response.data[0].id === id,
-    alias + ': registro fictício não foi removido; verificar manualmente no Dev.')
-  console.info(alias + ': compromisso fictício removido.')
+  if (!Array.isArray(response.data) || response.data.some(row => row.id !== id)) {
+    throw new Error('Resposta de limpeza inesperada.')
+  }
+  // Se a criação falhou antes de chegar ao banco, não havia registro a remover.
+  const remaining = await client.from('calendar_events').select('id').eq('id', id)
+  assertOk(remaining.error, alias + ': conferência da limpeza')
+  requireState(remaining.data?.length === 0,
+    alias + ': compromisso fictício ainda existe, conferir manualmente no Dev')
+  console.info(alias + ': nenhum compromisso fictício restante.')
 }
 
 async function testIsolation(a, b, aId, bId) {
@@ -135,8 +140,12 @@ export async function run() {
     await checkOnlyOwn(a.client, a.userId, 'Conta QA A')
     await checkOnlyOwn(b.client, b.userId, 'Conta QA B')
     if (config.withFixtures) {
-      a.fixture = await createFixture(a.client, a.userId, 'Conta QA A')
-      b.fixture = await createFixture(b.client, b.userId, 'Conta QA B')
+      // Identificadores guardados ANTES do envio: se a resposta se perder,
+      // ainda será possível tentar limpar o registro de teste.
+      a.fixture = randomUUID()
+      await createFixture(a.client, a.userId, 'Conta QA A', a.fixture)
+      b.fixture = randomUUID()
+      await createFixture(b.client, b.userId, 'Conta QA B', b.fixture)
       await testIsolation(a, b, a.fixture, b.fixture)
     } else {
       console.info('Modo somente leitura: a separação entre duas contas NÃO foi comprovada com registros fictícios.')
