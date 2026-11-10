@@ -118,7 +118,9 @@ async function confirmFromEmail(record){
           mailToken:record.mailToken})
         if(!detail.ok)continue
         const messageData=detail.data??{}
-        const parts=[messageData.text, ...(messageData.html??[]),
+        const htmlParts=Array.isArray(messageData.html) ? messageData.html
+          : (typeof messageData.html === 'string' ? [messageData.html] : [])
+        const parts=[messageData.text, ...htmlParts,
           messageData.intro,message.intro].filter(Boolean)
         const joined=parts.join(' ').replaceAll('&amp;','&')
           .replaceAll('&#38;','&').replaceAll('&quot;','"')
