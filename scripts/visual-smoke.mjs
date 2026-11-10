@@ -82,7 +82,7 @@ async function setup(browser,{role=null,viewport={width:1440,height:900}}={}){
 async function visit(page,path,expectText){
   await page.goto(origin+path,{waitUntil:'domcontentloaded'})
   try {
-    await page.getByText(expectText,{exact:false}).first().waitFor({timeout:13000})
+    await page.getByRole('heading',{name:expectText,exact:false}).first().waitFor({timeout:13000})
   } catch (cause) {
     // Diagnostic metadata only, never print user tokens or personal data.
     const headings=await page.locator('h1').allTextContents()
