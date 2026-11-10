@@ -47,6 +47,10 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Testes da checagem pública (rede simulada)
         run: node --test scripts/verify-public-health.test.mjs
+      - name: Testes de segurança do QA real (sem acessar Supabase)
+        run: node --test scripts/qa-real-auth-guards.test.mjs
+      - name: Conferir sintaxe do roteiro de teste real
+        run: node --check scripts/qa-real-auth-e2e.mjs
       - name: Testes de regras financeiras
         run: npm run test
       - name: Validar tipos e gerar build
