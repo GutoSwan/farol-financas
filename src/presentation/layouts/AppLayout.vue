@@ -3,7 +3,6 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import UiIcon from '../components/UiIcon.vue'
 import BackNavigation from '../components/BackNavigation.vue'
-import OnlineWorkspacesSidebar from '../components/OnlineWorkspacesSidebar.vue'
 import { useTheme } from '../composables/useTheme'
 import { useWorkspaces } from '../composables/useWorkspaces'
 import { useAuth } from '../composables/useAuth'
@@ -13,7 +12,7 @@ import type { FinancialWorkspace } from '../../domain/entities/FinancialWorkspac
 
 const route = useRoute()
 const router = useRouter()
-const { isLoggedIn, isAdmin, isSuperAdmin, user, profile, signOut } = useAuth()
+const { isLoggedIn, isAdmin, user, profile, signOut } = useAuth()
 const localAccessAllowed = computed(() => !!user.value && localLegacyAccess(user.value.id) === 'allowed')
 const profileMenuOpen = ref(false)
 const profileBusy = ref(false)
@@ -160,10 +159,6 @@ function removeWorkspace(space: FinancialWorkspace): void {
           <UiIcon :name="link.icon" :size="17" />
           <span>{{ link.label }}</span>
         </RouterLink>
-        <RouterLink v-if="isSuperAdmin" to="/administracao" class="side-nav-link"
-          :class="{ active: ['/administracao', '/backup-local'].includes(route.path) }" @click="closeMobileMenu(true)">
-          <UiIcon name="settings" :size="17" /><span>Administração</span>
-        </RouterLink>
         <RouterLink v-if="isAdmin" to="/presentes" class="side-nav-link"
           :class="{ active: route.path === '/presentes' }" @click="closeMobileMenu(true)">
           <UiIcon name="gift" :size="17" /><span>Presentes</span>
@@ -197,14 +192,6 @@ function removeWorkspace(space: FinancialWorkspace): void {
               </button>
             </div>
           </div>
-          <section v-if="isSuperAdmin" class="sidebar-backup-section" aria-label="Backup dos dados financeiros">
-            <h3><UiIcon name="folder" :size="16" /> Segurança dos seus dados</h3>
-            <p>Antes de migrarmos seus registros para a nuvem, salve uma cópia dos espaços financeiros deste navegador.</p>
-            <RouterLink class="sidebar-backup-button" to="/backup-local" @click="managing = false; closeMobileMenu(true)">
-              Preparar backup criptografado
-            </RouterLink>
-          </section>
-          <OnlineWorkspacesSidebar v-if="isSuperAdmin" />
           <p v-if="notice" class="success" role="status">{{ notice }}</p>
           <button class="secondary-action close-spaces" type="button" @click="managing = false">Fechar</button>
         </div>
@@ -230,9 +217,6 @@ function removeWorkspace(space: FinancialWorkspace): void {
           </RouterLink>
           <RouterLink v-if="isLoggedIn" to="/seguranca" @click="profileMenuOpen = false">
             <UiIcon name="settings" :size="16" /> Segurança e acesso
-          </RouterLink>
-          <RouterLink v-if="isSuperAdmin" to="/administracao" @click="profileMenuOpen = false">
-            <UiIcon name="folder" :size="16" /> Área administrativa
           </RouterLink>
           <button v-if="isLoggedIn" type="button" :disabled="profileBusy" @click="logoutFromSidebar">
             <UiIcon name="log-out" :size="16" /> {{ profileBusy ? 'Saindo...' : 'Sair da conta' }}
