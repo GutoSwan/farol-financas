@@ -23,6 +23,18 @@ export function isVerifiedDevPreviewEnvironment(env: NodeJS.ProcessEnv): boolean
     const direct = database.hostname === 'db.' + ref + '.supabase.co'
     const pooler = database.hostname.endsWith('.pooler.supabase.com') &&
       decodeURIComponent(database.username) === 'postgres.' + ref
+    // Modo exclusivo de QA: usa apenas role LOGIN read-only do Dev (NUNCA postgres).
+    // Jamais autoriza escrita financeira na Preview, mesmo por requisição direta.
+    if (env.FAROL_PREVIEW_ADMIN_QA_READONLY === 'true') {
+      return ref === 'tvirkrjkgdtybtcundon' &&
+        database.hostname.endsWith('.pooler.supabase.com') &&
+        database.port === '6543' &&
+        database.pathname === '/postgres' &&
+        database.password.length >= 24 &&
+        decodeURIComponent(database.username) === 'farol_preview_adminqa_ro.' + ref &&
+        env.FAROL_FINANCIAL_WRITES_ENABLED !== 'true' &&
+        env.FAROL_INVOICE_UPLOADS_ENABLED !== 'true'
+    }
     return direct || pooler
   } catch {
     return false
