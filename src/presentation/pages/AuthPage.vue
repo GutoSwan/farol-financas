@@ -16,12 +16,18 @@ const router = useRouter()
 const { isDark, toggleTheme } = useTheme()
 const {
   configured, ready, user, profile, isLoggedIn, isSuperAdmin, signIn, signUp, verifySignupCode, resendSignupCode,
-  updateProfile, signOut, requestPasswordReset, updatePassword,
+  updateProfile, signOut, requestPasswordReset, recoverFromEmailLink, recoveringPassword,
+  recoveryMfaChecked, recoveryMfaRequired, recoveryMfaVerified, recoveryTotpFactors,
+  prepareRecoveryMfa, verifyRecoveryMfa, updatePassword,
 } = useAuth()
 
 const email = ref('')
 const password = ref('')
 const confirmPassword = ref('')
+const recoveryLinkInput = ref('')
+const passwordResetDone = ref(false)
+const recoveryMfaCode = ref('')
+const recoveryMfaFactorId = ref('')
 const displayName = ref('')
 const showPassword = ref(false)
 const busy = ref(false)
@@ -38,12 +44,55 @@ const editedIcon = ref<ProfileIcon>('user')
 watch(() => props.mode, () => {
   password.value = ''
   confirmPassword.value = ''
+  recoveryLinkInput.value = ''
+  passwordResetDone.value = false
+  recoveryMfaCode.value = ''
+  recoveryMfaFactorId.value = ''
   code.value = ''
   signupStep.value = 'form'
   message.value = ''
   errorText.value = ''
   editingProfile.value = false
 })
+// O link recuperado inicia AAL1. Nunca mostrar o formulário de senha antes
+// de verificar os fatores atuais e, se houver TOTP, elevar a sessão para AAL2.
+watch([recoveringPassword, () => props.mode], async ([active, mode]) => {
+  if (!active || mode !== 'reset') return
+  await loadRecoveryMfa()
+}, { immediate: true })
+
+async function loadRecoveryMfa(): Promise<void> {
+  if (busy.value) return
+  resetMessages()
+  busy.value = true
+  try {
+    await prepareRecoveryMfa()
+    recoveryMfaFactorId.value = recoveryTotpFactors.value[0]?.id ?? ''
+    if (recoveryMfaRequired.value && !recoveryMfaVerified.value) {
+      message.value = 'Link confirmado. Informe o código do Authenticator para autorizar a nova senha.'
+    }
+  } catch (cause) {
+    errorText.value = errorMessage(cause)
+  } finally {
+    busy.value = false
+  }
+}
+
+async function confirmRecoveryTotp(): Promise<void> {
+  if (busy.value || !recoveryMfaFactorId.value) return
+  resetMessages()
+  busy.value = true
+  try {
+    await verifyRecoveryMfa(recoveryMfaFactorId.value, recoveryMfaCode.value)
+    recoveryMfaCode.value = ''
+    message.value = 'Authenticator confirmado! Agora você pode definir a nova senha.'
+  } catch (cause) {
+    errorText.value = errorMessage(cause)
+  } finally {
+    busy.value = false
+  }
+}
+
 watch(profile, (current) => {
   if (!editingProfile.value) {
     editedName.value = current.displayName
@@ -88,16 +137,43 @@ async function submit(): Promise<void> {
       else message.value = 'Se este e-mail puder ser cadastrado, enviaremos instruções de confirmação. Se já tiver uma conta, entre normalmente ou recupere sua senha.'
     } else if (props.mode === 'forgot') {
       await requestPasswordReset(email.value)
-      message.value = 'Se esse e-mail estiver cadastrado, enviaremos um link para redefinir a senha.'
+      message.value = 'Se o e-mail estiver cadastrado no Supabase Dev, você receberá um link. Abra o link para definir a senha; se for redirecionado para outro site, copie o link original do e-mail e cole na página Definir nova senha do Farol.'
     } else if (props.mode === 'reset') {
       await updatePassword(password.value)
       password.value = ''
       confirmPassword.value = ''
-      message.value = 'Senha atualizada. Você já pode acessar o Farol com sua conta.'
+      passwordResetDone.value = true
+      message.value = 'Senha atualizada! Entre novamente e confirme seu autenticador para abrir o Farol.'
     }
+  } catch (cause) {
+    const reason = errorMessage(cause)
+    errorText.value = props.mode === 'login' && /invalid login credentials|invalid email or password/i.test(reason)
+      ? 'E-mail ou senha não reconhecidos neste ambiente. O Supabase Dev possui uma senha independente da versão principal do Farol. Use “Esqueci minha senha” para definir a senha do Dev.'
+      : reason
+  } finally {
+    busy.value = false
+  }
+}
+
+async function confirmRecoveryLink(): Promise<void> {
+  if (busy.value || !configured) return
+  resetMessages()
+  busy.value = true
+  try {
+    await recoverFromEmailLink(recoveryLinkInput.value)
+    // O watcher pode executar enquanto busy=true. Preparar aqui garante que
+    // a confirmação manual do link também mostre o desafio sem clique extra.
+    await prepareRecoveryMfa()
+    recoveryMfaFactorId.value = recoveryTotpFactors.value[0]?.id ?? ''
+    message.value = recoveryMfaRequired.value && !recoveryMfaVerified.value
+      ? 'Link confirmado. Informe o código do Authenticator para continuar.'
+      : 'Link confirmado. Agora você pode definir sua nova senha.'
   } catch (cause) {
     errorText.value = errorMessage(cause)
   } finally {
+    // O endereço de recuperação contém um token de uso único:
+    // nunca deixá-lo salvo no campo, em histórico, analytics ou logs.
+    recoveryLinkInput.value = ''
     busy.value = false
   }
 }
@@ -288,9 +364,65 @@ async function logout(): Promise<void> {
           </RouterLink>
         </div>
         <p class="auth-subtitle">{{ mode === 'login' ? 'Acesse com seu e-mail e sua senha.' : mode === 'signup' ? 'Crie seu acesso. Enviaremos um código de confirmação por e-mail.' : mode === 'forgot' ? 'Enviaremos um link de recuperação para seu e-mail.' : 'Digite a nova senha para sua conta.' }}</p>
+        <p v-if="mode === 'login'" class="auth-muted">Esta Preview usa o Supabase Dev. A senha da sua conta na versão principal pode não funcionar aqui.</p>
+
+        <section v-if="mode === 'reset' && !recoveringPassword && !passwordResetDone" class="auth-warning" aria-label="Confirmar link de recuperação">
+          <div>
+            <strong>Confirme o link para trocar a senha</strong>
+            <p>Se o link do e-mail não abriu esta tela corretamente, solicite outro e-mail e use “Copiar endereço do link”. Cole abaixo o endereço original do Supabase Dev, sem enviá-lo a ninguém.</p>
+            <form class="auth-form" @submit.prevent="confirmRecoveryLink">
+              <label>Link de recuperação do e-mail
+                <textarea v-model.trim="recoveryLinkInput" rows="3" autocomplete="off" spellcheck="false"
+                  :disabled="busy" maxlength="4096" required placeholder="https://...supabase.co/auth/v1/verify?token=..." />
+              </label>
+              <button type="submit" class="secondary-action auth-full-button" :disabled="busy || !recoveryLinkInput.trim()">
+                {{ busy ? 'Verificando...' : 'Confirmar link de recuperação' }}
+              </button>
+            </form>
+            <RouterLink class="auth-inline-link" to="/recuperar-senha">Pedir outro link de recuperação</RouterLink>
+          </div>
+        </section>
+        <div v-if="mode === 'reset' && recoveringPassword && !recoveryMfaChecked" class="auth-info" role="status">
+          Conferindo o nível de segurança da sessão de recuperação...
+          <button type="button" class="auth-inline-link" :disabled="busy" @click="loadRecoveryMfa">
+            Verificar autenticador novamente
+          </button>
+        </div>
+        <section v-if="mode === 'reset' && recoveringPassword && recoveryMfaChecked && recoveryMfaRequired && !recoveryMfaVerified"
+          class="auth-warning" aria-label="Confirmar autenticador para recuperar senha">
+          <div>
+            <strong>Confirme sua identidade com o Authenticator</strong>
+            <p>O link por e-mail foi aceito. Para alterar a senha de uma conta com 2FA, o Supabase exige uma sessão AAL2.</p>
+            <form class="auth-form" @submit.prevent="confirmRecoveryTotp">
+              <label v-if="recoveryTotpFactors.length > 1">Selecione o autenticador
+                <select v-model="recoveryMfaFactorId" :disabled="busy">
+                  <option v-for="factor in recoveryTotpFactors" :key="factor.id" :value="factor.id">{{ factor.label }}</option>
+                </select>
+              </label>
+              <label>Código de seis dígitos do aplicativo autenticador
+                <input v-model.trim="recoveryMfaCode" type="text" inputmode="numeric" autocomplete="one-time-code"
+                  pattern="[0-9]{6}" minlength="6" maxlength="6" required :disabled="busy"
+                  placeholder="000000" class="auth-otp-input" />
+              </label>
+              <button type="submit" class="primary auth-full-button" :disabled="busy || !recoveryMfaFactorId">
+                {{ busy ? 'Verificando...' : 'Confirmar autenticador' }}
+              </button>
+            </form>
+          </div>
+        </section>
+        <div v-if="mode === 'reset' && recoveringPassword && recoveryMfaVerified && !passwordResetDone"
+          class="auth-info" role="status">
+          Identidade confirmada. Agora escolha sua nova senha do Supabase Dev.
+        </div>
+        <div v-if="mode === 'reset' && passwordResetDone" class="auth-confirmed" role="status">
+          <h2>Senha alterada com sucesso</h2>
+          <p>Entre com a nova senha e confirme seu aplicativo autenticador.</p>
+          <RouterLink class="primary auth-full-button" to="/entrar">Ir para o login</RouterLink>
+        </div>
         <div v-if="isLoggedIn && mode !== 'reset'" class="auth-info">Você já está autenticado. <RouterLink to="/conta">Ver meu perfil</RouterLink>.</div>
 
-        <form class="auth-form" @submit.prevent="submit">
+        <form v-if="mode !== 'reset' || (recoveringPassword && recoveryMfaChecked && recoveryMfaVerified && !passwordResetDone)"
+          class="auth-form" @submit.prevent="submit">
           <label v-if="mode === 'signup'">Nome de exibição
             <input v-model="displayName" type="text" required minlength="2" maxlength="40" autocomplete="nickname"
               placeholder="Ex.: Gustavo" :disabled="busy || !configured" />

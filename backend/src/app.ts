@@ -9,6 +9,7 @@ import type { FinancialCatalogRepository } from './domain/repositories/Financial
 import type { FinancialCatalogMutations } from './domain/repositories/FinancialCatalogMutations.js'
 import type { InvoiceRepository } from './domain/repositories/InvoiceRepository.js'
 import { isVerifiedDevPreviewEnvironment } from './infrastructure/security/environmentIsolation.js'
+import { DevAuthOnlyQaVerifier, isVerifiedAuthOnlyDevPreview } from './infrastructure/auth/DevAuthOnlyQaVerifier.js'
 import type { PrismaTransactionRepository } from './infrastructure/repositories/PrismaTransactionRepository.js'
 import type { AuthVerifier } from './infrastructure/auth/SupabaseJwtVerifier.js'
 import type { PrismaWorkspaceRepository } from './infrastructure/repositories/PrismaWorkspaceRepository.js'
@@ -180,8 +181,21 @@ function getVerifier(): Promise<AuthVerifier> {
   }
   return verifierPromise
 }
+const authOnlyQa = process.env.FAROL_PREVIEW_ADMIN_QA_AUTH_ONLY === 'true'
+const qaVerifier = authOnlyQa
+  ? new DevAuthOnlyQaVerifier(process.env.SUPABASE_PUBLISHABLE_KEY ?? '')
+  : null
+
 const auth: AuthVerifier = {
-  async verifyAccessToken(token) { return (await getVerifier()).verifyAccessToken(token) },
+  async verifyAccessToken(token) {
+    if (authOnlyQa) {
+      if (!isVerifiedAuthOnlyDevPreview(process.env) || !qaVerifier) {
+        throw new Error('Preview de teste isolada não configurada.')
+      }
+      return qaVerifier.verifyAccessToken(token)
+    }
+    return (await getVerifier()).verifyAccessToken(token)
+  },
 }
 
 function corsOrigin(): string | undefined {
@@ -208,6 +222,20 @@ function corsOrigin(): string | undefined {
 const guardedFastify = Fastify({ logger: false, bodyLimit: 100_000 })
 guardedFastify.addHook('onRequest', async (request, reply) => {
   const path = request.url.split('?')[0]
+  if (authOnlyQa) {
+    // Nunca usar credenciais globais de banco quando este modo estiver ativo.
+    if (!isVerifiedAuthOnlyDevPreview(process.env)) {
+      return reply.code(503).send({ error: 'Preview Dev não isolada.' })
+    }
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(request.method)) {
+      return reply.code(403).send({ error: 'Teste somente leitura.' })
+    }
+    if (!['/api/v1/health', '/api/v1/ready', '/api/v1/admin/access'].includes(path)) {
+      return reply.code(403).send({ error: 'Acesso disponível apenas ao teste de Administração.' })
+    }
+    return
+  }
+
   // Isolated Admin QA has no write privileges, including HTTP mutations.
   if (process.env.FAROL_PREVIEW_ADMIN_QA_READONLY === 'true' &&
       path.startsWith('/api/v1/') &&
@@ -223,7 +251,11 @@ guardedFastify.addHook('onRequest', async (request, reply) => {
 
 const app = buildApp({
   auth,
-  async checkSuperAdmin(userId) {
+  async checkSuperAdmin(userId, token) {
+    if (authOnlyQa) {
+      if (!isVerifiedAuthOnlyDevPreview(process.env) || !qaVerifier) return false
+      return qaVerifier.checkSuperAdmin(userId, token)
+    }
     // Nunca confiar apenas em app_metadata do JWT, que pode estar desatualizado.
     // A consulta parametrizada lê o papel atual da conta, sem devolver informações pessoais.
     const prisma = await getPrisma()
@@ -264,6 +296,10 @@ const app = buildApp({
   allowWorkspaceWrites: process.env.FAROL_FINANCIAL_WRITES_ENABLED === 'true' &&
     process.env.VERCEL_ENV !== 'preview',
   async checkDatabase() {
+    // No QA de autorização só verificamos a saúde do Supabase Auth Dev.
+    // Nenhuma conexão a PostgreSQL, Prisma ou dados financeiros é criada.
+    if (authOnlyQa) return isVerifiedAuthOnlyDevPreview(process.env) &&
+      !!qaVerifier && await qaVerifier.ready()
     // Nem mesmo o endpoint readiness deve contactar um banco inesperado.
     if (!isVerifiedDevPreviewEnvironment(process.env)) return false
     // Validação de variáveis e consulta SQL apenas em /ready, nunca em /health.

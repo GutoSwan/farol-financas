@@ -31,6 +31,8 @@ describe('Health da API independente de PostgreSQL e JWT', () => {
         VERCEL: '',
         // Isolar o processo de teste das variáveis de Preview injetadas pelo CI.
         VERCEL_ENV: 'development',
+        FAROL_PREVIEW_ADMIN_QA_AUTH_ONLY: '',
+        FAROL_PREVIEW_ADMIN_QA_READONLY: '',
         PORT: String(port),
         HOST: '127.0.0.1',
         DATABASE_URL: '',

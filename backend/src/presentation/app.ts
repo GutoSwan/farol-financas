@@ -116,7 +116,7 @@ export interface AppDependencies {
   allowInvoiceReads?: boolean
   checkDatabase(): Promise<boolean>
   /** Lê papel Super Admin atual diretamente do auth.users, nunca do JWT ou navegador. */
-  checkSuperAdmin?: (userId: string) => Promise<boolean>
+  checkSuperAdmin?: (userId: string, token?: string) => Promise<boolean>
   corsOrigin?: string
   /** Preview usa banco real por enquanto: impedir gravações HTTP no servidor. */
   allowWorkspaceWrites?: boolean
@@ -291,7 +291,8 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
     const identity = await authorized(request, reply)
     if (!identity) return
     if (identity.assuranceLevel !== 'aal2') return reply.code(403).send({ error: 'Confirme o segundo fator.' })
-    if (!deps.checkSuperAdmin || !await deps.checkSuperAdmin(identity.userId)) {
+    if (!deps.checkSuperAdmin || !await deps.checkSuperAdmin(identity.userId, typeof request.headers.authorization === 'string' && request.headers.authorization.startsWith('Bearer ')
+      ? request.headers.authorization.slice(7) : undefined)) {
       return reply.code(403).send({ error: 'Acesso reservado ao Super Admin.' })
     }
     return { data: { superAdmin: true } }

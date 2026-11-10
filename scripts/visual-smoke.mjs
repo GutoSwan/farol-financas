@@ -14,9 +14,9 @@ const sessionId = '22222222-2222-4222-8222-222222222222'
 const output = 'artifacts/visual-qa'
 const when = Math.floor(Date.now() / 1000)
 const encode = x => Buffer.from(JSON.stringify(x)).toString('base64url')
-const jwt = [encode({alg:'RS256',typ:'JWT'}),encode({
+const jwtFor = level => [encode({alg:'RS256',typ:'JWT'}),encode({
   iss:authOrigin+'/auth/v1',sub:id,aud:'authenticated',role:'authenticated',
-  exp:when+7200,iat:when,aal:'aal2',session_id:sessionId
+  exp:when+7200,iat:when,aal:level,session_id:sessionId
 }),encode('SYNTHETIC-NOT-A-SIGNATURE')].join('.')
 
 function fixtureUser(role){
@@ -29,9 +29,9 @@ function fixtureUser(role){
       status:'verified',factor_type:'totp',friendly_name:'Teste visual',created_at:'2026-11-10T12:00:00Z'}],
   }
 }
-function session(role){
+function session(role,level='aal2'){
   return {
-    access_token:jwt,refresh_token:'synthetic-visual-qa-refresh',expires_in:7200,
+    access_token:jwtFor(level),refresh_token:'synthetic-visual-qa-refresh',expires_in:7200,
     expires_at:when+7200,token_type:'bearer',user:fixtureUser(role),
   }
 }
@@ -44,9 +44,12 @@ function jsonRoute(route,payload,status=200){
     body:JSON.stringify(payload)})
 }
 
-async function setup(browser,{role=null,viewport={width:1440,height:900}}={}){
+async function setup(browser,{role=null,viewport={width:1440,height:900},recovery=false}={}){
   const context=await browser.newContext({viewport,deviceScaleFactor:1})
-  if(role){
+  const qa={recoveries:0,mfaChallenges:0,mfaVerifications:0,passwordChanges:0}
+  let recoverySession=false
+  let verifiedMfa=false
+  if(role&&!recovery){
     const info=session(role)
     await context.addInitScript(({storageKey,sessionJson,userId})=>{
       localStorage.setItem(storageKey,sessionJson)
@@ -58,7 +61,37 @@ async function setup(browser,{role=null,viewport={width:1440,height:900}}={}){
     const u=new URL(route.request().url())
     if(u.origin===origin)return route.continue()
     if(u.origin===authOrigin){
-      if(u.pathname==='/auth/v1/user')return jsonRoute(route,fixtureUser(role))
+      const method=route.request().method()
+      if(recovery && u.pathname==='/auth/v1/verify' && method==='POST'){
+        const body=route.request().postDataJSON()
+        if(body.type!=='recovery' || body.token_hash!=='a'.repeat(64)){
+          return jsonRoute(route,{error:'invalid recovery token'},403)
+        }
+        recoverySession=true;qa.recoveries++
+        return jsonRoute(route,session(role,'aal1'))
+      }
+      if(recovery && /^\/auth\/v1\/factors\/[^/]+\/challenge$/.test(u.pathname)){
+        qa.mfaChallenges++
+        return jsonRoute(route,{id:'44444444-4444-4444-8444-444444444444',
+          factor_id:'33333333-3333-4333-8333-333333333333',
+          created_at:'2026-11-10T12:00:00Z'})
+      }
+      if(recovery && /^\/auth\/v1\/factors\/[^/]+\/verify$/.test(u.pathname)){
+        const body=route.request().postDataJSON()
+        if(body.code!=='123456')return jsonRoute(route,{message:'invalid TOTP'},422)
+        verifiedMfa=true;qa.mfaVerifications++
+        return jsonRoute(route,session(role,'aal2'))
+      }
+      if(u.pathname==='/auth/v1/user'){
+        if(recovery && method==='PUT'){
+          if(!verifiedMfa)return jsonRoute(route,{message:'AAL2 required'},403)
+          qa.passwordChanges++
+          return jsonRoute(route,fixtureUser(role))
+        }
+        if(recovery && !recoverySession)return jsonRoute(route,{message:'Unauthenticated'},401)
+        return jsonRoute(route,fixtureUser(role))
+      }
+      if(recovery && u.pathname==='/auth/v1/logout')return jsonRoute(route,{})
       if(u.pathname==='/auth/v1/factors' || u.pathname==='/auth/v1/user/factors')return jsonRoute(route,{
         all:[{id:'33333333-3333-4333-8333-333333333333',status:'verified',
           factor_type:'totp',friendly_name:'Teste visual'}],
@@ -77,7 +110,7 @@ async function setup(browser,{role=null,viewport={width:1440,height:900}}={}){
     return route.abort()
   })
   const page=await context.newPage()
-  return {page,context}
+  return {page,context,qa}
 }
 async function visit(page,path,expectText){
   await page.goto(origin+path,{waitUntil:'domcontentloaded'})
@@ -108,9 +141,9 @@ await mkdir(output,{recursive:true})
 const browser=await chromium.launch({headless:true,args:['--no-sandbox'],
   ...(process.env.FAROL_CHROMIUM_BIN ? {executablePath:process.env.FAROL_CHROMIUM_BIN}:{})})
 let passed=0
-async function scenario(label,role,viewport,fn){
-  const {page,context}=await setup(browser,{role,viewport})
-  try { await fn(page);passed++;console.info('QA VISUAL OK:',label) }
+async function scenario(label,role,viewport,fn,options={}){
+  const {page,context,qa}=await setup(browser,{role,viewport,...options})
+  try { await fn(page,qa);passed++;console.info('QA VISUAL OK:',label) }
   finally {await context.close()}
 }
 try{
@@ -163,6 +196,47 @@ try{
     await page.getByText('Dados na nuvem').first().waitFor()
     await screenshot(page,'07-admin-desktop-simulado')
   })
+  await scenario('Backup protegido retorna ao painel sem usar botão do navegador',
+    'super_admin',{width:1440,height:900},async page=>{
+    await visit(page,'/administracao','Administração do Farol')
+    await page.getByRole('link',{name:'Abrir backup seguro'}).click()
+    await page.getByRole('heading',{name:'Backup financeiro protegido'}).waitFor({timeout:13000})
+    await screenshot(page,'11-backup-com-voltar-desktop')
+    await page.getByRole('button',{name:/Voltar/}).first().click()
+    await page.waitForURL(origin+'/administracao',{timeout:13000})
+    await page.getByRole('heading',{name:'Administração do Farol'}).waitFor()
+    await checkOverflow(page,'Backup e navegação desktop')
+  })
+
+  await scenario('Recuperação MFA AAL2 realista no celular, SEM dados reais', 'super_admin',
+    {width:390,height:844}, async (page,qa)=>{
+    await visit(page,'/redefinir-senha','Definir nova senha')
+    const fakeLink=authOrigin+'/auth/v1/verify?token='+('a'.repeat(64))+
+      '&type=recovery&redirect_to=https%3A%2F%2Fexample.invalid'
+    await page.locator('textarea').fill(fakeLink)
+    await page.getByRole('button',{name:'Confirmar link de recuperação'}).click()
+    await page.getByText('Confirme sua identidade com o Authenticator').waitFor({timeout:13000})
+    await screenshot(page,'08-recuperacao-exige-2fa-mobile')
+    fail(await page.getByRole('button',{name:'Salvar nova senha'}).count()===0,
+      'formulário de senha apareceu antes do Authenticator')
+    fail(qa.passwordChanges===0,'senha atualizada sem verificar MFA')
+    await page.getByPlaceholder('000000').fill('123456')
+    await page.getByRole('button',{name:'Confirmar autenticador'}).click()
+    await page.getByText('Identidade confirmada. Agora escolha sua nova senha').waitFor({timeout:13000})
+    await screenshot(page,'09-recuperacao-aal2-mobile')
+    const passwords=page.locator('input[autocomplete="new-password"]')
+    await passwords.nth(0).fill('Synthetic-Test-Only-1234!')
+    await passwords.nth(1).fill('Synthetic-Test-Only-1234!')
+    await page.getByRole('button',{name:'Salvar nova senha'}).click()
+    await page.getByText('Senha alterada com sucesso').waitFor({timeout:13000})
+    await screenshot(page,'10-recuperacao-sucesso-mobile')
+    await checkOverflow(page,'Recuperação AAL2 mobile')
+    fail(qa.recoveries===1,'link sintético não verificado exatamente uma vez')
+    fail(qa.mfaChallenges===1 && qa.mfaVerifications===1,
+      'MFA não foi confirmado pelo servidor simulado')
+    fail(qa.passwordChanges===1,'não atualizou a senha após AAL2')
+  }, {recovery:true})
+
   console.info('RESULTADO: '+passed+' cenários visuais simulados aprovados. Capturas em '+output)
 }finally{
   await browser.close()

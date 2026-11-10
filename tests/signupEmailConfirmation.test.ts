@@ -3,8 +3,8 @@ import authSource from '../src/presentation/composables/useAuth.ts?raw'
 import signupSource from '../src/presentation/pages/AuthPage.vue?raw'
 
 describe('Confirmação de cadastro no Preview', () => {
-  it('gera links para o mesmo domínio HTTPS do frontend que iniciou o cadastro', () => {
-    expect(authSource).toContain('emailRedirectTo: `${window.location.origin}/entrar`')
+  it('gera links para o domínio HTTPS canônico definido para o Preview', () => {
+    expect(authSource).toContain("emailRedirectTo: emailRedirect('/entrar')")
   })
   it('mantém confirmação numérica pela sessão Supabase Auth', () => {
     expect(authSource).toContain("auth.verifyOtp({")
