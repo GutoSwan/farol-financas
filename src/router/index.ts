@@ -22,7 +22,10 @@ import { supabase } from '../infrastructure/auth/supabase'
 import { listVerifiedTotpFactors } from '../infrastructure/auth/totpMfa'
 import { canAccessWithoutSession, shouldRedirectLoggedInVisitor } from './authNavigation'
 import { requiredMfaRedirect } from './mfaNavigation'
-import { isFarolAdmin } from '../domain/auth/adminAccess'
+import { isFarolAdmin, isFarolSuperAdmin } from '../domain/auth/adminAccess'
+import { verifySuperAdminAccess } from '../infrastructure/auth/superAdminAccess'
+import AdminPage from '../presentation/pages/AdminPage.vue'
+import AccountSecurityPage from '../presentation/pages/AccountSecurityPage.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -39,8 +42,9 @@ const router = createRouter({
       { path: 'orcamentos', component: BudgetsPage, meta: { title: 'Orçamentos' } },
       { path: 'relatorios', component: ReportsPage, meta: { title: 'Relatórios' } },
       { path: 'calendario', component: CalendarPage, meta: { title: 'Calendário' } },
-      { path: 'backup-local', component: LegacyBackupPage, meta: { title: 'Backup seguro', requiresLegacyData: true } },
+      { path: 'backup-local', component: LegacyBackupPage, meta: { title: 'Backup seguro', requiresLegacyData: true, requiresSuperAdmin: true } },
       { path: 'presentes', component: GiftsPage, meta: { title: 'Presentes', requiresAdmin: true } },
+      { path: 'administracao', component: AdminPage, meta: { title: 'Administração', requiresSuperAdmin: true } },
       { path: 'relatorios/detalhes', component: MonthlyExpensesPage, meta: { title: 'Detalhes do mês' } },
     ],
   },
@@ -57,6 +61,7 @@ const router = createRouter({
   { path: '/recuperar-senha', component: AuthPage, props: { mode: 'forgot' }, meta: { title: 'Recuperar senha' } },
   { path: '/redefinir-senha', component: AuthPage, props: { mode: 'reset' }, meta: { title: 'Nova senha' } },
   { path: '/conta', component: AuthPage, props: { mode: 'profile' }, meta: { title: 'Minha conta' } },
+  { path: '/seguranca', component: AccountSecurityPage, meta: { title: 'Segurança e acesso' } },
   ],
 })
 
@@ -120,6 +125,15 @@ router.beforeEach(async (to) => {
     } catch {
       return { path: '/entrar', replace: true }
     }
+  }
+
+  if (to.meta.requiresSuperAdmin) {
+    // Esconder botões não protege uma URL. A API faz a autorização efetiva.
+    try {
+      const { data, error } = await supabase.auth.getUser()
+      if (error || !data.user || !isFarolSuperAdmin(data.user) ||
+          !await verifySuperAdminAccess()) return { path: '/', replace: true }
+    } catch { return { path: '/', replace: true } }
   }
 
   if (to.meta.requiresLegacyData || to.path === '/vincular-dados-locais') {
