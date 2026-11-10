@@ -161,7 +161,13 @@ async function confirmRecoveryLink(): Promise<void> {
   busy.value = true
   try {
     await recoverFromEmailLink(recoveryLinkInput.value)
-    message.value = 'Link confirmado. Verifique seu autenticador para continuar.'
+    // O watcher pode executar enquanto busy=true. Preparar aqui garante que
+    // a confirmação manual do link também mostre o desafio sem clique extra.
+    await prepareRecoveryMfa()
+    recoveryMfaFactorId.value = recoveryTotpFactors.value[0]?.id ?? ''
+    message.value = recoveryMfaRequired.value && !recoveryMfaVerified.value
+      ? 'Link confirmado. Informe o código do Authenticator para continuar.'
+      : 'Link confirmado. Agora você pode definir sua nova senha.'
   } catch (cause) {
     errorText.value = errorMessage(cause)
   } finally {
