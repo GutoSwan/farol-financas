@@ -25,7 +25,8 @@ function fixtureUser(role){
     email_confirmed_at:'2026-11-10T12:00:00Z',created_at:'2026-11-10T12:00:00Z',
     app_metadata:{provider:'email',providers:['email'],...(role?{farol_role:role}:{})},
     user_metadata:{display_name:'Pessoa de teste',avatar_icon:'user'},
-    identities:[], factors:[],
+    identities:[], factors:[{id:'33333333-3333-4333-8333-333333333333',
+      status:'verified',factor_type:'totp',friendly_name:'Teste visual',created_at:'2026-11-10T12:00:00Z'}],
   }
 }
 function session(role){
