@@ -58,5 +58,5 @@ test('linhas de outra conta ou resposta malformada invalidam a auditoria', () =>
   assert.equal(onlyOwnRows([{ user_id: a }], a), true)
   assert.equal(onlyOwnRows([{ user_id: b }], a), false)
   assert.equal(onlyOwnRows([{ user_id: a }, { user_id: b }], a), false)
-  assert.equal(onlyOwnRows(null, a), false)
+  assert.throws(() => onlyOwnRows(null, a), /Resposta de dados inesperada/)
 })
