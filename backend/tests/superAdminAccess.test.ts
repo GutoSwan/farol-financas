@@ -60,7 +60,7 @@ describe('Super Admin: API nunca confia somente no menu', () => {
       const response = await app.inject({ method: 'GET', url: '/api/v1/admin/access',
         headers: { authorization: 'Bearer user-aal2' } })
       expect(response.statusCode).toBe(403)
-      expect(checkSuperAdmin).toHaveBeenCalledWith(normalUser)
+      expect(checkSuperAdmin).toHaveBeenCalledWith(normalUser, 'user-aal2')
     } finally { await app.close() }
   })
 
