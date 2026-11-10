@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { apiEndpoint } from '../api/apiEndpoint'
 
 /**
  * A app_metadata da tela é apenas indicação visual. A API usa o JWT validado,
@@ -14,7 +15,7 @@ export async function verifySuperAdminAccess(): Promise<boolean> {
     if (aalError || aal?.currentLevel !== 'aal2') return false
     const { data: session, error: sessionError } = await supabase.auth.getSession()
     if (sessionError || !session.session || session.session.user.id !== user.user.id) return false
-    const response = await fetch('/api/v1/admin/access', {
+    const response = await fetch(apiEndpoint('/api/v1/admin/access'), {
       method: 'GET',
       headers: { Authorization: 'Bearer ' + session.session.access_token },
       cache: 'no-store',
