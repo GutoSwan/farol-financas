@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import BackNavigation from '../components/BackNavigation.vue'
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { listVerifiedTotpFactors, verifyTotpCode } from '../../infrastructure/auth/totpMfa'
@@ -59,6 +60,7 @@ async function logout() {
 <template>
   <div class="auth-screen">
     <div class="auth-card">
+      <BackNavigation fallback="/entrar" />
       <div class="auth-brand">◈ Farol <span>Finanças</span></div>
       <p class="auth-kicker">SEGURANÇA DA SUA CONTA</p>
       <h1>Confirmar identidade</h1>
