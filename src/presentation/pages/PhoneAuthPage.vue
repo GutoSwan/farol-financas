@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import BackNavigation from '../components/BackNavigation.vue'
 import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import UiIcon from '../components/UiIcon.vue'
@@ -70,6 +71,7 @@ async function confirm(): Promise<void> {
 <template>
   <div class="auth-screen">
     <section class="auth-card auth-card--phone">
+      <BackNavigation fallback="/entrar" />
       <RouterLink class="auth-brand" to="/entrar">◈ Farol <span>Finanças</span></RouterLink>
       <button type="button" class="auth-theme-button" :aria-label="isDark ? 'Ativar tema claro' : 'Ativar tema escuro'" :title="isDark ? 'Ativar tema claro' : 'Ativar tema escuro'" @click="toggleTheme">
         <UiIcon :name="isDark ? 'sun' : 'moon'" :size="19" />
