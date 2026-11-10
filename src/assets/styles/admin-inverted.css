@@ -226,3 +226,42 @@
 @media(prefers-reduced-motion:reduce) {
   .superadmin-shell button,.superadmin-shell a { transition:none; }
 }
+
+
+/* O tema dark do Farol possui seletores mais específicos para .panel e inputs.
+ * Mantemos a paleta CLARA no Super Admin quando o Farol comum está escuro. */
+:root[data-theme="dark"] .superadmin-shell .panel,
+:root[data-theme="dark"] .superadmin-shell .stat,
+:root[data-theme="dark"] .superadmin-shell .account-security-page section {
+  background: var(--admin-surface);
+  border-color: var(--admin-line);
+  color: var(--admin-ink);
+}
+:root[data-theme="dark"] .superadmin-shell .panel h2,
+:root[data-theme="dark"] .superadmin-shell .panel h3,
+:root[data-theme="dark"] .superadmin-shell .heading h1 {
+  color: var(--admin-ink);
+}
+:root[data-theme="dark"] .superadmin-shell .notice {
+  background: var(--admin-surface-raised);
+  border-color: var(--admin-line);
+  color: var(--admin-ink);
+}
+:root[data-theme="dark"] .superadmin-shell input,
+:root[data-theme="dark"] .superadmin-shell select,
+:root[data-theme="dark"] .superadmin-shell textarea {
+  background: var(--admin-surface-raised);
+  border-color: var(--admin-line);
+  color: var(--admin-ink);
+}
+:root[data-theme="dark"] .superadmin-shell .secondary-action,
+:root[data-theme="dark"] .superadmin-shell button.secondary-action,
+:root[data-theme="dark"] .superadmin-shell a.secondary-action {
+  background: var(--admin-surface-raised);
+  border-color: var(--admin-line);
+  color: var(--admin-ink);
+}
+:root[data-theme="dark"] .superadmin-shell .heading p,
+:root[data-theme="dark"] .superadmin-shell .panel p {
+  color: var(--admin-muted);
+}
