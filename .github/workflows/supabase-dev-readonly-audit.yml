@@ -1,0 +1,40 @@
+name: Conferir permissões reais do Supabase Dev
+
+# Só executa no branch padrão, após configuração explícita do ambiente
+# GitHub "supabase-dev-readonly", segredo exclusivo e opção da auditoria.
+# Nunca executa em pull_request nem consulta Supabase Prod.
+on:
+  schedule:
+    - cron: '29 11 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dev-security:
+    name: Auditoria RLS e permissões, somente leitura
+    if: ${{ vars.FAROL_DEV_AUDIT_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    environment: supabase-dev-readonly
+    timeout-minutes: 10
+    env:
+      FAROL_DEV_SUPABASE_REF: tvirkrjkgdtybtcundon
+      FAROL_DEV_READONLY_AUDIT: 'true'
+      SUPABASE_URL: https://tvirkrjkgdtybtcundon.supabase.co
+      FAROL_DEV_READONLY_DATABASE_URL: ${{ secrets.FAROL_DEV_READONLY_DATABASE_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Node 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+      - name: Instalar dependências do backend
+        working-directory: backend
+        run: npm ci --no-audit --no-fund
+      - name: Verificação estritamente read-only do Supabase Dev
+        working-directory: backend
+        run: npx tsx scripts/check-dev-security-readonly.ts
