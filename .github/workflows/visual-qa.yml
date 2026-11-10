@@ -37,7 +37,7 @@ jobs:
       - name: Instalar Playwright e navegador
         run: |
           npm install --no-save --no-package-lock --ignore-scripts playwright@1.56.1
-          npx playwright install --with-deps chromium
+          command -v google-chrome
       - name: Iniciar site isolado sem servidor de dados
         run: |
           nohup ./node_modules/.bin/vite preview --host 127.0.0.1 --port 4173 > /tmp/farol-qa-preview.log 2>&1 &
@@ -48,6 +48,8 @@ jobs:
           echo 'Preview local não iniciou' >&2
           exit 1
       - name: Testar e fotografar as telas com usuário simulado
+        env:
+          FAROL_CHROMIUM_BIN: /usr/bin/google-chrome
         run: node scripts/visual-smoke.mjs
       - name: Guardar imagens das telas sem dados reais
         if: always()
