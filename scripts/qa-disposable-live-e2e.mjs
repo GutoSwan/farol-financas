@@ -8,7 +8,7 @@
 import { randomBytes, randomUUID, createHmac } from 'node:crypto'
 
 const DEV = 'https://tvirkrjkgdtybtcundon.supabase.co'
-const MAIL_HOSTS = ['https://api.mail.tm','https://api.mail.gw']
+const MAIL_HOSTS = ['https://api.mail.tm','https://api.mail.gw','https://grabmail.io']
 let MAIL = MAIL_HOSTS[0]
 const key = process.env.FAROL_QA_PUBLIC_KEY || ''
 const expected = process.env.FAROL_QA_TARGET_PROJECT
@@ -88,6 +88,14 @@ async function setupMailbox(record,domain) {
   currentStage = record.alias+'_mailbox'
   record.email = 'farolqa-'+randomBytes(9).toString('hex')+'@'+domain
   record.password = 'QA!'+randomBytes(26).toString('base64url')
+  if (MAIL === 'https://grabmail.io') {
+    const inbox=await req(MAIL+'/api/v1/mailbox?address='+encodeURIComponent(record.email))
+    needed(inbox,'grabmail_inbox',[200])
+    record.mailboxId='public-temporary-inbox'
+    record.mailToken='not-needed'
+    milestone(record,'endereço de teste descartável preparado')
+    return
+  }
   const mb=await mailbox({path:'/accounts',method:'POST',body:{address:record.email,password:record.password}})
   const account=needed(mb,'mailbox_create',[201])
   record.mailboxId=account?.id
@@ -111,12 +119,19 @@ async function register(record) {
 async function confirmFromEmail(record){
   currentStage=record.alias+'_email_confirmation'
   for(let attempt=0;attempt<24;attempt++){
-    const list=await mailbox({path:'/messages',mailToken:record.mailToken})
+    const grab = MAIL === 'https://grabmail.io'
+    const list=grab
+      ? await req(MAIL+'/api/v1/mailbox?address='+encodeURIComponent(record.email))
+      : await mailbox({path:'/messages',mailToken:record.mailToken})
     if(list.ok){
-      const messages=list.data?.['hydra:member'] ?? list.data?.member ?? []
+      const messages=grab ? (list.data?.messages??[])
+        : (list.data?.['hydra:member'] ?? list.data?.member ?? [])
       for (const message of messages) {
-        const detail=await mailbox({path:'/messages/'+encodeURIComponent(message.id),
-          mailToken:record.mailToken})
+        const detail=grab
+          ? await req(MAIL+'/api/v1/message/'+encodeURIComponent(message.id)+
+            '?mailbox='+encodeURIComponent(record.email))
+          : await mailbox({path:'/messages/'+encodeURIComponent(message.id),
+            mailToken:record.mailToken})
         if(!detail.ok)continue
         const messageData=detail.data??{}
         const htmlParts=Array.isArray(messageData.html) ? messageData.html
@@ -249,11 +264,24 @@ async function cleanup(){
       }catch{failures++;console.error(r.alias+': ALERTA falha ao confirmar limpeza do evento; revisar Dev.')}
     }
     if(r.mailToken && r.mailboxId) {
-      try {
-        const deleted=await mailbox({path:'/accounts/'+r.mailboxId,method:'DELETE',mailToken:r.mailToken})
-        if(deleted.status!==204)throw Error('delete_mail')
-        console.info(r.alias+': caixa de e-mail descartável removida.')
-      }catch{failures++;console.error(r.alias+': caixa de e-mail descartável pode permanecer.')}
+      if (MAIL === 'https://grabmail.io') {
+        try {
+          const inbox=await req(MAIL+'/api/v1/mailbox?address='+encodeURIComponent(r.email))
+          if (!inbox.ok) throw Error('mail_read')
+          for(const message of inbox.data?.messages??[]) {
+            const deleted=await req(MAIL+'/api/v1/message/'+encodeURIComponent(message.id)+
+              '?mailbox='+encodeURIComponent(r.email),{method:'DELETE'})
+            if (!deleted.ok) throw Error('mail_delete')
+          }
+          console.info(r.alias+': mensagens de confirmação descartadas; endereço não reutilizável.')
+        }catch{failures++;console.error(r.alias+': mensagens temporárias podem permanecer até expiração.')}
+      } else {
+        try {
+          const deleted=await mailbox({path:'/accounts/'+r.mailboxId,method:'DELETE',mailToken:r.mailToken})
+          if(deleted.status!==204)throw Error('delete_mail')
+          console.info(r.alias+': caixa de e-mail descartável removida.')
+        }catch{failures++;console.error(r.alias+': caixa de e-mail descartável pode permanecer.')}
+      }
     }
   }
   console.info('IMPORTANTE: contas Supabase Auth NÃO foram apagadas; exclusão exige autorização administrativa Dev.')
@@ -266,6 +294,11 @@ async function main() {
     let active=null
     for (const provider of MAIL_HOSTS) {
       MAIL = provider
+      if (provider === 'https://grabmail.io') {
+        active={domain:'grabmail.io'}
+        console.info('E-mail temporário: usando serviço GrabMail para QA descartável.')
+        break
+      }
       try {
         const domainResult=await mailbox({path:'/domains'})
         const all=needed(domainResult,'mail_domains',[200])
