@@ -1,5 +1,10 @@
 name: Validar Farol Finanças
+# Agendamento só começa a executar após este arquivo estar na branch padrão.
 on:
+  schedule:
+    # Horário alternativo ao começo da hora para reduzir atrasos do GitHub.
+    - cron: '43 6 * * *'
+  workflow_dispatch:
   push:
     branches:
       - feat/estrutura-base-clean-architecture
@@ -21,14 +26,10 @@ on:
       - fix/v0.13-prisma-serverless-health
       - fix/v0.13-pin-node-22-vercel
       - feat/frontend-preview-auth-api-20261104
-      - security/v0.14-auth-hardening
-      - security/v0.15-audit-20261109
-      - security/v0.16-legacy-backup-staging
-      - security/v0.17-legacy-dry-run
-      - security/v0.18-backup-snapshot-integrity
+      - 'security/**'
       - main
   pull_request:
-    branches: [main, security/v0.14-auth-hardening, security/v0.15-audit-20261109, security/v0.16-legacy-backup-staging, security/v0.17-legacy-dry-run, feat/estrutura-base-clean-architecture, feat/v0.2-ux-contas-espacos-relatorios, feat/v0.3-orcamentos-projetos-cotacoes, feat/v0.4-backend-foundation, feat/v0.5-auth-frontend-supabase, feat/v0.6-email-otp-perfil, feat/v0.7-auth-api-espacos-online, feat/v0.8-sidebar-fixa-responsiva, feat/v0.9-sidebar-limpa-sem-scroll, feat/v0.10-menu-completo-mobile-drawer, feat/v0.11-tema-claro-preparacao-vercel]
+    branches: [main, 'security/**', feat/estrutura-base-clean-architecture, feat/v0.2-ux-contas-espacos-relatorios, feat/v0.3-orcamentos-projetos-cotacoes, feat/v0.4-backend-foundation, feat/v0.5-auth-frontend-supabase, feat/v0.6-email-otp-perfil, feat/v0.7-auth-api-espacos-online, feat/v0.8-sidebar-fixa-responsiva, feat/v0.9-sidebar-limpa-sem-scroll, feat/v0.10-menu-completo-mobile-drawer, feat/v0.11-tema-claro-preparacao-vercel]
 
 permissions:
   contents: read
@@ -36,6 +37,7 @@ permissions:
 jobs:
   verificar:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -50,6 +52,7 @@ jobs:
 
   validar-backend:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     services:
       postgres:
         image: postgres:16
