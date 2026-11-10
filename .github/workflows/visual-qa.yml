@@ -14,7 +14,7 @@ permissions:
 jobs:
   visual:
     name: Capturas e navegação desktop/celular
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 18
     steps:
       - name: Checkout sem credenciais persistentes
