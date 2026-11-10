@@ -1,0 +1,228 @@
+/* Central Super Admin: sempre o tema OPOSTO ao Farol normal.
+ * A paleta fica confinada ao layout restrito e nunca muda a preferência
+ * light/dark global do usuário ou os estilos do login.
+ */
+.superadmin-shell {
+  --admin-bg: #0a1320;
+  --admin-surface: #152437;
+  --admin-surface-raised: #1b2c43;
+  --admin-ink: #eff8ff;
+  --admin-muted: #b6cadd;
+  --admin-line: #38516b;
+  --admin-accent: #71f0d4;
+  --admin-accent-ink: #09251f;
+  --admin-glow: rgba(113, 240, 212, .12);
+  --farol-page: var(--admin-bg);
+  --farol-text: var(--admin-ink);
+  --farol-card: var(--admin-surface);
+  --farol-card-muted: var(--admin-surface-raised);
+  --farol-border: var(--admin-line);
+  --farol-muted: var(--admin-muted);
+  --farol-wine: var(--admin-accent);
+  --farol-wine-soft: var(--admin-glow);
+  --farol-positive: var(--admin-accent);
+  color-scheme: dark;
+  color: var(--admin-ink);
+  background: radial-gradient(ellipse at 80% 3%, var(--admin-glow), transparent 42%), var(--admin-bg);
+  min-height: 100dvh;
+}
+:root[data-theme="dark"] .superadmin-shell {
+  --admin-bg: #f1f9f6;
+  --admin-surface: #ffffff;
+  --admin-surface-raised: #e6f4ee;
+  --admin-ink: #17332d;
+  --admin-muted: #3b6258;
+  --admin-line: #9abbb1;
+  --admin-accent: #075c49;
+  --admin-accent-ink: #ffffff;
+  --admin-glow: rgba(15, 128, 103, .12);
+  color-scheme: light;
+}
+.superadmin-shell, .superadmin-shell * { box-sizing: border-box; }
+.superadmin-shell :focus-visible {
+  outline: 3px solid var(--admin-accent);
+  outline-offset: 3px;
+}
+.superadmin-status-strip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 11px;
+  padding: 8px 18px;
+  background: var(--admin-accent);
+  color: var(--admin-accent-ink);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .18em;
+  text-align: center;
+}
+.superadmin-status-indicator {
+  width: 9px; height: 9px; border-radius: 50%;
+  background: currentColor; box-shadow: 0 0 0 3px rgba(14, 91, 69, .2);
+}
+.superadmin-shell .superadmin-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 20px;
+  padding: 30px max(24px, calc((100vw - 1200px) / 2));
+  border-bottom: 1px solid var(--admin-line);
+  background: var(--admin-surface);
+  color: var(--admin-ink);
+}
+.superadmin-identity { display:flex; align-items:center; gap:16px; min-width:0; }
+.superadmin-mark {
+  display: grid; place-items: center;
+  width: 58px; height:58px; flex: 0 0 58px;
+  color: var(--admin-accent-ink);
+  background: var(--admin-accent);
+  border-radius: 17px;
+}
+.superadmin-overline {
+  margin:0 0 7px; color: var(--admin-accent);
+  letter-spacing:.16em; font-size:10px; font-weight:800;
+}
+.superadmin-shell .superadmin-brand {
+  display:block; font-size:clamp(20px, 3vw, 30px);
+  letter-spacing: -.04em; color:var(--admin-ink);
+  font-weight: 900;
+}
+.superadmin-shell .superadmin-brand span { color:var(--admin-accent); }
+.superadmin-caption { color:var(--admin-muted); font-size:12px; margin:8px 0 0; }
+.superadmin-exit {
+  display:inline-flex; align-items:center; gap:8px;
+  background:var(--admin-surface-raised); border:1px solid var(--admin-line);
+  color:var(--admin-ink); padding:11px 14px; border-radius:12px;
+  font-weight:800; font-size:12px;
+}
+.superadmin-exit:hover { background:var(--admin-glow); border-color:var(--admin-accent); }
+.superadmin-nav {
+  display:flex; flex-wrap:wrap; gap:8px;
+  padding:17px max(24px, calc((100vw - 1200px) / 2));
+  background:var(--admin-surface); border-bottom:1px solid var(--admin-line);
+}
+.superadmin-nav a {
+  display:inline-flex; align-items:center; padding:11px 15px; min-height:41px;
+  border:1px solid transparent; border-radius:11px;
+  color:var(--admin-muted); font-weight:750; font-size:12px;
+}
+.superadmin-nav a:hover { background:var(--admin-surface-raised); color:var(--admin-ink); }
+.superadmin-nav a.active {
+  background:var(--admin-accent); color:var(--admin-accent-ink);
+  border-color:var(--admin-accent);
+}
+.superadmin-breadcrumb {
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  padding:16px max(24px, calc((100vw - 1200px) / 2)) 0;
+  font-size:11px; color:var(--admin-muted);
+}
+.superadmin-breadcrumb strong { color:var(--admin-accent); }
+.superadmin-shell .farol-back-navigation {
+  padding:12px max(24px, calc((100vw - 1200px) / 2)) 0;
+}
+.superadmin-shell .farol-back-button,
+.superadmin-shell .farol-home-link {
+  color:var(--admin-ink); background:var(--admin-surface);
+  border-color:var(--admin-line);
+}
+.superadmin-shell .farol-back-button:hover,
+.superadmin-shell .farol-home-link:hover {
+  color:var(--admin-accent); background:var(--admin-surface-raised);
+}
+.superadmin-shell .superadmin-content {
+  width:min(1200px, 100%); padding:30px 24px 70px; color:var(--admin-ink);
+}
+.superadmin-shell .heading { align-items:center; }
+.superadmin-shell .heading h1,
+.superadmin-shell .panel h1,
+.superadmin-shell .panel h2,
+.superadmin-shell .panel h3,
+.superadmin-shell .panel strong,
+.superadmin-shell legend { color:var(--admin-ink); }
+.superadmin-shell .heading .eyebrow { color:var(--admin-accent); }
+.superadmin-shell .heading p,
+.superadmin-shell .panel p,
+.superadmin-shell .panel-title p,
+.superadmin-shell .admin-note,
+.superadmin-shell .auth-muted,
+.superadmin-shell .account-security-intro p { color:var(--admin-muted); }
+.superadmin-shell .panel,
+.superadmin-shell .stat,
+.superadmin-shell .account-security-page section {
+  color:var(--admin-ink);
+  background:var(--admin-surface);
+  border-color:var(--admin-line);
+}
+.superadmin-shell .notice {
+  color:var(--admin-ink);
+  background:var(--admin-surface-raised);
+  border:1px solid var(--admin-line);
+}
+.superadmin-shell .secondary-action,
+.superadmin-shell button.secondary-action,
+.superadmin-shell a.secondary-action,
+.superadmin-shell .bill-list button {
+  color:var(--admin-ink);
+  background:var(--admin-surface-raised);
+  border:1px solid var(--admin-line);
+}
+.superadmin-shell .secondary-action:hover,
+.superadmin-shell a.secondary-action:hover { border-color:var(--admin-accent); }
+.superadmin-shell .primary,
+.superadmin-shell button.primary {
+  background:var(--admin-accent);
+  color:var(--admin-accent-ink);
+}
+.superadmin-shell button,
+.superadmin-shell a { transition:background .16s ease, border-color .16s ease; }
+.superadmin-shell input,
+.superadmin-shell select,
+.superadmin-shell textarea {
+  color:var(--admin-ink);
+  background:var(--admin-surface-raised);
+  border:1px solid var(--admin-line);
+  color-scheme:inherit;
+}
+.superadmin-shell input::placeholder,
+.superadmin-shell textarea::placeholder { color:var(--admin-muted); opacity:.95; }
+.superadmin-shell label,
+.superadmin-shell .form label { color:var(--admin-ink); }
+.superadmin-shell .success {
+  background:var(--admin-glow);
+  color:var(--admin-accent);
+}
+.superadmin-shell .error,
+.superadmin-shell .workspace-error { background:#4f2835; color:#ffd6db; }
+:root[data-theme="dark"] .superadmin-shell .error { background:#fff0f0; color:#942631; }
+.superadmin-shell .admin-cloud-page .panel {
+  display:grid; gap:15px; align-content:start; max-width:860px;
+}
+.superadmin-shell .admin-cloud-page .panel a { width:fit-content; max-width:100%; }
+.superadmin-footer {
+  display:flex; flex-wrap:wrap; gap:10px; align-items:center;
+  border-top:1px solid var(--admin-line);
+  padding:24px max(24px, calc((100vw - 1200px) / 2)) 36px;
+  color:var(--admin-muted); font-size:11px;
+}
+.superadmin-footer strong { color:var(--admin-accent); letter-spacing:.13em; }
+
+@media(max-width:700px) {
+  .superadmin-shell .superadmin-topbar { padding:22px 17px; align-items:flex-start; }
+  .superadmin-status-strip { letter-spacing:.08em; font-size:9px; }
+  .superadmin-identity { gap:11px; }
+  .superadmin-mark { width:48px; height:48px; flex-basis:48px; border-radius:13px; }
+  .superadmin-overline { font-size:9px; }
+  .superadmin-caption { font-size:11px; }
+  .superadmin-exit { width:100%; justify-content:center; }
+  .superadmin-nav { padding:12px 14px; flex-wrap:nowrap; overflow-x:auto; }
+  .superadmin-nav a { white-space:nowrap; flex-shrink:0; }
+  .superadmin-breadcrumb { padding:13px 17px 0; }
+  .superadmin-shell .farol-back-navigation { padding:10px 17px 0; }
+  .superadmin-shell .superadmin-content { padding:22px 16px 48px; }
+  .superadmin-footer { padding:20px 17px; }
+}
+@media(prefers-reduced-motion:reduce) {
+  .superadmin-shell button,.superadmin-shell a { transition:none; }
+}
