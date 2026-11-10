@@ -46,7 +46,7 @@ jobs:
       # Execução única autorizada pelo usuário em 10/11/2026. Apenas chave PUBLICÁVEL Dev.
       # Remover este passo depois de obter os resultados; nunca agendar cadastros.
       - name: QA único - duas caixas descartáveis, login, TOTP e isolamento
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/security/v0.23-ephemeral-mail-e2e' && github.event.head_commit.message == 'run(liveqa): disposable signups' }}
+        if: "${{ github.event_name == 'push' && github.ref == 'refs/heads/security/v0.23-ephemeral-mail-e2e' && github.event.head_commit.message == 'liveqa-once' }}"
         timeout-minutes: 4
         env:
           CI: 'true'
