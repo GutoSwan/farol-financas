@@ -77,8 +77,9 @@ router.beforeEach(async (to) => {
     authenticated = !error && !!data.user
     if (authenticated && data.user && isFarolSuperAdmin(data.user)) {
       // Esta conta só pode acessar o site Farol Admin.
-      await supabase.auth.signOut({ scope: 'local' })
       authenticated = false
+      setVerifiedLocalUser(null)
+      await supabase.auth.signOut({ scope: 'local' })
     } else if (authenticated && data.user) setVerifiedLocalUser(data.user.id)
   } catch {
     // Não mostrar telas financeiras se a sessão não puder ser restaurada.
