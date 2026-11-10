@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Não lê workspaces, localStorage ou dados financeiros nesta área técnica.
+ * Não lê dados financeiros nem armazenamento pessoal nesta área técnica.
  * A consulta de espaços pessoais continua no módulo normal com sua autorização.
  */
 </script>
