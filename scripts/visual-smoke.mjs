@@ -44,8 +44,11 @@ function jsonRoute(route,payload,status=200){
     body:JSON.stringify(payload)})
 }
 
-async function setup(browser,{role=null,viewport={width:1440,height:900},recovery=false}={}){
+async function setup(browser,{role=null,viewport={width:1440,height:900},recovery=false,theme='light'}={}){
   const context=await browser.newContext({viewport,deviceScaleFactor:1})
+  await context.addInitScript(themeChoice=>{
+    localStorage.setItem('farol-financas:theme:v1',themeChoice)
+  },theme)
   const qa={recoveries:0,mfaChallenges:0,mfaVerifications:0,passwordChanges:0}
   let recoverySession=false
   let verifiedMfa=false
@@ -150,6 +153,7 @@ try{
   await scenario('Login público, desktop',null,{width:1440,height:900},async page=>{
     await visit(page,'/entrar','Entrar no Farol')
     await screenshot(page,'01-login-desktop')
+    fail((await page.title())==='Farol Finanças • Entrar','login perdeu título próprio da aba')
     await checkOverflow(page,'Login desktop')
   })
   await scenario('Cadastro público, celular',null,{width:390,height:844},async page=>{
@@ -195,6 +199,12 @@ try{
     await page.getByText('Backup protegido').waitFor()
     await page.getByText('Dados na nuvem').first().waitFor()
     await screenshot(page,'07-admin-desktop-simulado')
+    await page.getByText('AMBIENTE DEV • ACESSO RESTRITO').waitFor()
+    fail((await page.title()).includes('SUPER ADMIN'), 'o título da aba não distingue Super Admin')
+    const bg=await page.locator('.superadmin-shell').evaluate(e=>getComputedStyle(e).backgroundColor)
+    fail(bg==='rgb(10, 19, 32)','a área Super Admin não inverteu o tema CLARO do Farol: '+bg)
+    fail(await page.getByRole('link',{name:'Sair do Super Admin'}).count()===1,
+      'não há saída explícita para o Farol normal')
   })
   await scenario('Backup protegido retorna ao painel sem usar botão do navegador',
     'super_admin',{width:1440,height:900},async page=>{
@@ -206,6 +216,38 @@ try{
     await page.waitForURL(origin+'/administracao',{timeout:13000})
     await page.getByRole('heading',{name:'Administração do Farol'}).waitFor()
     await checkOverflow(page,'Backup e navegação desktop')
+  })
+
+  await scenario('Super Admin mobile com paleta oposta ao Farol ESCURO',
+    'super_admin',{width:390,height:844},async page=>{
+    await visit(page,'/administracao','Administração do Farol')
+    const bg=await page.locator('.superadmin-shell').evaluate(e=>getComputedStyle(e).backgroundColor)
+    fail(bg==='rgb(241, 249, 246)','console não ficou claro com Farol escuro: '+bg)
+    const panel=await page.locator('.admin-tools .panel').first()
+      .evaluate(e=>getComputedStyle(e).backgroundColor)
+    fail(panel==='rgb(255, 255, 255)','cards precisam ser claros no Super Admin oposto: '+panel)
+    await screenshot(page,'12-admin-mobile-paleta-invertida')
+    await checkOverflow(page,'Admin mobile invertido')
+    await page.locator('.superadmin-nav').getByRole('link',{name:'Segurança'}).click()
+    await page.getByRole('heading',{name:'Segurança e acesso'}).waitFor()
+    fail((await page.title()).includes('SUPER ADMIN | Segurança da conta'),
+      'título Segurança não identifica modo Admin')
+    await screenshot(page,'13-seguranca-admin-mobile-invertida')
+    await checkOverflow(page,'Segurança admin mobile invertida')
+    await page.locator('.superadmin-nav').getByRole('link',{name:'Dados na nuvem'}).click()
+    await page.getByRole('heading',{name:'Dados na nuvem'}).waitFor()
+    await screenshot(page,'14-dados-admin-mobile-invertidos')
+    await checkOverflow(page,'Nuvem admin mobile invertida')
+    await page.locator('.superadmin-nav').getByRole('link',{name:'Painel'}).click()
+    await page.getByRole('heading',{name:'Administração do Farol'}).waitFor()
+  },{theme:'dark'})
+
+  await scenario('Usuário comum bloqueado nas rotas filhas de Super Admin',
+    'administrador',{width:390,height:844},async page=>{
+    await page.goto(origin+'/administracao/seguranca',{waitUntil:'domcontentloaded'})
+    await page.waitForURL(origin+'/',{timeout:20000})
+    fail(await page.locator('.superadmin-shell').count()===0,
+      'tela Super Admin montada para usuário comum')
   })
 
   await scenario('Recuperação MFA AAL2 realista no celular, SEM dados reais', 'super_admin',
