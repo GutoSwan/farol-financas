@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { supabase } from '../../infrastructure/auth/supabase'
 import { localLegacyAccess } from '../../infrastructure/persistence/legacyAccess'
 import { getOnlineIdentity, listOnlineWorkspaces } from '../../infrastructure/api/onlineWorkspaces'
@@ -12,6 +13,7 @@ import {
 } from '../../infrastructure/backup/encryptedFinancialBackup'
 import type { FinancialBackupSummary } from '../../infrastructure/backup/encryptedFinancialBackup'
 
+const route = useRoute()
 const summary = ref<FinancialBackupSummary | null>(null)
 const inspected = ref<FinancialBackupSummary | null>(null)
 const inspectedFingerprint = ref('')
@@ -191,7 +193,7 @@ onBeforeUnmount(disposeDownload)
       <h1>Backup financeiro protegido</h1>
       <p>Prepare uma cópia criptografada antes de migrarmos os registros deste navegador.</p>
     </div>
-    <RouterLink class="secondary-action" to="/">Voltar à visão geral</RouterLink>
+    <RouterLink class="secondary-action" :to="route.path.startsWith('/administracao') ? '/administracao' : '/'">{{ route.path.startsWith('/administracao') ? 'Voltar à Administração' : 'Voltar à visão geral' }}</RouterLink>
   </div>
 
   <section class="panel">
