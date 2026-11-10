@@ -177,7 +177,7 @@ async function logout(): Promise<void> {
 <template>
   <div class="auth-screen">
     <div class="auth-card">
-      <BackNavigation :fallback="mode === 'profile' ? '/' : '/entrar'" />
+      <BackNavigation v-if="mode !== 'login'" :fallback="mode === 'profile' ? '/' : '/entrar'" />
       <RouterLink class="auth-brand" to="/">◈ Farol <span>Finanças</span></RouterLink>
       <button type="button" class="auth-theme-button" :aria-label="isDark ? 'Ativar tema claro' : 'Ativar tema escuro'" :title="isDark ? 'Ativar tema claro' : 'Ativar tema escuro'" @click="toggleTheme">
         <UiIcon :name="isDark ? 'sun' : 'moon'" :size="19" />
