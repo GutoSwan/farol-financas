@@ -30,7 +30,7 @@ flowchart TD
 
 - **Frontend:** `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY` são do **Dev**; `VITE_FAROL_QA_DEV_ONLY=true` impede iniciar o cliente Auth se a URL apontar para produção; `VITE_ENABLE_ONLINE_WORKSPACE_WRITES=false`.
 - **Backend:** `SUPABASE_URL` e `FAROL_DEV_SUPABASE_REF` identificam o Dev; `FAROL_PREVIEW_ADMIN_QA_READONLY=true`; gravação de espaços e faturas desativada. A API bloqueia todas as operações POST, PATCH, PUT e DELETE em `/api/v1/`.
-- **Banco de dados:** a aplicação exige conexão com uma role Postgres **somente de leitura**, chamada `farol_preview_adminqa_ro`, hospedada no mesmo Dev e no pooler HTTPS/TLS com certificado verificado. **Essa credencial ainda não foi criada nem configurada na Vercel.**
+- **Banco de dados:** a aplicação exige conexão com uma role Postgres **somente de leitura**, chamada `farol_preview_adminqa_ro`, hospedada no mesmo Dev e acessada pelo pooler PostgreSQL com TLS e certificado verificado. **Essa credencial ainda não foi criada nem configurada na Vercel.**
 - **CORS:** bloqueado provisoriamente com origem inexistente. A origem precisa ser atualizada para a URL HTTPS exata da nova Preview antes dos testes reais.
 
 ## Bloqueios encontrados
