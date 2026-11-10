@@ -1,6 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import AppLayout from '../presentation/layouts/AppLayout.vue'
-import AdminLayout from '../presentation/layouts/AdminLayout.vue'
 import CloudOnlyLayout from '../presentation/layouts/CloudOnlyLayout.vue'
 import DashboardPage from '../presentation/pages/DashboardPage.vue'
 import BillsPage from '../presentation/pages/BillsPage.vue'
@@ -13,7 +12,6 @@ import BudgetsPage from '../presentation/pages/BudgetsPage.vue'
 import ComingSoonPage from '../presentation/pages/ComingSoonPage.vue'
 import CalendarPage from '../presentation/pages/CalendarPage.vue'
 import LegacyDataAccessPage from '../presentation/pages/LegacyDataAccessPage.vue'
-import LegacyBackupPage from '../presentation/pages/LegacyBackupPage.vue'
 import { localLegacyAccess, setVerifiedLocalUser } from '../infrastructure/persistence/legacyAccess'
 import AuthPage from '../presentation/pages/AuthPage.vue'
 import PhoneAuthPage from '../presentation/pages/PhoneAuthPage.vue'
@@ -24,9 +22,6 @@ import { listVerifiedTotpFactors } from '../infrastructure/auth/totpMfa'
 import { canAccessWithoutSession, shouldRedirectLoggedInVisitor } from './authNavigation'
 import { requiredMfaRedirect } from './mfaNavigation'
 import { isFarolAdmin, isFarolSuperAdmin } from '../domain/auth/adminAccess'
-import { verifySuperAdminAccess } from '../infrastructure/auth/superAdminAccess'
-import AdminPage from '../presentation/pages/AdminPage.vue'
-import AdminCloudPage from '../presentation/pages/AdminCloudPage.vue'
 import { routeDocumentTitle } from './documentTitle'
 import AccountSecurityPage from '../presentation/pages/AccountSecurityPage.vue'
 
@@ -45,24 +40,8 @@ const router = createRouter({
       { path: 'orcamentos', component: BudgetsPage, meta: { title: 'Orçamentos' } },
       { path: 'relatorios', component: ReportsPage, meta: { title: 'Relatórios' } },
       { path: 'calendario', component: CalendarPage, meta: { title: 'Calendário' } },
-      { path: 'backup-local', redirect: '/administracao/backup', meta: { title: 'Backup seguro', requiresSuperAdmin: true } },
       { path: 'presentes', component: GiftsPage, meta: { title: 'Presentes', requiresAdmin: true } },
       { path: 'relatorios/detalhes', component: MonthlyExpensesPage, meta: { title: 'Detalhes do mês' } },
-    ],
-  },
-  // Painel técnico separado: nunca inicializa armazenamento financeiro local.
-  { path: '/administracao', component: AdminLayout,
-    meta: { title: 'Super Admin', requiresSuperAdmin: true },
-    children: [
-      { path: '', component: AdminPage, meta: { title: 'Painel principal' } },
-      // Todas as ferramentas técnicas mantêm o mesmo layout invertido.
-      // Rotas-filhas herdam autorização Super Admin em cada navegação.
-      { path: 'backup', component: LegacyBackupPage,
-        meta: { title: 'Backup protegido', requiresLegacyData: true } },
-      { path: 'seguranca', component: AccountSecurityPage,
-        meta: { title: 'Segurança da conta' } },
-      { path: 'dados', component: AdminCloudPage,
-        meta: { title: 'Dados na nuvem' } },
     ],
   },
   // A tela online fica fora do AppLayout: não lê/mostra dados locais de outra conta.
@@ -96,7 +75,11 @@ router.beforeEach(async (to) => {
     // getUser() consulta o Supabase Auth e valida o token antes de abrir rotas privadas.
     const { data, error } = await supabase.auth.getUser()
     authenticated = !error && !!data.user
-    if (authenticated && data.user) setVerifiedLocalUser(data.user.id)
+    if (authenticated && data.user && isFarolSuperAdmin(data.user)) {
+      // Esta conta só pode acessar o site Farol Admin.
+      await supabase.auth.signOut({ scope: 'local' })
+      authenticated = false
+    } else if (authenticated && data.user) setVerifiedLocalUser(data.user.id)
   } catch {
     // Não mostrar telas financeiras se a sessão não puder ser restaurada.
   }
@@ -142,15 +125,6 @@ router.beforeEach(async (to) => {
     } catch {
       return { path: '/entrar', replace: true }
     }
-  }
-
-  if (to.meta.requiresSuperAdmin) {
-    // Esconder botões não protege uma URL. A API faz a autorização efetiva.
-    try {
-      const { data, error } = await supabase.auth.getUser()
-      if (error || !data.user || !isFarolSuperAdmin(data.user) ||
-          !await verifySuperAdminAccess()) return { path: '/', replace: true }
-    } catch { return { path: '/', replace: true } }
   }
 
   if (to.meta.requiresLegacyData || to.path === '/vincular-dados-locais') {
