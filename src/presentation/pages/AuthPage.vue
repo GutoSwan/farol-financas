@@ -2,10 +2,8 @@
 import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import UiIcon from '../components/UiIcon.vue'
+import BackNavigation from '../components/BackNavigation.vue'
 import { useTheme } from '../composables/useTheme'
-import OnlineWorkspacesPanel from '../components/OnlineWorkspacesPanel.vue'
-import TotpSettings from '../components/TotpSettings.vue'
-import PhoneLinkPanel from '../components/PhoneLinkPanel.vue'
 import { phoneAuthEnabled } from '../../infrastructure/auth/phoneAuth'
 import { useAuth } from '../composables/useAuth'
 import { PROFILE_ICONS } from '../../domain/profile/profile'
@@ -17,7 +15,7 @@ const props = defineProps<{ mode: AuthMode }>()
 const router = useRouter()
 const { isDark, toggleTheme } = useTheme()
 const {
-  configured, ready, user, profile, isLoggedIn, signIn, signUp, verifySignupCode, resendSignupCode,
+  configured, ready, user, profile, isLoggedIn, isSuperAdmin, signIn, signUp, verifySignupCode, resendSignupCode,
   updateProfile, signOut, requestPasswordReset, updatePassword,
 } = useAuth()
 
@@ -179,6 +177,7 @@ async function logout(): Promise<void> {
 <template>
   <div class="auth-screen">
     <div class="auth-card">
+      <BackNavigation :fallback="mode === 'profile' ? '/' : '/entrar'" />
       <RouterLink class="auth-brand" to="/">◈ Farol <span>Finanças</span></RouterLink>
       <button type="button" class="auth-theme-button" :aria-label="isDark ? 'Ativar tema claro' : 'Ativar tema escuro'" :title="isDark ? 'Ativar tema claro' : 'Ativar tema escuro'" @click="toggleTheme">
         <UiIcon :name="isDark ? 'sun' : 'moon'" :size="19" />
@@ -226,13 +225,13 @@ async function logout(): Promise<void> {
             <UiIcon name="edit" :size="17" /> Editar nome e ícone
           </button>
 
-          <div class="auth-warning auth-profile-warning">
-            <UiIcon name="info" :size="19" />
-            <span>O acesso às telas financeiras exige login. Porém, os espaços e lançamentos ainda ficam neste dispositivo, sem separação por usuário ou sincronização entre dispositivos.</span>
-          </div>
-          <TotpSettings />
-          <PhoneLinkPanel />
-          <OnlineWorkspacesPanel />
+          <nav class="profile-quick-links" aria-label="Opções da minha conta">
+            <RouterLink to="/seguranca"><UiIcon name="settings" :size="17" /> Segurança e autenticadores</RouterLink>
+            <RouterLink to="/dados-online"><UiIcon name="folder" :size="17" /> Meus dados na nuvem</RouterLink>
+            <RouterLink v-if="isSuperAdmin" to="/administracao">
+              <UiIcon name="archive" :size="17" /> Ferramentas de administração
+            </RouterLink>
+          </nav>
           <button type="button" class="secondary-action auth-full-button" :disabled="busy" @click="logout">
             <UiIcon name="log-out" :size="16" /> Sair da conta
           </button>
