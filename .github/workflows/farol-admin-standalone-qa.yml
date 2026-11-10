@@ -1,0 +1,52 @@
+name: QA Farol Admin separado
+on:
+  push:
+    branches:
+      - feat/v0.29-admin-standalone-preview
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  public-farol:
+    name: Farol Financeiro sem acesso Admin
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+      - name: Instalar dependências do Farol
+        run: npm ci --no-audit --no-fund
+      - name: Testar e compilar a aplicação financeira
+        run: npm run build
+
+  admin-web:
+    name: Farol Admin isolado - build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: admin-web
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+      - name: Instalar dependências isoladas, sem segredos
+        run: npm install --no-audit --no-fund
+      - name: Compilar portal Admin independentemente
+        run: npm run build
+      - name: Confirmar que bundle Admin não inclui o Farol financeiro
+        run: |
+          test -f dist/index.html
+          if grep -R -E 'src/presentation/pages/(Dashboard|Transactions|Bills)Page' dist; then
+            echo 'A página financeira não pode fazer parte do bundle Admin'
+            exit 1
+          fi
