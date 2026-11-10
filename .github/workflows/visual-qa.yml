@@ -11,6 +11,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: farol-visual-qa-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   visual:
     name: Capturas e navegação desktop/celular
