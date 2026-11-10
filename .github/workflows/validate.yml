@@ -45,6 +45,8 @@ jobs:
           node-version: '22'
       - name: Instalar dependências
         run: npm ci --no-audit --no-fund
+      - name: Testes da checagem pública (rede simulada)
+        run: node --test scripts/verify-public-health.test.mjs
       - name: Testes de regras financeiras
         run: npm run test
       - name: Validar tipos e gerar build
