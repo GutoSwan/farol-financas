@@ -5,6 +5,7 @@ const auth = readFileSync(new URL('../src/presentation/composables/useAuth.ts', 
 const page = readFileSync(new URL('../src/presentation/pages/AuthPage.vue', import.meta.url), 'utf8')
 const routing = readFileSync(new URL('../src/router/authNavigation.ts',import.meta.url),'utf8')
 const config = readFileSync(new URL('../vercel.json',import.meta.url),'utf8')
+const app = readFileSync(new URL('../src/App.vue',import.meta.url),'utf8')
 
 describe('Fluxo guiado de recuperação de senha',()=>{
  it('pede link com redirectTo para a rota pública do Farol',()=>{
@@ -13,6 +14,10 @@ describe('Fluxo guiado de recuperação de senha',()=>{
    expect(JSON.parse(config).rewrites).toEqual(expect.arrayContaining([
      {source:'/redefinir-senha',destination:'/index.html'}
    ]))
+ })
+ it('a recuperação abre /redefinir-senha mesmo se Supabase redirecionar ao site padrão',()=>{
+   expect(app).toContain('watch(recoveringPassword')
+   expect(app).toContain("router.replace('/redefinir-senha')")
  })
  it('valida hash diretamente pelo Supabase Auth, nunca por backend financeiro',()=>{
    expect(auth).toContain("token_hash: hash,")
