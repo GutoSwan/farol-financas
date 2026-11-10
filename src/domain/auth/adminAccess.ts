@@ -7,7 +7,7 @@ export interface FarolAdminIdentity {
   app_metadata?: Record<string, unknown> | null
 }
 export function isFarolAdmin(user: FarolAdminIdentity | null | undefined): boolean {
-  return user?.app_metadata?.farol_role === 'administrador' || isFarolSuperAdmin(user)
+  return user?.app_metadata?.farol_role === 'administrador'
 }
 
 /** Super Admin é um papel separado, atribuído SOMENTE pelo servidor do Supabase.
