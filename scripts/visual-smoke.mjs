@@ -139,7 +139,7 @@ try{
     await visit(page,'/presentes','De quem é a lista?')
     await screenshot(page,'05-presentes-modal-mobile')
     await page.getByRole('button',{name:'Fechar escolha de pessoa'}).click()
-    await page.getByText('Visão geral').first().waitFor()
+    await page.waitForURL(origin+'/',{timeout:10000})
     await checkOverflow(page,'Presentes mobile')
   })
   await scenario('Calendário legível no celular', 'administrador',{width:390,height:844},async page=>{
