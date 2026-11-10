@@ -40,7 +40,7 @@ jobs:
         with:
           node-version: '22'
       - name: Instalar dependências isoladas, sem segredos
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Compilar portal Admin independentemente
         run: npm run build
       - name: Confirmar que bundle Admin não inclui o Farol financeiro
