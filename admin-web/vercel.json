@@ -1,20 +1,51 @@
 {
-  "$schema":"https://openapi.vercel.sh/vercel.json",
-  "framework":"vite",
-  "buildCommand":"npm run build",
-  "outputDirectory":"dist",
-  "rewrites":[
-    {"source":"/api/:path*","destination":"https://farol-4h2g4hntn-farol13.vercel.app/api/:path*"},
-    {"source":"/admin","destination":"/index.html"},
-    {"source":"/admin/:path*","destination":"/index.html"}
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "vite",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "rewrites": [
+    {
+      "source": "/admin",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/:path*",
+      "destination": "/index.html"
+    }
   ],
-  "headers":[{"source":"/(.*)","headers":[
-    {"key":"X-Content-Type-Options","value":"nosniff"},
-    {"key":"X-Frame-Options","value":"DENY"},
-    {"key":"Referrer-Policy","value":"no-referrer"},
-    {"key":"Permissions-Policy","value":"camera=(), microphone=(), geolocation=(), payment=()"},
-    {"key":"Content-Security-Policy","value":"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://tvirkrjkgdtybtcundon.supabase.co wss://tvirkrjkgdtybtcundon.supabase.co; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests"},
-    {"key":"Strict-Transport-Security","value":"max-age=31536000; includeSubDomains"},
-    {"key":"X-Robots-Tag","value":"noindex, nofollow, noarchive"}
-  ]}]
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "no-referrer"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(), geolocation=(), payment=()"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://tvirkrjkgdtybtcundon.supabase.co wss://tvirkrjkgdtybtcundon.supabase.co; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests"
+        },
+        {
+          "key": "Strict-Transport-Security",
+          "value": "max-age=31536000; includeSubDomains"
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow, noarchive"
+        }
+      ]
+    }
+  ]
 }
