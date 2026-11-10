@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import AppLayout from '../presentation/layouts/AppLayout.vue'
+import AdminLayout from '../presentation/layouts/AdminLayout.vue'
 import CloudOnlyLayout from '../presentation/layouts/CloudOnlyLayout.vue'
 import DashboardPage from '../presentation/pages/DashboardPage.vue'
 import BillsPage from '../presentation/pages/BillsPage.vue'
@@ -44,9 +45,13 @@ const router = createRouter({
       { path: 'calendario', component: CalendarPage, meta: { title: 'Calendário' } },
       { path: 'backup-local', component: LegacyBackupPage, meta: { title: 'Backup seguro', requiresLegacyData: true, requiresSuperAdmin: true } },
       { path: 'presentes', component: GiftsPage, meta: { title: 'Presentes', requiresAdmin: true } },
-      { path: 'administracao', component: AdminPage, meta: { title: 'Administração', requiresSuperAdmin: true } },
       { path: 'relatorios/detalhes', component: MonthlyExpensesPage, meta: { title: 'Detalhes do mês' } },
     ],
+  },
+  // Painel técnico separado: nunca inicializa armazenamento financeiro local.
+  { path: '/administracao', component: AdminLayout,
+    meta: { title: 'Administração', requiresSuperAdmin: true },
+    children: [{ path: '', component: AdminPage }],
   },
   // A tela online fica fora do AppLayout: não lê/mostra dados locais de outra conta.
   { path: '/dados-online', component: CloudOnlyLayout, meta: { title: 'Dados na nuvem', requiresFinancialData: true } },
