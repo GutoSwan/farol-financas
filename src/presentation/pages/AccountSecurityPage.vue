@@ -1,10 +1,12 @@
 <script setup lang="ts">
+import BackNavigation from '../components/BackNavigation.vue'
 import TotpSettings from '../components/TotpSettings.vue'
 import PhoneLinkPanel from '../components/PhoneLinkPanel.vue'
 </script>
 
 <template>
   <div class="account-security-page">
+    <BackNavigation fallback="/conta" />
     <div class="heading">
       <div>
         <p class="eyebrow">PROTEÇÃO DA CONTA</p>
