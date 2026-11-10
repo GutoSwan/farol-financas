@@ -8,7 +8,8 @@
 import { randomBytes, randomUUID, createHmac } from 'node:crypto'
 
 const DEV = 'https://tvirkrjkgdtybtcundon.supabase.co'
-const MAIL = 'https://api.mail.tm'
+const MAIL_HOSTS = ['https://api.mail.tm','https://api.mail.gw']
+let MAIL = MAIL_HOSTS[0]
 const key = process.env.FAROL_QA_PUBLIC_KEY || ''
 const expected = process.env.FAROL_QA_TARGET_PROJECT
 if (process.env.CI !== 'true' || process.env.FAROL_QA_EPHEMERAL_RUN !== 'yes-once' ||
@@ -29,7 +30,7 @@ const wait = ms => new Promise(resolve => setTimeout(resolve, ms))
 
 async function req(url, {method = 'GET', body = undefined, headers = {}, bearer = undefined} = {}) {
   const target = new URL(url)
-  if (!([new URL(DEV).host, new URL(MAIL).host].includes(target.host)) ||
+  if (!([new URL(DEV).host, ...MAIL_HOSTS.map(x => new URL(x).host)].includes(target.host)) ||
       target.protocol !== 'https:') throw new Error('unexpected_host')
   const response = await fetch(url, {
     method,
@@ -261,11 +262,24 @@ async function cleanup(){
 async function main() {
   let failure=null
   try {
-    const domainResult=await mailbox({path:'/domains'})
-    const all=needed(domainResult,'mail_domains',[200])
-    const domains=all?.['hydra:member']??all?.member??[]
-    const active=domains.find(x=>x.isActive!==false && x.isPrivate!==true && typeof x.domain==='string')
-    if(!active?.domain)throw new Error('no_public_disposable_domain')
+
+    let active=null
+    for (const provider of MAIL_HOSTS) {
+      MAIL = provider
+      try {
+        const domainResult=await mailbox({path:'/domains'})
+        const all=needed(domainResult,'mail_domains',[200])
+        const domains=all?.['hydra:member']??all?.member??all?.data??all?.items??[]
+        const entries=Array.isArray(domains)?domains:[]
+        console.info('E-mail temporário: serviço '+new URL(provider).host+
+          ' retornou '+entries.length+' domínios listados.')
+        active=entries.find(x=>x.isActive!==false && x.isPrivate!==true && typeof x.domain==='string')
+        if(active?.domain)break
+      } catch {
+        console.info('E-mail temporário: serviço '+new URL(provider).host+' sem domínio utilizável.')
+      }
+    }
+    if(!active?.domain)throw new Error('no_public_disposable_domain_from_two_providers')
     for (const record of state) await setupMailbox(record,active.domain)
     for (const record of state) await register(record)
     for (const record of state) await confirmFromEmail(record)
