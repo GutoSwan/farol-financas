@@ -26,6 +26,8 @@ import { requiredMfaRedirect } from './mfaNavigation'
 import { isFarolAdmin, isFarolSuperAdmin } from '../domain/auth/adminAccess'
 import { verifySuperAdminAccess } from '../infrastructure/auth/superAdminAccess'
 import AdminPage from '../presentation/pages/AdminPage.vue'
+import AdminCloudPage from '../presentation/pages/AdminCloudPage.vue'
+import { routeDocumentTitle } from './documentTitle'
 import AccountSecurityPage from '../presentation/pages/AccountSecurityPage.vue'
 
 const router = createRouter({
@@ -43,15 +45,25 @@ const router = createRouter({
       { path: 'orcamentos', component: BudgetsPage, meta: { title: 'Orçamentos' } },
       { path: 'relatorios', component: ReportsPage, meta: { title: 'Relatórios' } },
       { path: 'calendario', component: CalendarPage, meta: { title: 'Calendário' } },
-      { path: 'backup-local', component: LegacyBackupPage, meta: { title: 'Backup seguro', requiresLegacyData: true, requiresSuperAdmin: true } },
+      { path: 'backup-local', redirect: '/administracao/backup', meta: { title: 'Backup seguro', requiresSuperAdmin: true } },
       { path: 'presentes', component: GiftsPage, meta: { title: 'Presentes', requiresAdmin: true } },
       { path: 'relatorios/detalhes', component: MonthlyExpensesPage, meta: { title: 'Detalhes do mês' } },
     ],
   },
   // Painel técnico separado: nunca inicializa armazenamento financeiro local.
   { path: '/administracao', component: AdminLayout,
-    meta: { title: 'Administração', requiresSuperAdmin: true },
-    children: [{ path: '', component: AdminPage }],
+    meta: { title: 'Super Admin', requiresSuperAdmin: true },
+    children: [
+      { path: '', component: AdminPage, meta: { title: 'Painel principal' } },
+      // Todas as ferramentas técnicas mantêm o mesmo layout invertido.
+      // Rotas-filhas herdam autorização Super Admin em cada navegação.
+      { path: 'backup', component: LegacyBackupPage,
+        meta: { title: 'Backup protegido', requiresLegacyData: true } },
+      { path: 'seguranca', component: AccountSecurityPage,
+        meta: { title: 'Segurança da conta' } },
+      { path: 'dados', component: AdminCloudPage,
+        meta: { title: 'Dados na nuvem' } },
+    ],
   },
   // A tela online fica fora do AppLayout: não lê/mostra dados locais de outra conta.
   { path: '/dados-online', component: CloudOnlyLayout, meta: { title: 'Dados na nuvem', requiresFinancialData: true } },
@@ -164,6 +176,12 @@ router.beforeEach(async (to) => {
   }
 
   return true
+})
+
+router.afterEach((to) => {
+  // Título do navegador identifica claramente a área e não substitui
+  // os guardas de acesso da API.
+  document.title = routeDocumentTitle(to.path, String(to.meta.title ?? ''))
 })
 
 export default router
