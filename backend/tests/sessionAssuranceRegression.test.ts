@@ -11,7 +11,8 @@ describe('Regressão de autenticação Supabase: sessão autenticada e MFA', () 
     expect(await validateSignedSessionClaims(claims, active)).toEqual({
       userId, assuranceLevel: 'aal2',
     })
-    expect(active).toHaveBeenCalledExactlyOnceWith(userId, sessionId)
+    expect(active).toHaveBeenCalledTimes(1)
+    expect(active).toHaveBeenCalledWith(userId, sessionId)
   })
 
   it('rejeita sessão revogada mesmo se o JWT já tiver assinatura válida', async () => {
