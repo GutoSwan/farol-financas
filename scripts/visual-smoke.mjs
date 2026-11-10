@@ -196,6 +196,18 @@ try{
     await page.getByText('Dados na nuvem').first().waitFor()
     await screenshot(page,'07-admin-desktop-simulado')
   })
+  await scenario('Backup protegido retorna ao painel sem usar botão do navegador',
+    'super_admin',{width:1440,height:900},async page=>{
+    await visit(page,'/administracao','Administração do Farol')
+    await page.getByRole('link',{name:'Abrir backup seguro'}).click()
+    await page.getByRole('heading',{name:'Backup financeiro protegido'}).waitFor({timeout:13000})
+    await screenshot(page,'11-backup-com-voltar-desktop')
+    await page.getByRole('button',{name:/Voltar/}).first().click()
+    await page.waitForURL(origin+'/administracao',{timeout:13000})
+    await page.getByRole('heading',{name:'Administração do Farol'}).waitFor()
+    await checkOverflow(page,'Backup e navegação desktop')
+  })
+
   await scenario('Recuperação MFA AAL2 realista no celular, SEM dados reais', 'super_admin',
     {width:390,height:844}, async (page,qa)=>{
     await visit(page,'/redefinir-senha','Definir nova senha')
