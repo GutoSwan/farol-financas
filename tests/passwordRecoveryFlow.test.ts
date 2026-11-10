@@ -9,7 +9,7 @@ const app = readFileSync(new URL('../src/App.vue',import.meta.url),'utf8')
 
 describe('Fluxo guiado de recuperação de senha',()=>{
  it('pede link com redirectTo para a rota pública do Farol',()=>{
-   expect(auth).toContain('redirectTo: `${window.location.origin}/redefinir-senha`')
+   expect(auth).toContain("redirectTo: emailRedirect('/redefinir-senha')")
    expect(routing).toContain("'/redefinir-senha'")
    expect(JSON.parse(config).rewrites).toEqual(expect.arrayContaining([
      {source:'/redefinir-senha',destination:'/index.html'}
