@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 const entrypoint = readFileSync(new URL('../src/app.ts', import.meta.url), 'utf8')
 
 describe('Contrato de verificação atual da conta Super Admin no banco', () => {
-  const start = entrypoint.indexOf('async checkSuperAdmin(userId)')
+  const start = entrypoint.indexOf('async checkSuperAdmin(userId, token)')
   const end = entrypoint.indexOf('workspaceService:', start)
   const query = entrypoint.slice(start, end)
 
