@@ -6,7 +6,8 @@ import profile from '../src/presentation/pages/AuthPage.vue?raw'
 import admin from '../src/presentation/pages/AdminPage.vue?raw'
 import gifts from '../src/presentation/pages/GiftsPage.vue?raw'
 import nav from '../src/presentation/components/BackNavigation.vue?raw'
-import calendarCss from '../src/assets/styles/ux-admin-calendar.css?raw'
+import { readFileSync } from 'node:fs'
+const calendarCss = readFileSync(new URL('../src/assets/styles/ux-admin-calendar.css', import.meta.url), 'utf8')
 
 describe('Navegação e separação dos privilégios', () => {
   it('a conta de Presentes não vira Super Admin', () => {
