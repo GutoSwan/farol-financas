@@ -4,7 +4,8 @@ import routes from '../src/router/index.ts?raw'
 import adminLayout from '../src/presentation/layouts/AdminLayout.vue?raw'
 import adminPage from '../src/presentation/pages/AdminPage.vue?raw'
 import adminCloud from '../src/presentation/pages/AdminCloudPage.vue?raw'
-import styles from '../src/assets/styles/admin-inverted.css?raw'
+import { readFileSync } from 'node:fs'
+const styles = readFileSync(new URL('../src/assets/styles/admin-inverted.css', import.meta.url), 'utf8')
 import main from '../src/main.ts?raw'
 import vercelJson from '../vercel.json?raw'
 
