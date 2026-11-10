@@ -34,8 +34,9 @@ async function main(): Promise<void> {
     await client.query(`INSERT INTO public."WorkspaceMember"
       ("userId","workspaceId","role") VALUES ($1::uuid,$2::uuid,'OWNER')`, [userId, workspaceId])
     await client.query(`INSERT INTO public."Transaction"
-      ("workspaceId","description","category","amountCents","kind","occurredOn")
-      VALUES ($1::uuid,'Dado fictício CI','Teste',1000,'EXPENSE','2026-11-09')`, [workspaceId])
+      ("id","workspaceId","description","category","amountCents","kind","occurredOn")
+      VALUES ('33333333-3333-4333-8333-333333333333'::uuid,
+        $1::uuid,'Dado fictício CI','Teste',1000,'EXPENSE','2026-11-09')`, [workspaceId])
 
     const tables = ['User', 'Workspace', 'WorkspaceMember', 'Transaction'] as const
     for (const name of tables) {
