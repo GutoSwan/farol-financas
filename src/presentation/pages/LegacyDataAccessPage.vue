@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import BackNavigation from '../components/BackNavigation.vue'
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { supabase } from '../../infrastructure/auth/supabase'
@@ -53,6 +54,7 @@ async function exit(): Promise<void> {
 <template>
   <div class="auth-screen">
     <section class="auth-card" aria-label="Proteção dos dados locais">
+      <BackNavigation fallback="/entrar" />
       <div class="auth-brand">◈ Farol <span>Finanças</span></div>
       <p class="auth-kicker">PRIVACIDADE DOS DADOS LOCAIS</p>
       <h1>Registros deste navegador</h1>
