@@ -58,7 +58,7 @@ async function setup(browser,{role=null,viewport={width:1440,height:900}}={}){
     if(u.origin===origin)return route.continue()
     if(u.origin===authOrigin){
       if(u.pathname==='/auth/v1/user')return jsonRoute(route,fixtureUser(role))
-      if(u.pathname==='/auth/v1/factors')return jsonRoute(route,{
+      if(u.pathname==='/auth/v1/factors' || u.pathname==='/auth/v1/user/factors')return jsonRoute(route,{
         all:[{id:'33333333-3333-4333-8333-333333333333',status:'verified',
           factor_type:'totp',friendly_name:'Teste visual'}],
         totp:[{id:'33333333-3333-4333-8333-333333333333',status:'verified',
