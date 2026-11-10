@@ -64,6 +64,11 @@ function choosePerson(chosen: GiftOwner): void {
   reload()
 }
 
+function closeChooser(): void {
+  // Navegação interna confiável, mesmo quando a tela foi aberta por link direto.
+  void router.replace('/')
+}
+
 function changePerson(): void {
   person.value = null
   gifts.value = []
@@ -226,12 +231,12 @@ onMounted(() => { if (isAdmin.value) void nextTick(() => chooserFirst.value?.foc
     </template>
 
     <Teleport to="body">
-      <div v-if="!person" class="gift-modal-overlay" role="presentation" @click.self="router.push('/')">
+      <div v-if="!person" class="gift-modal-overlay" role="presentation" @click.self="closeChooser">
         <div class="gift-modal gift-chooser" role="dialog" aria-modal="true" aria-labelledby="gift-choose-heading"
-          @keydown="trapDialogFocus" @keydown.esc.prevent.stop="router.push('/')">
+          @keydown="trapDialogFocus" @keydown.esc.prevent.stop="closeChooser">
           <div class="gift-modal-topline">
             <span class="gift-modal-kicker">UM DESEJO DE CADA VEZ</span>
-            <button type="button" class="gift-close-modal" aria-label="Fechar escolha de pessoa" @click="router.push('/')">×</button>
+            <button type="button" class="gift-close-modal" aria-label="Fechar escolha de pessoa" @click="closeChooser">Fechar ×</button>
           </div>
           <div class="gift-chooser-decoration" aria-hidden="true"><UiIcon name="gift" :size="32" /></div>
           <h2 id="gift-choose-heading">De quem é a lista?</h2>
@@ -250,6 +255,9 @@ onMounted(() => { if (isAdmin.value) void nextTick(() => chooserFirst.value?.foc
               <UiIcon name="arrow" :size="17" />
             </button>
           </div>
+          <button type="button" class="gift-cancel-choice" @click="closeChooser">
+            Voltar para a visão geral sem escolher
+          </button>
         </div>
       </div>
 

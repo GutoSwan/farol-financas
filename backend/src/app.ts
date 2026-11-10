@@ -217,6 +217,20 @@ guardedFastify.addHook('onRequest', async (request, reply) => {
 
 const app = buildApp({
   auth,
+  async checkSuperAdmin(userId) {
+    // Nunca confiar apenas em app_metadata do JWT, que pode estar desatualizado.
+    // A consulta parametrizada lê o papel atual da conta, sem devolver informações pessoais.
+    const prisma = await getPrisma()
+    const rows = await prisma.$queryRaw<Array<{ allowed: boolean }>>`
+      SELECT EXISTS (
+        SELECT 1 FROM auth.users
+        WHERE id = ${userId}::uuid AND raw_app_meta_data->>'farol_role' = 'super_admin'
+          AND deleted_at IS NULL AND is_anonymous IS NOT TRUE
+          AND (banned_until IS NULL OR banned_until <= NOW())
+      ) AS allowed
+    `
+    return rows.length === 1 && rows[0].allowed === true
+  },
   workspaceService: new WorkspaceService(lazyRepository),
   transactionRepository: lazyTransactions,
   financialCatalog: lazyCatalog,

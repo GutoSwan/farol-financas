@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '../composables/useAuth'
 import OnlineFinancePage from '../pages/OnlineFinancePage.vue'
+import BackNavigation from '../components/BackNavigation.vue'
 
 /**
  * Tela isolada: NUNCA inicializar useWorkspaces, AppLayout ou módulos locais.
@@ -30,6 +31,7 @@ async function logout(): Promise<void> {
   <div class="cloud-only-shell">
     <header class="cloud-only-header">
       <RouterLink to="/dados-online" class="cloud-only-brand">◈ Farol <span>Finanças</span></RouterLink>
+      <BackNavigation fallback="/conta" />
       <nav class="cloud-only-nav" aria-label="Acesso protegido">
         <RouterLink to="/conta">Minha conta e segurança</RouterLink>
         <RouterLink to="/vincular-dados-locais">Dados deste navegador</RouterLink>

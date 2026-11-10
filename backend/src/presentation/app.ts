@@ -115,6 +115,8 @@ export interface AppDependencies {
   allowInvoiceUploads?: boolean
   allowInvoiceReads?: boolean
   checkDatabase(): Promise<boolean>
+  /** Lê papel Super Admin atual diretamente do auth.users, nunca do JWT ou navegador. */
+  checkSuperAdmin?: (userId: string) => Promise<boolean>
   corsOrigin?: string
   /** Preview usa banco real por enquanto: impedir gravações HTTP no servidor. */
   allowWorkspaceWrites?: boolean
@@ -281,6 +283,18 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
     const identity = await authorized(request, reply)
     if (!identity) return
     return { data: { id: identity.userId } }
+  })
+
+  // Resposta mínima: sem lista de usuários, tokens, banco ou segredos.
+  // Protegida por assinatura JWT, sessão ativa, MFA AAL2 e papel consultado no DB.
+  app.get('/api/v1/admin/access', async (request, reply) => {
+    const identity = await authorized(request, reply)
+    if (!identity) return
+    if (identity.assuranceLevel !== 'aal2') return reply.code(403).send({ error: 'Confirme o segundo fator.' })
+    if (!deps.checkSuperAdmin || !await deps.checkSuperAdmin(identity.userId)) {
+      return reply.code(403).send({ error: 'Acesso reservado ao Super Admin.' })
+    }
+    return { data: { superAdmin: true } }
   })
 
   app.get('/api/v1/workspaces', async (request, reply) => {

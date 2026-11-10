@@ -1,0 +1,59 @@
+/* Usabilidade e navegação: bordô + azul acinzentado, com contraste nos temas claro e escuro. */
+.farol-back-navigation { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 42px 0; color: var(--farol-text, #253449); }
+.farol-back-button, .farol-home-link { background: transparent; color: var(--farol-text,#293a50); border: 1px solid var(--farol-border,#cbd5e1); border-radius: 9px; min-height: 36px; padding: 8px 13px; font-size: 12px; font-weight: 700; }
+.farol-home-link { display: inline-flex; align-items: center; }
+.farol-back-button:hover, .farol-home-link:hover { background: var(--farol-wine-soft,#f5e9ed); color: var(--farol-wine,#87354f); }
+.farol-back-button:focus-visible,.farol-home-link:focus-visible { outline: 3px solid #a7506b; outline-offset: 2px; }
+.auth-card .farol-back-navigation { padding: 0 0 16px; justify-content: flex-start; }
+.cloud-only-header .farol-back-navigation { padding: 0; }
+.admin-tools { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit,minmax(min(260px,100%),1fr)); }
+.admin-tools .panel { display: flex; align-items: flex-start; flex-direction: column; gap: 12px; }
+.admin-tools .panel h2,.account-security-intro h2 { margin: 0; }
+.admin-tools .panel p,.admin-note,.account-security-intro p { color: var(--farol-muted,#64748b); font-size: 13px; line-height: 1.65; }
+.admin-tools .panel .secondary-action { margin-top: auto; }
+.admin-note { margin-top: 18px; }
+.profile-quick-links { display: grid; gap: 9px; margin-top: 16px; }
+.profile-quick-links a { display: flex; align-items: center; gap: 9px; padding: 12px 14px; color: var(--farol-text,#253449); background: var(--farol-card-muted,#f2f4f8); border: 1px solid var(--farol-border,#d9e0e8); border-radius: 10px; font-size: 13px; font-weight: 700; }
+.profile-quick-links a:hover { border-color: var(--farol-wine,#8b3d57); }
+
+/* Calendário de alto contraste, mantendo as cores bordô e azul acinzentado. */
+.calendar-page { --calendar-ink: #26364d; --calendar-muted: #52647c; --calendar-bg: #fbfcff; --calendar-soft: #edf2f7; --calendar-border: #cad4e2; --calendar-accent: #873c59; }
+:root[data-theme="dark"] .calendar-page { --calendar-ink: #f0f3fa; --calendar-muted: #becbdd; --calendar-bg: #1a2b42; --calendar-soft: #283951; --calendar-border: #50647c; --calendar-accent: #f0a0bf; }
+.calendar-page .calendar-panel, .calendar-page .calendar-agenda { color: var(--calendar-ink); }
+.calendar-page .calendar-grid { border-left-color: var(--calendar-border); border-top-color: var(--calendar-border); }
+.calendar-page .calendar-cell { background: var(--calendar-bg); border-color: var(--calendar-border); }
+.calendar-page .calendar-cell--empty { background: var(--calendar-soft); }
+.calendar-page .calendar-cell button { color: var(--calendar-ink); }
+.calendar-page .calendar-cell button:hover { background: var(--calendar-soft); }
+.calendar-page .calendar-cell button:focus-visible { outline: 3px solid var(--calendar-accent); outline-offset: -3px; }
+.calendar-page .calendar-number { color: var(--calendar-ink); font-size: 15px; font-weight: 850; }
+.calendar-page .calendar-cell--today .calendar-number { background: #873c59; color: #fff; }
+.calendar-page .calendar-cell--selected { background: var(--calendar-soft); box-shadow: inset 0 0 0 3px var(--calendar-accent); }
+.calendar-page .calendar-cell--selected button { color: var(--calendar-ink); }
+.calendar-page .calendar-weekdays { color: var(--calendar-ink); font-size: 13px; }
+.calendar-page .calendar-weekdays span { background: var(--calendar-soft); border-top: 1px solid var(--calendar-border); }
+.calendar-page .calendar-event-count { background: #e3ebf5; color: #274b75; border-radius: 5px; padding: 3px 5px; font-weight: 750; font-size: 11px; }
+.calendar-page .calendar-holiday { background: #fae5ec; color: #7e2543; border-radius: 5px; padding: 3px 5px; font-weight: 750; font-size: 11px; }
+:root[data-theme="dark"] .calendar-page .calendar-event-count { background: #274665; color: #d8e9ff; }
+:root[data-theme="dark"] .calendar-page .calendar-holiday { background: #5a3045; color: #ffcadf; }
+.calendar-page .calendar-small { background: var(--calendar-soft); border-color: var(--calendar-border); color: var(--calendar-ink); }
+.calendar-page .calendar-region, .calendar-page .calendar-footnote, .calendar-page .calendar-notice p { color: var(--calendar-muted); opacity: 1; }
+.calendar-page .calendar-agenda-entry p, .calendar-page .calendar-agenda-entry span { color: var(--calendar-muted); }
+.calendar-page .calendar-agenda-holiday strong { color: var(--calendar-accent); }
+.calendar-page .calendar-dialog { background: var(--calendar-bg); color: var(--calendar-ink); border: 1px solid var(--calendar-border); }
+.calendar-page .calendar-dialog textarea { background: var(--calendar-bg); color: var(--calendar-ink); border-color: var(--calendar-border); }
+.calendar-page .calendar-form-actions .secondary-action { background: var(--calendar-soft); color: var(--calendar-ink); }
+.gift-chooser .gift-close-modal { min-width: 82px; font-size: 12px; font-weight: 750; text-decoration: none; }
+.gift-chooser .gift-cancel-choice { display: block; margin: 18px auto 0; color: var(--farol-wine,#873c59); text-decoration: underline; font-weight: 750; font-size: 13px; }
+.gift-chooser .gift-cancel-choice:focus-visible { outline: 2px solid var(--farol-wine,#873c59); outline-offset: 3px; }
+@media(max-width:700px) { .farol-back-navigation { padding: 10px 17px 0; } .cloud-only-header .farol-back-navigation { padding: 0; } .calendar-page .calendar-number { font-size: 13px; } .calendar-page .calendar-event-count, .calendar-page .calendar-holiday { font-size: 10px; } }
+
+/* Tela administrativa separada dos dados financeiros salvos no aparelho. */
+.superadmin-shell { min-height: 100dvh; color: var(--farol-text,#27374d); background: var(--farol-page,#f4f6fa); }
+.superadmin-topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 14px max(22px,calc((100vw - 1200px)/2)); background: var(--farol-card,#fff); border-bottom: 1px solid var(--farol-border,#dce3ec); }
+.superadmin-brand { font-size: 23px; font-weight: 850; color: var(--farol-text,#27374d); }
+.superadmin-brand span { color: var(--farol-wine,#8e4058); }
+.superadmin-top-actions { display: flex; align-items: center; gap: 14px; font-size: 12px; color: var(--farol-muted,#66788c); }
+.superadmin-content { width: min(1200px,100%); margin: 0 auto; padding: 28px 22px 50px; }
+.superadmin-shell .farol-back-navigation { padding: 14px max(22px,calc((100vw - 1200px)/2)) 0; }
+@media(max-width:700px) { .superadmin-content { padding: 22px 15px 36px; } .superadmin-topbar { padding: 12px 15px; } }
