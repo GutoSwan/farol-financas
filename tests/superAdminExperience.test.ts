@@ -24,6 +24,9 @@ describe('Navegação e separação dos privilégios', () => {
   it('rotas de backup e administração exigem Super Admin no servidor', () => {
     expect(routes).toContain("requiresSuperAdmin: true")
     expect(routes).toContain("path: '/administracao'")
+    expect(routes).toContain("path: 'backup', component: LegacyBackupPage")
+    expect(routes).toContain("path: 'seguranca', component: AccountSecurityPage")
+    expect(routes).toContain("path: 'dados', component: AdminCloudPage")
     expect(routes).toContain("path: 'backup-local'")
     expect(routes).toContain("verifySuperAdminAccess()")
     expect(routes).toContain("isFarolSuperAdmin(data.user)")
@@ -34,7 +37,7 @@ describe('Navegação e separação dos privilégios', () => {
 
   it('o perfil fica simples e a segurança tem página separada', () => {
     expect(profile).toContain('to="/seguranca"')
-    expect(securityPage).toContain('<BackNavigation fallback="/conta" />')
+    expect(securityPage).toContain('v-if="!route.path.startsWith(\'/administracao\')"')
     expect(profile).toContain('to="/dados-online"')
     expect(profile).not.toContain('<TotpSettings />')
     expect(profile).not.toContain('<PhoneLinkPanel />')
