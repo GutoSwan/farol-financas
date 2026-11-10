@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - feat/v0.24-superadmin-ux-navigation
+      - security/v0.27-auth-only-admin-preview
   workflow_dispatch:
 
 permissions:
@@ -36,6 +37,8 @@ jobs:
           VITE_SUPABASE_URL: https://tvirkrjkgdtybtcundon.supabase.co
           VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_SYNTHETIC_BROWSER_TEST_NOT_A_REAL_KEY_12345
           VITE_API_BASE_URL: https://qa-api.invalid
+          VITE_FAROL_QA_DEV_ONLY: 'true'
+          VITE_AUTH_REDIRECT_BASE_URL: https://farol-financas-git-security-v027-auth-only-admin-8d8d01-farol13.vercel.app
           VITE_ENABLE_ONLINE_WORKSPACE_WRITES: 'false'
         run: npm run build
       - name: Instalar Playwright e navegador
