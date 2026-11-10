@@ -22,10 +22,11 @@ describe('Navegação e separação dos privilégios', () => {
 
   it('rotas de backup e administração exigem Super Admin no servidor', () => {
     expect(routes).toContain("requiresSuperAdmin: true")
-    expect(routes).toContain("path: 'administracao'")
+    expect(routes).toContain("path: '/administracao'")
     expect(routes).toContain("path: 'backup-local'")
     expect(routes).toContain("verifySuperAdminAccess()")
     expect(routes).toContain("isFarolSuperAdmin(data.user)")
+    expect(routes).toContain("component: AdminLayout")
     expect(admin).toContain('verifySuperAdminAccess()')
     expect(admin).toContain('v-else-if="!authorized"')
   })
