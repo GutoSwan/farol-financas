@@ -5,7 +5,7 @@ import serverEntry from '../backend/src/app.ts?raw'
 
 describe('Espaços online na barra lateral do Farol', () => {
   it('exibe consulta autenticada no gerenciador sem substituir o seletor de dados locais', () => {
-    expect(layout).toContain('<OnlineWorkspacesSidebar v-if="isSuperAdmin" />')
+    expect(layout).not.toContain('<OnlineWorkspacesSidebar')
     expect(layout).toContain('v-for="space in workspaces"')
     expect(layout).toContain(':value="activeWorkspaceId"')
     expect(sidebar).toContain('getOnlineIdentity()')
