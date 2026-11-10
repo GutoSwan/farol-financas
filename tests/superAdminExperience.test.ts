@@ -49,7 +49,7 @@ describe('Navegação e separação dos privilégios', () => {
 
   it('toda página do layout tem volta e início sem URLs externas', () => {
     expect(nav).toContain('Voltar')
-    expect(nav).toContain('to="/"')
+    expect(nav).toContain("homeTo: '/'")
     expect(nav).toContain("!last.startsWith('//')")
     expect(layout).toContain('<BackNavigation')
   })
