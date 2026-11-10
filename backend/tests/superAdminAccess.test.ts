@@ -103,4 +103,38 @@ describe('Super Admin: API nunca confia somente no menu', () => {
       expect(response.body).not.toContain('Database inaccessible')
     } finally { await app.close() }
   })
+  it('revogar a permissão no servidor impede o próximo acesso, mesmo com token antigo', async () => {
+    let allowed = true
+    const authorization = vi.fn(async () => allowed)
+    const app = buildApp({
+      auth: { verifyAccessToken: async () => ({ userId: superUser, assuranceLevel: 'aal2' }) },
+      workspaceService: new WorkspaceService(spaces),
+      checkDatabase: async () => true,
+      checkSuperAdmin: authorization,
+    })
+    try {
+      const req = () => app.inject({ method: 'GET', url: '/api/v1/admin/access',
+        headers: { authorization: 'Bearer unchanged-token' } })
+      expect((await req()).statusCode).toBe(200)
+      allowed = false
+      expect((await req()).statusCode).toBe(403)
+      expect(authorization).toHaveBeenCalledTimes(2)
+    } finally { await app.close() }
+  })
+
+  it('não revela informações de contas privilegiadas em falhas de autorização', async () => {
+    const { app } = testApp()
+    try {
+      const response = await app.inject({
+        method: 'GET', url: '/api/v1/admin/access',
+        headers: { authorization: 'Bearer user-aal2' },
+      })
+      expect(response.statusCode).toBe(403)
+      expect(response.headers['cache-control']).toContain('no-store')
+      expect(response.body).not.toContain('raw_app_meta_data')
+      expect(response.body).not.toContain(normalUser)
+      expect(response.body).not.toContain(superUser)
+    } finally { await app.close() }
+  })
+
 })

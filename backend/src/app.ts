@@ -223,10 +223,20 @@ const app = buildApp({
     const prisma = await getPrisma()
     const rows = await prisma.$queryRaw<Array<{ allowed: boolean }>>`
       SELECT EXISTS (
-        SELECT 1 FROM auth.users
-        WHERE id = ${userId}::uuid AND raw_app_meta_data->>'farol_role' = 'super_admin'
-          AND deleted_at IS NULL AND is_anonymous IS NOT TRUE
-          AND (banned_until IS NULL OR banned_until <= NOW())
+        SELECT 1
+        FROM auth.users AS admin_account
+        WHERE admin_account.id = ${userId}::uuid
+          AND admin_account.raw_app_meta_data->>'farol_role' = 'super_admin'
+          AND admin_account.email_confirmed_at IS NOT NULL
+          AND admin_account.deleted_at IS NULL
+          AND admin_account.is_anonymous IS NOT TRUE
+          AND (admin_account.banned_until IS NULL OR admin_account.banned_until <= NOW())
+          AND EXISTS (
+            SELECT 1 FROM auth.mfa_factors AS verified_factor
+            WHERE verified_factor.user_id = admin_account.id
+              AND verified_factor.factor_type = 'totp'
+              AND verified_factor.status = 'verified'
+          )
       ) AS allowed
     `
     return rows.length === 1 && rows[0].allowed === true
