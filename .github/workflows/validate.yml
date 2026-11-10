@@ -89,9 +89,15 @@ jobs:
       - name: Verificar RLS em todas as tabelas
         working-directory: backend
         run: npx tsx scripts/check-rls.ts
+      - name: Testar RLS com identidade artificial em PostgreSQL temporário (ROLLBACK)
+        working-directory: backend
+        run: npx tsx scripts/test-postgres-rls-isolation.ts
       - name: Testes da API
         working-directory: backend
         run: npm run test
+      - name: Typecheck completo, incluindo scripts de segurança
+        working-directory: backend
+        run: npm run typecheck
       - name: Build TypeScript
         working-directory: backend
         run: npm run build
