@@ -15,9 +15,9 @@ onMounted(async () => {
   <div class="admin-page">
     <div class="heading">
       <div>
-        <p class="eyebrow">ACESSO RESTRITO</p>
+        <p class="eyebrow">SUPER ADMIN / PAINEL DE CONTROLE</p>
         <h1>Administração do Farol</h1>
-        <p>Ferramentas técnicas separadas das opções do dia a dia.</p>
+        <p>Área administrativa independente do login, com cores invertidas e navegação própria.</p>
       </div>
     </div>
     <p v-if="checking" role="status" class="panel">Conferindo seu acesso com segurança...</p>
@@ -32,17 +32,17 @@ onMounted(async () => {
         <section class="panel">
           <h2>Backup protegido</h2>
           <p>Crie ou confira uma cópia criptografada dos dados locais autorizados neste navegador. Nenhum backup é enviado automaticamente.</p>
-          <RouterLink class="secondary-action" to="/backup-local">Abrir backup seguro</RouterLink>
+          <RouterLink class="secondary-action" to="/administracao/backup">Abrir backup seguro</RouterLink>
         </section>
         <section class="panel">
           <h2>Dados na nuvem</h2>
           <p>Consulte apenas os espaços vinculados à sua conta. A API verifica a autorização para cada espaço, mesmo para um Super Admin.</p>
-          <RouterLink class="secondary-action" to="/dados-online">Abrir meus dados na nuvem</RouterLink>
+          <RouterLink class="secondary-action" to="/administracao/dados">Abrir meus dados na nuvem</RouterLink>
         </section>
         <section class="panel">
           <h2>Segurança da conta</h2>
           <p>Revise seus autenticadores e métodos de acesso sem mostrar senhas ou chaves de servidor.</p>
-          <RouterLink class="secondary-action" to="/seguranca">Ver segurança</RouterLink>
+          <RouterLink class="secondary-action" to="/administracao/seguranca">Ver segurança</RouterLink>
         </section>
       </div>
       <p class="admin-note">Criação de contas administradoras, restauração e exclusão de registros globais continuam indisponíveis nesta versão. Essas operações exigem procedimentos próprios e auditoria.</p>
