@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import BackNavigation from '../components/BackNavigation.vue'
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { supabase } from '../../infrastructure/auth/supabase'
@@ -73,6 +74,7 @@ async function logout(): Promise<void> {
 <template>
   <div class="auth-screen">
     <section class="auth-card">
+      <BackNavigation fallback="/entrar" />
       <div class="auth-brand">◈ Farol <span>Finanças</span></div>
       <p class="auth-kicker">VERIFICAÇÃO DE SEGURANÇA</p>
       <h1>Configure o autenticador para continuar</h1>
