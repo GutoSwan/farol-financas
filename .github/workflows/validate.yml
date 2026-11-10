@@ -43,6 +43,19 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      # Execução única autorizada pelo usuário em 10/11/2026. Apenas chave PUBLICÁVEL Dev.
+      # Remover este passo depois de obter os resultados; nunca agendar cadastros.
+      - name: QA único - duas caixas descartáveis, login, TOTP e isolamento
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/security/v0.23-ephemeral-mail-e2e' && github.event.head_commit.message == 'run(liveqa): disposable signups' }}
+        timeout-minutes: 4
+        env:
+          CI: 'true'
+          FAROL_QA_EPHEMERAL_RUN: yes-once
+          FAROL_QA_TARGET_PROJECT: tvirkrjkgdtybtcundon
+          FAROL_QA_PUBLIC_KEY: 'sb_publishable_QRaiASY7ylKSExCYrLWvKw_ng9ypHgY'
+        run: |
+          node --check scripts/qa-disposable-live-e2e.mjs
+          node scripts/qa-disposable-live-e2e.mjs
       - name: Instalar dependências
         run: npm ci --no-audit --no-fund
       - name: Testes da checagem pública (rede simulada)
