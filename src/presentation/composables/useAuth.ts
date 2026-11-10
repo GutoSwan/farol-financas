@@ -4,6 +4,7 @@ import { authConfigured, supabase } from '../../infrastructure/auth/supabase'
 import { normalizeDisplayName, normalizeProfileIcon, readProfile } from '../../domain/profile/profile'
 import { isFarolAdmin, isFarolSuperAdmin } from '../../domain/auth/adminAccess'
 import { parseRecoveryConfirmationLink } from '../../domain/auth/passwordRecovery'
+import { safeAuthRedirect } from '../../domain/auth/authRedirect'
 import type { ProfileIcon } from '../../domain/profile/profile'
 
 const session = ref<Session | null>(null)
@@ -50,6 +51,16 @@ function client() {
 }
 
 export function useAuth() {
+  // Links e convites da Preview usam domínio ESTÁVEL, mesmo quando a pessoa
+  // está abrindo uma URL única de deployment da Vercel.
+  function emailRedirect(pathname: '/entrar' | '/redefinir-senha'): string {
+    return safeAuthRedirect(
+      pathname,
+      window.location.origin,
+      import.meta.env.VITE_AUTH_REDIRECT_BASE_URL ?? '',
+      import.meta.env.VITE_FAROL_QA_DEV_ONLY === 'true',
+    )
+  }
   async function signIn(email: string, password: string): Promise<void> {
     const { data, error } = await client().auth.signInWithPassword({ email: email.trim(), password })
     if (error) throw new Error(error.message)
@@ -65,7 +76,7 @@ export function useAuth() {
         // Se o template do Supabase oferecer link, ele retorna ao frontend HTTPS
         // que iniciou o cadastro, e não à URL Site padrão de outro ambiente.
         // O endereço precisa estar autorizado em Auth > URL Configuration.
-        emailRedirectTo: `${window.location.origin}/entrar`,
+        emailRedirectTo: emailRedirect('/entrar'),
         data: { display_name: displayName, avatar_icon: 'user' },
       },
     })
@@ -97,7 +108,7 @@ export function useAuth() {
   async function resendSignupCode(email: string): Promise<void> {
     const { error } = await client().auth.resend({
       type: 'signup', email: email.trim(),
-      options: { emailRedirectTo: `${window.location.origin}/entrar` },
+      options: { emailRedirectTo: emailRedirect('/entrar') },
     })
     if (error) throw new Error(error.message)
   }
@@ -116,7 +127,7 @@ export function useAuth() {
 
   async function requestPasswordReset(email: string): Promise<void> {
     const { error } = await client().auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: `${window.location.origin}/redefinir-senha`,
+      redirectTo: emailRedirect('/redefinir-senha'),
     })
     if (error) throw new Error(error.message)
   }
