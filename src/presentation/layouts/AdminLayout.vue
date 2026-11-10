@@ -62,7 +62,7 @@ const navigation = [
       <span aria-hidden="true">/</span>
       <strong>{{ currentSection }}</strong>
     </div>
-    <BackNavigation fallback="/administracao" />
+    <BackNavigation fallback="/administracao" home-to="/administracao" home-label="Painel Super Admin" />
 
     <main id="superadmin-main" class="superadmin-content">
       <RouterView />
