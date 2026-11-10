@@ -73,7 +73,6 @@ export class DevAuthOnlyQaVerifier implements AuthVerifier {
     const res = await this.request(DEV + '/auth/v1' + path, {
       method: 'GET',
       redirect: 'error',
-      cache: 'no-store',
       headers: {
         'apikey': this.publishableKey,
         'Authorization': 'Bearer ' + token,
@@ -113,7 +112,7 @@ export class DevAuthOnlyQaVerifier implements AuthVerifier {
   async ready(): Promise<boolean> {
     try {
       const response = await this.request(DEV + '/auth/v1/health', {
-        method: 'GET', redirect: 'error', cache: 'no-store',
+        method: 'GET', redirect: 'error',
         headers: { apikey: this.publishableKey },
         signal: AbortSignal.timeout(5000),
       })
