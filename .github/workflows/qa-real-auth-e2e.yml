@@ -1,0 +1,59 @@
+name: QA real de login, 2FA e isolamento - Supabase Dev
+
+# Apenas disparo MANUAL após criação e confirmação de duas contas exclusivas de QA.
+# Não use usuários pessoais, faturas reais nem service_role. Jamais roda em schedule.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_test:
+        description: "Confirmo que duas contas exclusivas +farolqa estão prontas e que desejo testá-las."
+        required: true
+        type: boolean
+        default: false
+      test_temporary_events:
+        description: "Criar dois compromissos FICTÍCIOS para testar isolamento e apagá-los ao final."
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: farol-supabase-dev-qa-e2e
+  cancel-in-progress: false
+
+jobs:
+  qa-auth-real:
+    name: QA com dois usuários fictícios, restrito ao Dev
+    if: ${{ inputs.confirm_test == true && vars.FAROL_QA_E2E_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    environment: farol-supabase-qa-dev
+    timeout-minutes: 15
+    env:
+      FAROL_QA_E2E_ENABLED: "true"
+      FAROL_QA_SUPABASE_URL: "https://tvirkrjkgdtybtcundon.supabase.co"
+      FAROL_QA_PUBLISHABLE_KEY: ${{ secrets.FAROL_QA_PUBLISHABLE_KEY }}
+      FAROL_QA_A_EMAIL: ${{ secrets.FAROL_QA_A_EMAIL }}
+      FAROL_QA_B_EMAIL: ${{ secrets.FAROL_QA_B_EMAIL }}
+      FAROL_QA_A_PASSWORD: ${{ secrets.FAROL_QA_A_PASSWORD }}
+      FAROL_QA_B_PASSWORD: ${{ secrets.FAROL_QA_B_PASSWORD }}
+      FAROL_QA_A_TOTP_SECRET: ${{ secrets.FAROL_QA_A_TOTP_SECRET }}
+      FAROL_QA_B_TOTP_SECRET: ${{ secrets.FAROL_QA_B_TOTP_SECRET }}
+      FAROL_QA_E2E_WRITE_FIXTURES: ${{ inputs.test_temporary_events && 'true' || 'false' }}
+      FAROL_QA_CONFIRM_FIXTURE_WRITES: ${{ inputs.test_temporary_events && 'true' || 'false' }}
+    steps:
+      - name: Ler repositório, sem guardar token persistente
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Usar Node 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22"
+      - name: Instalar dependências travadas por lockfile
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Testar proteções antes de acessar rede
+        run: node --test scripts/qa-real-auth-guards.test.mjs
+      - name: Executar autenticação real em ambiente Dev controlado
+        run: node scripts/qa-real-auth-e2e.mjs
