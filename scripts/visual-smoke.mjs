@@ -96,7 +96,8 @@ async function checkOverflow(page,label) {
 }
 
 await mkdir(output,{recursive:true})
-const browser=await chromium.launch({headless:true,args:['--no-sandbox']})
+const browser=await chromium.launch({headless:true,args:['--no-sandbox'],
+  ...(process.env.FAROL_CHROMIUM_BIN ? {executablePath:process.env.FAROL_CHROMIUM_BIN}:{})})
 let passed=0
 async function scenario(label,role,viewport,fn){
   const {page,context}=await setup(browser,{role,viewport})
