@@ -1,5 +1,8 @@
 # Farol Finanças | Teste do acesso Super Admin (ambiente Dev)
 
+> **ATUALIZAÇÃO POSTERIOR EM 10/11/2026:** O titular concluiu o convite e o 2FA no Supabase Dev. A conta foi ativada como `super_admin` e conferida no banco. Este documento registra o diagnóstico **antes** do convite; para o resultado atualizado, consultar [Ativação Super Admin no Dev](./qa-ativacao-super-admin-dev-20261110.md).
+
+
 **Data da execução:** 10/11/2026  
 **Conta indicada:** `gubuenoba@gmail.com`  
 **Ambiente de teste:** Supabase **Farol Finanças Dev**, referência `tvirkrjkgdtybtcundon`
