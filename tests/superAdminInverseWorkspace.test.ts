@@ -15,6 +15,7 @@ describe('Identidade e deploy independentes do Farol Admin',()=>{
   expect(adminConfig.rewrites.some((x:{source:string})=>x.source==='/admin/:path*')).toBe(true)
   expect(normalConfig.rewrites.some((x:{source:string})=>x.source.includes('administracao'))).toBe(false)
   expect(normalRoutes).not.toContain('component: AdminLayout')
+    expect(read('src/router/documentTitle.ts')).not.toContain('SUPER ADMIN')
  })
  it('identidade visual exclusiva no login e em todas as telas',()=>{
   for(const p of ['/admin/login','/admin','/admin/backup','/admin/nuvem','/admin/seguranca'])expect(admin).toContain(p)
