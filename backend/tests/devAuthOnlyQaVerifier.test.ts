@@ -27,16 +27,21 @@ function mockAuth(
   user: object = goodUser,
   factors: object = { totp:[{factor_type:'totp',status:'verified'}] },
   status = 200,
+  onRequest?: (url: string) => void,
 ): typeof fetch {
   return (async (input: string | URL, init?: RequestInit) => {
     const url = String(input)
-    if (!url.startsWith(DEV+'/auth/v1/user')) throw Error('Wrong Auth host')
+    onRequest?.(url)
+    if (url !== DEV+'/auth/v1/user') throw Error('Wrong Auth endpoint')
     if (init?.method !== 'GET' || init?.redirect !== 'error') throw Error('Wrong Auth request')
     const headers = init.headers as Record<string,string>
     if (headers?.apikey !== KEY || headers.Authorization !== 'Bearer '+('a'.repeat(50))) {
       throw Error('Missing caller-bound Auth headers')
     }
-    const payload = url.endsWith('/factors') ? factors : user
+    // Supabase /auth/v1/user returns the user's verified and unverified factors.
+    // There is no caller-facing /auth/v1/user/factors endpoint.
+    const input = factors as { totp?: unknown }
+    const payload = { ...user, factors: Array.isArray(input.totp) ? input.totp : undefined }
     return new Response(JSON.stringify(payload),{status,headers:{'Content-Type':'application/json'}})
   }) as typeof fetch
 }
@@ -77,8 +82,10 @@ describe('Preview administrativa sem credenciais do banco', () => {
   })
 
   it('autoriza a conta atual somente após consultar Auth do Dev e o TOTP verificado',async()=>{
-    const v = new DevAuthOnlyQaVerifier(KEY,mockAuth())
+    const requested: string[] = []
+    const v = new DevAuthOnlyQaVerifier(KEY,mockAuth(goodUser,{totp:[{factor_type:'totp',status:'verified'}]},200,(url)=>requested.push(url)))
     expect(await v.checkSuperAdmin(UUID,token)).toBe(true)
+    expect(requested).toEqual([DEV+'/auth/v1/user'])
   })
 
   it('não aceita role ausente, e-mail não confirmado, conta anônima ou dados de outra pessoa',async()=>{
@@ -99,7 +106,8 @@ describe('Preview administrativa sem credenciais do banco', () => {
       {totp:[]},
       {totp:[{factor_type:'totp',status:'unverified'}]},
       {totp:[{factor_type:'phone',status:'verified'}]},
-      {totp:[]},
+      {totp:[{factor_type:'totp',status:'verified',id:'ignored'},{factor_type:'totp',status:'unverified'}].filter(f=>f.status!=='verified')},
+      {},
     ]){
       expect(await new DevAuthOnlyQaVerifier(KEY,mockAuth(goodUser,factors)).checkSuperAdmin(UUID,token)).toBe(false)
     }
