@@ -17,11 +17,12 @@ describe('Experiência de presentes na barra lateral', () => {
   })
 
   it('permite adicionar, editar, excluir e abrir links externos com segurança', () => {
-    expect(gifts).toContain('repository.add(')
-    expect(gifts).toContain('repository.update(')
-    expect(gifts).toContain('repository.remove(')
+    expect(gifts).toContain('repository.value.add(')
+    expect(gifts).toContain('repository.value.update(')
+    expect(gifts).toContain('repository.value.remove(')
     expect(gifts).toContain('rel="noopener noreferrer"')
     expect(gifts).toContain('parseBRLToCents')
+    expect(gifts).toContain('new BrowserGiftRepository(user.value.id)')
   })
 
   it('identifica verde, amarelo e vermelho e mostra opção de foto por presente', () => {
