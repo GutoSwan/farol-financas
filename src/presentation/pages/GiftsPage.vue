@@ -18,6 +18,30 @@ const repository = computed(() => isAdmin.value && user.value?.id
 const person = ref<GiftOwner | null>(null)
 const gifts = ref<Gift[]>([])
 const feedback = ref('')
+const legacyAvailable = ref(false)
+
+function refreshLegacyAvailability(): void {
+  if (!isAdmin.value || !repository.value) { legacyAvailable.value = false; return }
+  try {
+    legacyAvailable.value = repository.value.hasLegacyGifts()
+  } catch (cause) {
+    legacyAvailable.value = false
+    error.value = cause instanceof Error ? cause.message : 'Não foi possível conferir presentes antigos.'
+  }
+}
+
+function importLegacyGifts(): void {
+  if (!isAdmin.value || !repository.value || !legacyAvailable.value) return
+  if (!window.confirm('Estes presentes antigos foram criados sem vínculo com uma conta. Confirma que pertencem a você e deseja associá-los à sua conta atual?')) return
+  try {
+    const amount = repository.value.importLegacyGifts()
+    refreshLegacyAvailability()
+    if (person.value) reload()
+    feedback.value = amount ? amount + ' presente(s) antigo(s) associado(s) à sua conta.' : 'Não havia presentes antigos para importar.'
+  } catch (cause) {
+    error.value = cause instanceof Error ? cause.message : 'Importação não concluída.'
+  }
+}
 const error = ref('')
 const formError = ref('')
 const formOpen = ref(false)
@@ -36,6 +60,7 @@ watch([isAdmin, () => user.value?.id], ([allowed, currentId], [, previousId]) =>
   gifts.value = []
   formOpen.value = false
   editId.value = null
+  refreshLegacyAvailability()
 })
 
 const personLabel = computed(() => person.value ? GIFT_OWNER_NAMES[person.value] : '')
@@ -147,7 +172,10 @@ function trapDialogFocus(event: KeyboardEvent): void {
   }
 }
 
-onMounted(() => { if (isAdmin.value) void nextTick(() => chooserFirst.value?.focus()) })
+onMounted(() => {
+  refreshLegacyAvailability()
+  if (isAdmin.value) void nextTick(() => chooserFirst.value?.focus())
+})
 </script>
 
 <template>
@@ -167,6 +195,18 @@ onMounted(() => { if (isAdmin.value) void nextTick(() => chooserFirst.value?.foc
         </button>
       </div>
     </div>
+
+    <section v-if="legacyAvailable" class="gift-local-note" aria-label="Importação de presentes antigos">
+      <p><strong>Presentes antigos encontrados neste navegador.</strong>
+        A lista antiga não identifica a conta proprietária e não será importada automaticamente.
+        Importe somente se você reconhecer que esses registros são seus.
+      </p>
+      <button type="button" class="secondary-action" @click="importLegacyGifts">
+        Importar meus presentes antigos
+      </button>
+    </section>
+    <p v-if="!person && error" class="error" role="alert">{{ error }}</p>
+    <p v-if="!person && feedback" class="success" role="status">{{ feedback }}</p>
 
     <template v-if="person">
       <div class="gift-owner-banner">
