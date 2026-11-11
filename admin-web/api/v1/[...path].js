@@ -3,7 +3,7 @@
  * Não confia em papel vindo do cliente. A API Dev deve verificar JWT, AAL2
  * e papel atual; a Vercel injeta token OIDC entre serviços.
  */
-const backend='https://farol-4h2g4hntn-farol13.vercel.app'
+const backend='https://farol-api-git-feat-v029-admin-standalone-preview-farol13.vercel.app'
 export default async function handler(req,res){
   res.setHeader('Cache-Control','private, no-store')
   res.setHeader('Content-Type','application/json; charset=utf-8')
