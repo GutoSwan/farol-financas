@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { onBeforeUnmount, ref, watch } from 'vue'
 import UiIcon from './UiIcon.vue'
 import { deleteGiftPhoto, getGiftPhoto, saveGiftPhoto } from '../../infrastructure/persistence/GiftPhotoStorage'
 
-const props = defineProps<{ giftId: string; giftName: string }>()
+const props = defineProps<{ userId: string; giftId: string; giftName: string }>()
 const picker = ref<HTMLInputElement | null>(null)
 const imageUrl = ref('')
 const dragging = ref(false)
@@ -14,7 +14,7 @@ let sequence = 0
 async function loadImage(): Promise<void> {
   const request = ++sequence
   try {
-    const stored = await getGiftPhoto(props.giftId)
+    const stored = await getGiftPhoto(props.userId, props.giftId)
     if (request !== sequence) return
     const next = stored ? URL.createObjectURL(stored) : ''
     if (imageUrl.value) URL.revokeObjectURL(imageUrl.value)
@@ -30,7 +30,7 @@ async function upload(file: File): Promise<void> {
   busy.value = true
   error.value = ''
   try {
-    await saveGiftPhoto(props.giftId, file)
+    await saveGiftPhoto(props.userId, props.giftId, file)
     await loadImage()
   } catch (cause) {
     error.value = cause instanceof Error ? cause.message : 'Não foi possível salvar a foto.'
@@ -57,7 +57,7 @@ async function removeImage(): Promise<void> {
   busy.value = true
   error.value = ''
   try {
-    await deleteGiftPhoto(props.giftId)
+    await deleteGiftPhoto(props.userId, props.giftId)
     const previous = imageUrl.value
     imageUrl.value = ''
     if (previous) URL.revokeObjectURL(previous)
@@ -68,7 +68,14 @@ async function removeImage(): Promise<void> {
   }
 }
 
-onMounted(() => { void loadImage() })
+watch([() => props.userId, () => props.giftId], () => {
+  // Não manter a foto anterior ao trocar de usuário ou de presente.
+  sequence++
+  if (imageUrl.value) URL.revokeObjectURL(imageUrl.value)
+  imageUrl.value = ''
+  error.value = ''
+  void loadImage()
+}, { immediate: true })
 onBeforeUnmount(() => {
   sequence++
   if (imageUrl.value) URL.revokeObjectURL(imageUrl.value)
