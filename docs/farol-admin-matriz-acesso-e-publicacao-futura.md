@@ -26,7 +26,7 @@ Todas as verificações nesta versão são realizadas em **Supabase Dev/Preview*
 3. A interface Admin deve solicitar autenticação no seu próprio domínio e armazenamento de sessão, usando chave **publishable** do Supabase Dev, nunca `service_role`.
 4. A API de autenticação Dev valida JWT, segundo fator AAL2 e papel atual. O proxy Admin só encaminha `GET /api/v1/admin/access` no ambiente Preview e não expõe credenciais de infraestrutura.
 5. A API Dev no modo QA administrativo bloqueia operações financeiras e gravações.
-6. Presentes possuem chave local por identidade autenticada; registros antigos são migrados pela conta autorizada sem remover o conteúdo antes de uma cópia válida. Esse isolamento local **não é criptografia**: não protege contra acesso físico ao perfil do navegador, DevTools ou outro código executado na mesma origem.
+6. Presentes e fotos recebem chaves vinculadas à identidade autenticada. Registros antigos sem dono só são importados após **confirmação explícita**; conflitos preservam a origem, e fotos antigas são migradas ao abrir um presente válido. Esse isolamento local **não é criptografia**: não protege contra acesso físico ao perfil do navegador, DevTools ou outro código executado na mesma origem.
 
 ## Preparação para futuras alterações globais pelo Admin
 
