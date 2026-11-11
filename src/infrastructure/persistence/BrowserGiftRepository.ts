@@ -4,6 +4,13 @@ import { normalizeGiftInput } from '../../domain/services/giftValidation'
 
 /** Uma lista pessoal, independente dos espaços e valores dos relatórios financeiros. */
 export const GIFT_STORAGE_KEY = 'farol-financas:gifts:v1'
+const USER_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+/** Separação por identidade; não é criptografia de arquivos locais. */
+export function giftStorageKeyForUser(userId: string): string {
+  if (!USER_UUID.test(userId)) throw new Error('Identidade inválida para acessar os presentes.')
+  return GIFT_STORAGE_KEY + ':' + userId.toLowerCase()
+}
 
 function isGift(value: unknown): value is Gift {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false
@@ -18,13 +25,30 @@ function isGift(value: unknown): value is Gift {
 }
 
 export class BrowserGiftRepository {
+  private readonly storageKey: string
+
+  constructor(userId: string) {
+    this.storageKey = giftStorageKeyForUser(userId)
+  }
+
+  private decode(raw: string): Gift[] {
+    const decoded: unknown = JSON.parse(raw)
+    if (!Array.isArray(decoded) || !decoded.every(isGift)) throw new Error('Estrutura inválida.')
+    return decoded
+  }
+
   private read(): Gift[] {
     try {
-      const raw = localStorage.getItem(GIFT_STORAGE_KEY)
-      if (!raw) return []
-      const decoded: unknown = JSON.parse(raw)
-      if (!Array.isArray(decoded) || !decoded.every(isGift)) throw new Error('Estrutura inválida.')
-      return decoded
+      const raw = localStorage.getItem(this.storageKey)
+      if (raw !== null) return this.decode(raw)
+      // Migração única apenas quando o usuário autorizado abre esta tela.
+      // Primeiro copia e valida; depois remove a chave compartilhada antiga.
+      const legacy = localStorage.getItem(GIFT_STORAGE_KEY)
+      if (legacy === null) return []
+      const items = this.decode(legacy)
+      localStorage.setItem(this.storageKey, legacy)
+      localStorage.removeItem(GIFT_STORAGE_KEY)
+      return items
     } catch {
       throw new Error('Não foi possível ler os presentes. Não limpe os dados do navegador antes de recuperá-los.')
     }
@@ -32,7 +56,7 @@ export class BrowserGiftRepository {
 
   private write(items: Gift[]): void {
     try {
-      localStorage.setItem(GIFT_STORAGE_KEY, JSON.stringify(items))
+      localStorage.setItem(this.storageKey, JSON.stringify(items))
     } catch {
       throw new Error('Não foi possível salvar os presentes neste navegador. Confira o espaço disponível.')
     }
