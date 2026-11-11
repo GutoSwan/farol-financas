@@ -58,18 +58,30 @@ async function logout(note = '') {
 }
 async function serverAuthorizes() {
   const { data, error } = await supabase.auth.getSession()
-  if (error || !data.session) return false
-  const response = await fetch('/api/v1/admin/access', {
-    headers: { Authorization: 'Bearer ' + data.session.access_token }, cache: 'no-store'
-  })
-  if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) return false
+  if (error || !data.session) throw new Error('Sessão expirada. Entre novamente.')
+  let response
+  try {
+    response = await fetch('/api/v1/admin/access', {
+      headers: { Authorization: 'Bearer ' + data.session.access_token }, cache: 'no-store'
+    })
+  } catch {
+    throw new Error('A API de autenticação não está respondendo.')
+  }
+  if (response.status === 401) throw new Error('A sessão foi recusada pela API. Entre novamente.')
+  if (response.status === 403) throw new Error('A API não autorizou o papel Super Admin nesta sessão.')
+  if (response.status >= 500) throw new Error('A API de autorização está indisponível (' + response.status + ').')
+  if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) {
+    throw new Error('A API enviou uma resposta inesperada (' + response.status + ').')
+  }
   const result = await response.json()
-  return result?.data?.superAdmin === true
+  if (result?.data?.superAdmin !== true) throw new Error('O servidor não confirmou a permissão Super Admin.')
+  return true
 }
 async function restore() {
   const attempt = ++currentCheck
   gate.value = 'checking'
   message.value = ''
+  let stage = 'identity'
   if (!supabase) {
     gate.value = 'blocked'
     message.value = 'Supabase Dev não configurado. O acesso está bloqueado.'
@@ -84,6 +96,7 @@ async function restore() {
       return
     }
     user.value = data.user
+    stage = 'authenticator'
     const { data: aal, error: aalError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
     if (aalError || aal?.nextLevel !== 'aal2') throw new Error('TOTP obrigatório')
     const { data: registered, error: factorsError } = await supabase.auth.mfa.listFactors()
@@ -92,15 +105,20 @@ async function restore() {
     if (!factors.value.length) throw new Error('TOTP não disponível')
     factorId.value = factors.value[0].id
     if (aal.currentLevel !== 'aal2') { gate.value = 'second-factor'; return }
-    if (!await serverAuthorizes()) throw new Error('API não confirmou permissão')
+    stage = 'api'
+    await serverAuthorizes()
     if (!mounted || attempt !== currentCheck) return
     gate.value = 'authorized'
     checkedAt.value = new Date().toLocaleString('pt-BR')
     if (!Object.values(paths).includes(activePath.value)) navigate('/admin')
-  } catch {
+  } catch (cause) {
     if (!mounted || attempt !== currentCheck) return
     gate.value = 'blocked'
-    message.value = 'A API não confirmou identidade, permissão e segundo fator. Acesso bloqueado por segurança.'
+    message.value = stage === 'api'
+      ? 'Identidade e autenticador confirmados. ' + (cause instanceof Error ? cause.message : 'A API não confirmou a autorização.') + ' Nenhuma ferramenta foi liberada.'
+      : stage === 'authenticator'
+        ? 'Não foi possível confirmar o autenticador desta sessão. Entre novamente e valide o 2FA.'
+        : 'Não foi possível confirmar sua identidade. Acesso bloqueado por segurança.'
   }
 }
 async function login() {
