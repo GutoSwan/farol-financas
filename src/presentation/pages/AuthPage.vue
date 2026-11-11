@@ -61,7 +61,7 @@ watch(() => props.mode, () => {
   editingProfile.value = false
 })
 // A página pública nunca afirma sucesso por query string: exige usuário validado no Supabase.
-watch([() => props.mode, ready], async ([mode, loaded]) => {
+watch([() => props.mode, ready, user], async ([mode, loaded]) => {
   if (mode !== 'confirmed' || !loaded) return
   if (!configured || !supabase) {
     confirmationStatus.value = 'unverified'
