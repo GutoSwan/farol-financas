@@ -29,6 +29,37 @@ const checkedAt = ref('')
 const mobileMenu = ref(false)
 let currentCheck = 0
 let mounted = true
+let signingOut = false
+let authSubscription = null
+let lastResumeCheck = 0
+
+function forgetAdministrativeSession(note = '') {
+  // Bloqueia a interface imediatamente, inclusive após logout em outra aba.
+  currentCheck++
+  gate.value = 'login'
+  user.value = null
+  factors.value = []
+  factorId.value = ''
+  password.value = ''
+  code.value = ''
+  checkedAt.value = ''
+  message.value = note
+  mobileMenu.value = false
+  navigate('/admin/login')
+}
+
+function revalidateOnResume() {
+  // Foco e mudança de visibilidade podem disparar juntos.
+  if (!mounted || document.visibilityState !== 'visible' || gate.value !== 'authorized') return
+  const now = Date.now()
+  if (now - lastResumeCheck < 2500) return
+  lastResumeCheck = now
+  void restore()
+}
+
+function onVisibilityChange() {
+  if (document.visibilityState === 'visible') revalidateOnResume()
+}
 function navigate(url) {
   if (!Object.values(paths).includes(url) && url !== '/admin/login') return
   history.pushState({}, '', url)
@@ -48,7 +79,9 @@ async function logout(note = '') {
   factors.value = []
   factorId.value = ''
   checkedAt.value = ''
+  signingOut = true
   try { await supabase?.auth.signOut() } catch { /* falha fechada */ }
+  finally { signingOut = false }
   if (!mounted || attempt !== currentCheck) return
   message.value = note
   password.value = ''
@@ -101,6 +134,7 @@ async function restore() {
     if (aalError || aal?.nextLevel !== 'aal2') throw new Error('TOTP obrigatório')
     const { data: registered, error: factorsError } = await supabase.auth.mfa.listFactors()
     if (factorsError || !registered) throw new Error('Falha de fatores')
+    if (!mounted || attempt !== currentCheck) return
     factors.value = registered.totp.filter(f => f.status === 'verified')
     if (!factors.value.length) throw new Error('TOTP não disponível')
     factorId.value = factors.value[0].id
@@ -151,10 +185,28 @@ async function verify() {
 }
 onMounted(() => {
   if (!activePath.value.startsWith('/admin')) navigate('/admin/login')
+  if (supabase) {
+    const { data } = supabase.auth.onAuthStateChange((event) => {
+      // Não chamar métodos async do Auth dentro deste callback.
+      if (event === 'SIGNED_OUT' && !signingOut) {
+        forgetAdministrativeSession('Sessão encerrada. Entre novamente para acessar o Admin.')
+      }
+    })
+    authSubscription = data.subscription
+  }
   window.addEventListener('popstate', onPop)
+  window.addEventListener('focus', revalidateOnResume)
+  document.addEventListener('visibilitychange', onVisibilityChange)
   void restore()
 })
-onBeforeUnmount(() => { mounted = false; currentCheck++; window.removeEventListener('popstate', onPop) })
+onBeforeUnmount(() => {
+  mounted = false
+  currentCheck++
+  authSubscription?.unsubscribe()
+  window.removeEventListener('popstate', onPop)
+  window.removeEventListener('focus', revalidateOnResume)
+  document.removeEventListener('visibilitychange', onVisibilityChange)
+})
 </script>
 
 <template>
