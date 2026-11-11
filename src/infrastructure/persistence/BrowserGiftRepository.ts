@@ -40,17 +40,46 @@ export class BrowserGiftRepository {
   private read(): Gift[] {
     try {
       const raw = localStorage.getItem(this.storageKey)
-      if (raw !== null) return this.decode(raw)
-      // Migração única apenas quando o usuário autorizado abre esta tela.
-      // Primeiro copia e valida; depois remove a chave compartilhada antiga.
-      const legacy = localStorage.getItem(GIFT_STORAGE_KEY)
-      if (legacy === null) return []
-      const items = this.decode(legacy)
-      localStorage.setItem(this.storageKey, legacy)
-      localStorage.removeItem(GIFT_STORAGE_KEY)
-      return items
+      return raw === null ? [] : this.decode(raw)
     } catch {
       throw new Error('Não foi possível ler os presentes. Não limpe os dados do navegador antes de recuperá-los.')
+    }
+  }
+
+  /**
+   * Os registros antigos não identificavam o dono. Nunca atribuí-los
+   * automaticamente à primeira conta administrativa que abrir o navegador.
+   */
+  hasLegacyGifts(): boolean {
+    try {
+      const raw = localStorage.getItem(GIFT_STORAGE_KEY)
+      return raw !== null && this.decode(raw).length > 0
+    } catch {
+      throw new Error('A lista antiga de presentes não pôde ser conferida; os dados foram preservados.')
+    }
+  }
+
+  /**
+   * Chamar SOMENTE após confirmação consciente do usuário autenticado.
+   * Mescla registros válidos sem substituir presentes existentes.
+   * Se falhar a gravação, conserva a origem antiga para recuperação.
+   */
+  importLegacyGifts(): number {
+    try {
+      const legacyRaw = localStorage.getItem(GIFT_STORAGE_KEY)
+      if (legacyRaw === null) return 0
+      const oldItems = this.decode(legacyRaw)
+      const current = this.read()
+      const seen = new Set(current.map(gift => gift.id))
+      if (oldItems.some(gift => seen.has(gift.id))) {
+        throw new Error('Existe um presente com o mesmo identificador na conta. Nada foi importado.')
+      }
+      localStorage.setItem(this.storageKey, JSON.stringify([...current, ...oldItems]))
+      // A cópia já foi gravada; se a limpeza falhar, nunca apagar a cópia.
+      localStorage.removeItem(GIFT_STORAGE_KEY)
+      return oldItems.length
+    } catch {
+      throw new Error('Não foi possível importar os presentes antigos. Os dados de origem não foram apagados.')
     }
   }
 
