@@ -40,8 +40,8 @@ function mockAuth(
     }
     // Supabase /auth/v1/user returns the user's verified and unverified factors.
     // There is no caller-facing /auth/v1/user/factors endpoint.
-    const input = factors as { totp?: unknown }
-    const payload = { ...user, factors: Array.isArray(input.totp) ? input.totp : undefined }
+    const factorData = factors as { totp?: unknown }
+    const payload = { ...user, factors: Array.isArray(factorData.totp) ? factorData.totp : undefined }
     return new Response(JSON.stringify(payload),{status,headers:{'Content-Type':'application/json'}})
   }) as typeof fetch
 }
