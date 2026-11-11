@@ -19,7 +19,7 @@ describe('Preparação do Farol para Vercel', () => {
   it('serve todas as rotas Vue como SPA, sem reescrever URLs da API como HTML', () => {
     const routes = [
       '/contas-mensais', '/gastos-fixos', '/lancamentos', '/cartoes', '/orcamentos',
-      '/relatorios', '/relatorios/detalhes', '/presentes', '/entrar', '/cadastro', '/recuperar-senha',
+      '/relatorios', '/relatorios/detalhes', '/presentes', '/entrar', '/cadastro', '/confirmar-email', '/recuperar-senha',
       '/redefinir-senha', '/conta', '/verificar-2fa', '/configurar-2fa',
       '/entrar/celular', '/cadastro/celular', '/recuperar-celular',
       '/calendario', '/dados-online', '/vincular-dados-locais', '/seguranca',
