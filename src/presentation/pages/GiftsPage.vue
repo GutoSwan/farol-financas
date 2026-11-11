@@ -29,8 +29,9 @@ const priority = ref<GiftPriority>('high')
 const chooserFirst = ref<HTMLButtonElement | null>(null)
 const formFirst = ref<HTMLInputElement | null>(null)
 
-watch([isAdmin, () => user.value?.id], ([allowed]) => {
-  if (allowed) return
+watch([isAdmin, () => user.value?.id], ([allowed, currentId], [, previousId]) => {
+  // Trocar entre contas privilegiadas também limpa os dados da tela anterior.
+  if (allowed && currentId && currentId === previousId) return
   person.value = null
   gifts.value = []
   formOpen.value = false
