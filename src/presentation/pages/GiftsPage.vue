@@ -12,8 +12,9 @@ import { deleteGiftPhoto } from '../../infrastructure/persistence/GiftPhotoStora
 import { formatBRL, parseBRLToCents } from '../../domain/value-objects/Money'
 
 const router = useRouter()
-const { isAdmin } = useAuth()
-const repository = new BrowserGiftRepository()
+const { isAdmin, user } = useAuth()
+const repository = computed(() => isAdmin.value && user.value?.id
+  ? new BrowserGiftRepository(user.value.id) : null)
 const person = ref<GiftOwner | null>(null)
 const gifts = ref<Gift[]>([])
 const feedback = ref('')
@@ -28,7 +29,7 @@ const priority = ref<GiftPriority>('high')
 const chooserFirst = ref<HTMLButtonElement | null>(null)
 const formFirst = ref<HTMLInputElement | null>(null)
 
-watch(isAdmin, (allowed) => {
+watch([isAdmin, () => user.value?.id], ([allowed]) => {
   if (allowed) return
   person.value = null
   gifts.value = []
@@ -45,9 +46,9 @@ const counts = computed(() => ({
 }))
 
 function reload(): void {
-  if (!isAdmin.value || !person.value) return
+  if (!isAdmin.value || !person.value || !repository.value) return
   try {
-    gifts.value = repository.list(person.value)
+    gifts.value = repository.value.list(person.value)
     error.value = ''
   } catch (cause) {
     gifts.value = []
@@ -94,7 +95,7 @@ function openForm(gift?: Gift): void {
 function closeForm(): void { formOpen.value = false; formError.value = '' }
 
 function saveGift(): void {
-  if (!isAdmin.value || !person.value) return
+  if (!isAdmin.value || !person.value || !repository.value) return
   formError.value = ''
   feedback.value = ''
   try {
@@ -102,8 +103,8 @@ function saveGift(): void {
       name: name.value, priceCents: parseBRLToCents(price.value),
       productUrl: productUrl.value, priority: priority.value,
     }
-    if (editId.value) repository.update(person.value, editId.value, draft)
-    else repository.add(person.value, draft)
+    if (editId.value) repository.value.update(person.value, editId.value, draft)
+    else repository.value.add(person.value, draft)
     const wasEditing = !!editId.value
     formOpen.value = false
     reload()
@@ -114,10 +115,10 @@ function saveGift(): void {
 }
 
 async function removeGift(gift: Gift): Promise<void> {
-  if (!isAdmin.value || !person.value) return
+  if (!isAdmin.value || !person.value || !repository.value) return
   if (!window.confirm('Excluir o presente "' + gift.name + '" da lista de ' + personLabel.value + '?')) return
   try {
-    repository.remove(person.value, gift.id)
+    repository.value.remove(person.value, gift.id)
     reload()
     feedback.value = 'Presente excluído da lista.'
     // Se o navegador negar o acesso a fotos, o registro já foi removido.
