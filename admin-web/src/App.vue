@@ -99,20 +99,32 @@ async function serverAuthorizes() {
   const { data, error } = await supabase.auth.getSession()
   if (error || !data.session) throw new Error('Sessão expirada. Entre novamente.')
   let response
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 12000)
   try {
     response = await fetch('/api/v1/admin/access', {
-      headers: { Authorization: 'Bearer ' + data.session.access_token }, cache: 'no-store'
+      headers: { Authorization: 'Bearer ' + data.session.access_token },
+      cache: 'no-store',
+      signal: controller.signal,
     })
-  } catch {
+  } catch (cause) {
+    if (controller.signal.aborted) {
+      throw new Error('A API excedeu o tempo de resposta. Tente novamente mais tarde.')
+    }
     throw new Error('A API de autenticação não está respondendo.')
+  } finally {
+    clearTimeout(timeout)
   }
   if (response.status === 401) throw new Error('A sessão foi recusada pela API. Entre novamente.')
   if (response.status === 403) throw new Error('A API não autorizou o papel Super Admin nesta sessão.')
+  if (response.status === 404) throw new Error('A rota de autorização ainda não está publicada nesta Preview (404).')
   if (response.status >= 500) throw new Error('A API de autorização está indisponível (' + response.status + ').')
   if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) {
     throw new Error('A API enviou uma resposta inesperada (' + response.status + ').')
   }
-  const result = await response.json()
+  let result
+  try { result = await response.json() }
+  catch { throw new Error('A API não retornou um JSON válido.') }
   if (result?.data?.superAdmin !== true) throw new Error('O servidor não confirmou a permissão Super Admin.')
   return true
 }
