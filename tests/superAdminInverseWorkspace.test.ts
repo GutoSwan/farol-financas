@@ -7,7 +7,7 @@ const normalRoutes=read('src/router/index.ts')
 const normalConfig=JSON.parse(read('vercel.json'))
 const adminConfig=JSON.parse(read('admin-web/vercel.json'))
 const adminPkg=JSON.parse(read('admin-web/package.json'))
-const proxy=read('admin-web/api/v1/[...path].js')
+const proxy=read('admin-web/api/v1/admin/access.js')
 
 describe('Identidade e deploy independentes do Farol Admin',()=>{
  it('web app separado sem URL de administração no Farol normal',()=>{
