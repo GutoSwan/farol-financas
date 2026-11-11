@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { BrowserGiftRepository, GIFT_STORAGE_KEY, giftStorageKeyForUser } from '../src/infrastructure/persistence/BrowserGiftRepository'
 import { normalizeGiftUrl } from '../src/domain/services/giftValidation'
-import { validateGiftPhoto, MAX_GIFT_PHOTO_BYTES } from '../src/infrastructure/persistence/GiftPhotoStorage'
+import { validateGiftPhoto, MAX_GIFT_PHOTO_BYTES, giftPhotoStorageKey } from '../src/infrastructure/persistence/GiftPhotoStorage'
 
 const data = new Map<string, string>()
 const ADMIN_A = '11111111-1111-4111-8111-111111111111'
@@ -124,5 +124,20 @@ describe('Privacidade de presentes entre contas no mesmo navegador', () => {
   it('recusa ID de usuário inválido antes de tocar no armazenamento', () => {
     expect(() => new BrowserGiftRepository('anonymous')).toThrow('Identidade inválida')
     expect(data.size).toBe(0)
+  })
+})
+
+describe('Fotos de presentes separadas pela identidade', () => {
+  it('chaves de fotos nunca coincidem entre duas contas distintas', () => {
+    const giftId = '33333333-3333-4333-8333-333333333333'
+    const first = giftPhotoStorageKey(ADMIN_A, giftId)
+    const second = giftPhotoStorageKey(ADMIN_B, giftId)
+    expect(first).not.toBe(second)
+    expect(first).toContain(ADMIN_A)
+    expect(second).toContain(ADMIN_B)
+  })
+  it('não aceita foto sem dono autenticado ou com ID inválido', () => {
+    expect(() => giftPhotoStorageKey('visitor', 'valid-gift')).toThrow('Identidade ou presente inválido')
+    expect(() => giftPhotoStorageKey(ADMIN_A, '../../outro')).toThrow('Identidade ou presente inválido')
   })
 })
