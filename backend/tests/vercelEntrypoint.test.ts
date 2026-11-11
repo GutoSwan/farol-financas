@@ -26,6 +26,17 @@ describe('Vercel Fastify entrypoint', () => {
     expect(source).not.toContain('app.listen(')
   })
 
+  it('publica /api/v1/admin/access com a função nativa e validação Fastify', () => {
+    const wrapper = read('../api/v1/admin/access.ts')
+    const native = read('../src/native-handler.ts')
+    const app = read('../src/presentation/app.ts')
+    expect(wrapper).toContain("export { default } from '../../../src/native-handler.js'")
+    expect(native).toContain("app.routing(req, res)")
+    expect(app).toContain("app.get('/api/v1/admin/access'")
+    expect(app).toContain("identity.assuranceLevel !== 'aal2'")
+    expect(app).toContain('deps.checkSuperAdmin(identity.userId')
+  })
+
   it('abre porta apenas no server.ts local', () => {
     const entry = read('../src/app.ts')
     const localServer = read('../src/server.ts')
