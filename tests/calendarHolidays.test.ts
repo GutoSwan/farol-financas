@@ -14,4 +14,19 @@ describe('Feriados do calendário', () => {
   expect(getHolidays(2026,'BR').map(h=>h.name)).not.toContain('Carnaval')
   expect(getHolidays(2026,'BR').map(h=>h.name)).not.toContain('Sexta-feira Santa')
  })
+ it('inclui feriados municipais confirmados de Sorocaba em 2026, sem pontos facultativos', () => {
+  const holidays=getHolidays(2026,'SOROCABA')
+  expect(holidays).toContainEqual({date:'2026-06-04',name:'Corpus Christi',level:'Municipal'})
+  expect(holidays).toContainEqual({date:'2026-08-15',name:'Aniversário de Sorocaba',level:'Municipal'})
+  expect(holidays).toContainEqual({date:'2026-07-09',name:'Revolução Constitucionalista',level:'Estadual'})
+  expect(holidays).not.toContainEqual(expect.objectContaining({date:'2026-07-10'}))
+  expect(holidays).not.toContainEqual(expect.objectContaining({date:'2026-06-05'}))
+  expect(holidays.filter(h=>h.date==='2026-11-20')).toHaveLength(1)
+ })
+ it('não inventa feriados municipais de Sorocaba para outros anos', () => {
+  expect(getHolidays(2027,'SOROCABA').every(h=>h.level!=='Municipal')).toBe(true)
+  expect(getHolidays(2026,'BR').some(h=>h.level==='Municipal')).toBe(false)
+  expect(getHolidays(2026,'SP').some(h=>h.level==='Municipal')).toBe(false)
+ })
+
 })

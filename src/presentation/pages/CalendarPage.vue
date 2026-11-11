@@ -2,13 +2,13 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { supabase } from '../../infrastructure/auth/supabase'
 import { getHolidays } from '../../domain/calendar/holidays'
-import type { Holiday } from '../../domain/calendar/holidays'
+import type { Holiday, CalendarRegion } from '../../domain/calendar/holidays'
 
 type EventRow = { id:string; user_id:string; title:string; description:string; starts_at:string; ends_at:string; all_day:boolean; reminder_minutes:number|null }
 const now = new Date()
 const month = ref(new Date(now.getFullYear(),now.getMonth(),1))
 const selectedDay = ref(localDate(now))
-const region = ref<'BR'|'SP'>('BR')
+const region = ref<CalendarRegion>('BR')
 const events = ref<EventRow[]>([])
 const busy = ref(false)
 const error = ref('')
@@ -134,12 +134,16 @@ async function notifyDue():Promise<void> {
 }
 watch(month,()=>{void load()})
 onMounted(()=>{
- try{region.value=localStorage.getItem('farol:calendar:region')==='SP'?'SP':'BR'}catch{/* localStorage indisponível */}
+ try{
+  const saved = localStorage.getItem('farol:calendar:region')
+  region.value = saved === 'SP' || saved === 'SOROCABA' ? saved : 'BR'
+ }catch{/* localStorage indisponível */}
  void load()
  timer=setInterval(()=>{void notifyDue()},30000)
 })
 onUnmounted(()=>{if(timer)clearInterval(timer)})
-function setRegion(value:'BR'|'SP'):void {
+function setRegion(value:CalendarRegion):void {
+ if(value!=='BR' && value!=='SP' && value!=='SOROCABA')return
  region.value=value
  try{localStorage.setItem('farol:calendar:region',value)}catch{/* preferências não persistidas */}
 }
@@ -160,9 +164,10 @@ function setRegion(value:'BR'|'SP'):void {
      <button class="calendar-small" type="button" @click="today">Hoje</button>
     </div>
     <label class="calendar-region">Feriados de
-     <select :value="region" @change="setRegion(($event.target as HTMLSelectElement).value as 'BR'|'SP')">
+     <select :value="region" @change="setRegion(($event.target as HTMLSelectElement).value as CalendarRegion)">
       <option value="BR">Brasil (nacionais)</option>
       <option value="SP">São Paulo (estado)</option>
+      <option value="SOROCABA">Sorocaba (SP)</option>
      </select>
     </label>
    </div>
@@ -176,7 +181,9 @@ function setRegion(value:'BR'|'SP'):void {
      </button>
     </div>
    </div>
-   <p class="calendar-footnote">Feriados nacionais e o feriado estadual de SP. Os feriados municipais ainda não estão integrados. Carnaval e Corpus Christi não são exibidos automaticamente como feriados nacionais.</p>
+   <p v-if="region==='SOROCABA' && month.getFullYear()===2026" class="calendar-footnote">Sorocaba: feriados municipais de 2026 confirmados pelo Decreto 30.713/2025, além dos feriados nacionais e estaduais. Pontos facultativos não são feriados.</p>
+   <p v-else-if="region==='SOROCABA'" class="calendar-footnote">Feriados municipais de Sorocaba verificados somente para 2026. Para {{ month.getFullYear() }}, exibimos os nacionais e o estadual de SP até validar o calendário oficial.</p>
+   <p v-else class="calendar-footnote">Feriados nacionais{{ region==='SP'?' e estadual de São Paulo':'' }}. Calendários municipais dependem de confirmação oficial; pontos facultativos não são exibidos como feriados.</p>
   </section>
   <section class="panel calendar-agenda">
    <div class="panel-title"><div><h2>{{ new Intl.DateTimeFormat('pt-BR',{dateStyle:'full'}).format(new Date(selectedDay+'T12:00:00')) }}</h2><p>Compromissos do dia selecionado</p></div><button type="button" class="calendar-small" @click="openNew">+ Adicionar</button></div>
