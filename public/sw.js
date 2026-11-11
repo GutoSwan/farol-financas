@@ -1,5 +1,5 @@
 /* Farol Finanças: cache exclusivamente de shell e recursos públicos. */
-const CACHE = 'farol-static-v1'
+const CACHE = 'farol-static-v2'
 const CORE = [
   '/',
   '/manifest.webmanifest',
@@ -51,8 +51,8 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
-  if (url.pathname.startsWith('/assets/') || url.pathname.startsWith('/icons/')
-    || url.pathname === '/manifest.webmanifest') {
+  if (url.pathname.startsWith('/assets/')) {
+    // Arquivos Vite possuem hash no nome; cache-first é seguro neste caso.
     event.respondWith(
       caches.match(request).then((cached) => cached || fetch(request).then((response) => {
         if (response.ok && response.type === 'basic') {
@@ -61,6 +61,21 @@ self.addEventListener('fetch', (event) => {
         }
         return response
       })),
+    )
+    return
+  }
+
+  if (url.pathname.startsWith('/icons/') || url.pathname === '/manifest.webmanifest') {
+    // Estes caminhos não possuem hash. Buscar a versão nova primeiro;
+    // deixar cache apenas como fallback offline para PWA no iPhone/Android.
+    event.respondWith(
+      fetch(request).then((response) => {
+        if (response.ok && response.type === 'basic') {
+          const copy = response.clone()
+          void caches.open(CACHE).then((cache) => cache.put(request, copy))
+        }
+        return response
+      }).catch(async () => (await caches.match(request)) || Response.error()),
     )
   }
 })

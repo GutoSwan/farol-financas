@@ -147,7 +147,11 @@ async function cancelEnrollment(): Promise<void> {
     code.value = ''
     showSecret.value = false
     clearFeedback()
-  } catch { errorText.value = 'Não foi possível cancelar o cadastro. Tente novamente.' }
+  } catch (error) {
+    // Manter a inscrição pendente na tela enquanto não houver confirmação.
+    // O QR e a chave continuam exclusivos da memória desta página.
+    errorText.value = safeError(error)
+  }
   finally { busy.value = false }
 }
 

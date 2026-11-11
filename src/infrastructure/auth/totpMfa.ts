@@ -74,11 +74,27 @@ export async function removeVerifiedTotpFactor(factorId: string): Promise<void> 
   if (error) throw new Error('Não foi possível remover o autenticador no Supabase. Tente novamente.')
 }
 
-/** Limpeza de cadastro ainda não validado; não remove fatores verificados. */
+/**
+ * Cancelar inscrição só conclui quando o Supabase confirma a retirada.
+ * Uma falha de rede NÃO deve esconder o QR/segredo e afirmar cancelamento.
+ * Um fator já verificado nunca pode ser excluído por este fluxo de AAL1.
+ */
 export async function discardUnverifiedTotpFactor(factorId: string): Promise<void> {
-  const { data, error } = await requireClient().auth.mfa.listFactors()
-  if (error || !data) return
+  if (!/^[0-9a-f-]{36}$/i.test(factorId)) {
+    throw new Error('Identificador inválido. Atualize a página antes de cancelar.')
+  }
+  const client = requireClient()
+  const { data, error } = await client.auth.mfa.listFactors()
+  if (error || !data) {
+    throw new Error('Não foi possível consultar o fator para cancelar. Verifique a conexão.')
+  }
   const factor = data.all.find((item) => item.id === factorId)
-  if (!factor || factor.status === 'verified') return
-  await requireClient().auth.mfa.unenroll({ factorId })
+  if (!factor) return // Já removido no Supabase.
+  if (factor.status === 'verified') {
+    throw new Error('Este autenticador já foi confirmado. Use a remoção protegida por 2FA.')
+  }
+  const { error: unenrollError } = await client.auth.mfa.unenroll({ factorId })
+  if (unenrollError) {
+    throw new Error('O Supabase não confirmou o cancelamento. Tente novamente.')
+  }
 }
