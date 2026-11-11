@@ -148,7 +148,7 @@ async function removeGift(gift: Gift): Promise<void> {
     reload()
     feedback.value = 'Presente excluído da lista.'
     // Se o navegador negar o acesso a fotos, o registro já foi removido.
-    try { await deleteGiftPhoto(gift.id) } catch { /* Foto órfã não impede exclusão do registro. */ }
+    try { await deleteGiftPhoto(user.value!.id, gift.id) } catch { /* Foto órfã não impede exclusão do registro. */ }
   } catch (cause) {
     error.value = cause instanceof Error ? cause.message : 'Não foi possível excluir o presente.'
   }
@@ -247,7 +247,7 @@ onMounted(() => {
       <div v-else-if="gifts.length" class="gift-grid">
         <article v-for="gift in gifts" :key="gift.id" class="gift-card"
           :class="'gift-card-' + gift.priority">
-          <GiftPhoto :gift-id="gift.id" :gift-name="gift.name" />
+          <GiftPhoto :user-id="user?.id ?? ''" :gift-id="gift.id" :gift-name="gift.name" />
           <div class="gift-card-content">
             <span class="gift-priority-pill" :class="'gift-priority-' + gift.priority">
               <span class="gift-priority-dot"></span> {{ GIFT_PRIORITY_NAMES[gift.priority] }}
