@@ -37,7 +37,7 @@ describe('Backup financeiro local antes da migração', () => {
   })
 
   it('não exporta presentes, chaves de sessão ou segredos', () => {
-    const gifts = new BrowserGiftRepository()
+    const gifts = new BrowserGiftRepository('11111111-1111-4111-8111-111111111111')
     gifts.add('gustavo', { name: 'Presente secreto', priceCents: 25000, priority: 'high', productUrl: '' })
     data.set('sb-test-auth-token', 'super-secret-token')
     const result = JSON.stringify(buildLocalFinancialBackup())
