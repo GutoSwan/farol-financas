@@ -92,16 +92,33 @@ describe('Privacidade de presentes entre contas no mesmo navegador', () => {
     expect(data.has(giftStorageKeyForUser(ADMIN_B))).toBe(false)
   })
 
-  it('migra os presentes antigos sem excluir as fotos nem perder dados', () => {
+  it('não atribui registros antigos automaticamente à primeira conta que entrar', () => {
     const earlier = new BrowserGiftRepository(ADMIN_A)
     const gift = earlier.add('ana', medium)
     const oldRecords = data.get(giftStorageKeyForUser(ADMIN_A))!
     data.delete(giftStorageKeyForUser(ADMIN_A))
     data.set(GIFT_STORAGE_KEY, oldRecords)
-    const migrated = new BrowserGiftRepository(ADMIN_A)
-    expect(migrated.list('ana')[0].id).toBe(gift.id)
-    expect(data.get(giftStorageKeyForUser(ADMIN_A))).toBe(oldRecords)
+
+    const other = new BrowserGiftRepository(ADMIN_B)
+    expect(other.hasLegacyGifts()).toBe(true)
+    expect(other.list('ana')).toEqual([])
+    expect(data.has(giftStorageKeyForUser(ADMIN_B))).toBe(false)
+    expect(data.get(GIFT_STORAGE_KEY)).toBe(oldRecords)
+
+    const owner = new BrowserGiftRepository(ADMIN_A)
+    expect(owner.importLegacyGifts()).toBe(1)
+    expect(owner.list('ana')[0].id).toBe(gift.id)
     expect(data.has(GIFT_STORAGE_KEY)).toBe(false)
+  })
+
+  it('preserva a origem se a importação encontrar um identificador duplicado', () => {
+    const owner = new BrowserGiftRepository(ADMIN_A)
+    owner.add('ana', medium)
+    const originals = data.get(giftStorageKeyForUser(ADMIN_A))!
+    data.set(GIFT_STORAGE_KEY, originals)
+    expect(() => owner.importLegacyGifts()).toThrow('Não foi possível importar')
+    expect(data.get(GIFT_STORAGE_KEY)).toBe(originals)
+    expect(data.get(giftStorageKeyForUser(ADMIN_A))).toBe(originals)
   })
 
   it('recusa ID de usuário inválido antes de tocar no armazenamento', () => {
