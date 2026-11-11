@@ -22,6 +22,8 @@ const end = ref('')
 const allDay = ref(false)
 const reminder = ref(-1)
 let timer: ReturnType<typeof setInterval>|undefined
+// Descarta respostas fora de ordem quando a pessoa muda de mês ou encerra a sessão.
+let loadVersion = 0
 const notified = new Set<string>()
 
 function localDate(d:Date):string {
@@ -45,18 +47,32 @@ const dayHolidays=computed(()=>holidays.value.filter(h=>h.date===selectedDay.val
 function holidayOn(day:string):Holiday|undefined {return holidays.value.find(h=>h.date===day)}
 function countOn(day:string):number { return events.value.filter(e=>dayFromIso(e.starts_at)===day).length }
 async function load():Promise<void> {
+ const version = ++loadVersion
+ events.value = []
  if(!supabase){error.value='Supabase não configurado.';return}
  busy.value=true;error.value=''
  const startIso=new Date(month.value.getFullYear(),month.value.getMonth()-1,1).toISOString()
  const endIso=new Date(month.value.getFullYear(),month.value.getMonth()+2,1).toISOString()
  try{
+  // A consulta é vinculada ao usuário verificado, além do RLS no Supabase.
+  const {data:{user},error:identityError}=await supabase.auth.getUser()
+  if(identityError||!user)throw new Error('Entre novamente para consultar seus eventos.')
   const {data,error:queryError}=await supabase.from('calendar_events').select('id,user_id,title,description,starts_at,ends_at,all_day,reminder_minutes')
-   .gte('starts_at',startIso).lt('starts_at',endIso).order('starts_at')
+   .eq('user_id',user.id).gte('starts_at',startIso).lt('starts_at',endIso).order('starts_at')
   if(queryError)throw queryError
+  // Impede que uma resposta anterior revele eventos após trocar de conta.
+  const {data:current,error:sessionError}=await supabase.auth.getSession()
+  if(sessionError||current.session?.user.id!==user.id)throw new Error('A sessão mudou. Entre novamente.')
+  if(version!==loadVersion)return
   events.value=(data??[]) as EventRow[]
- }catch(cause){events.value=[];error.value=cause instanceof Error?cause.message:'Não foi possível carregar eventos.'}
- finally{busy.value=false}
+ }catch(cause){
+  if(version!==loadVersion)return
+  events.value=[]
+  error.value=cause instanceof Error?cause.message:'Não foi possível carregar eventos.'
+ }
+ finally{if(version===loadVersion)busy.value=false}
 }
+
 function changeMonth(delta:number):void {
  month.value=new Date(month.value.getFullYear(),month.value.getMonth()+delta,1)
  selectedDay.value=localDate(new Date(month.value.getFullYear(),month.value.getMonth(),1))
@@ -141,7 +157,7 @@ onMounted(()=>{
  void load()
  timer=setInterval(()=>{void notifyDue()},30000)
 })
-onUnmounted(()=>{if(timer)clearInterval(timer)})
+onUnmounted(()=>{loadVersion++;if(timer)clearInterval(timer)})
 function setRegion(value:CalendarRegion):void {
  if(value!=='BR' && value!=='SP' && value!=='SOROCABA')return
  region.value=value
