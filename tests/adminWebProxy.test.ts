@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 // @ts-expect-error função serverless Vercel implementada em JavaScript
-import handler from '../admin-web/api/v1/[...path].js'
+import handler from '../admin-web/api/v1/admin/access.js'
 
 const jwt = 'a'.repeat(100)
 const oidc = 'b'.repeat(100)
