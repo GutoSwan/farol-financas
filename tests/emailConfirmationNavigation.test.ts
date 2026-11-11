@@ -28,6 +28,7 @@ describe('Link de e-mail na Preview v0.29',()=>{
  it('não declara confirmação só porque a URL possui parâmetros',()=>{
   expect(page).toContain('await supabase.auth.getUser()')
   expect(page).toContain('data.user?.email_confirmed_at')
+  expect(page).toContain('watch([() => props.mode, ready, user]')
   expect(page).toContain("confirmationStatus.value = 'unverified'")
   expect(page).toContain('v-if="signupCodeVisible"')
  })
