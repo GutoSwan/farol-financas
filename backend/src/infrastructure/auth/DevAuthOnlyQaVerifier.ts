@@ -101,7 +101,7 @@ export class DevAuthOnlyQaVerifier implements AuthVerifier {
   async checkSuperAdmin(userId: string, token?: string): Promise<boolean> {
     if (!UUID.test(userId) || !token) return false
     try {
-      const user = asAuthUser(await this.getAuth('/user', token))
+      const user = asAuthUser(await this.getAuth(token))
       if (!user || user.id !== userId || typeof user.email_confirmed_at !== 'string' ||
           user.is_anonymous === true || user.app_metadata?.farol_role !== 'super_admin') return false
       return verifiedTotp(user.factors)
