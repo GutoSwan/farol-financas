@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import page from '../src/presentation/pages/AccountSecurityPage.vue?raw'
-import css from '../src/assets/styles/security-mobile.css?raw'
+import { readFileSync } from 'node:fs'
+const css = readFileSync(new URL('../src/assets/styles/security-mobile.css', import.meta.url), 'utf8')
 import main from '../src/main.ts?raw'
 import totp from '../src/presentation/components/TotpSettings.vue?raw'
 import phone from '../src/presentation/components/PhoneLinkPanel.vue?raw'
