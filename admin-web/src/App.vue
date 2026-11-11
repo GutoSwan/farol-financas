@@ -62,6 +62,7 @@ function onVisibilityChange() {
 }
 function navigate(url) {
   if (!Object.values(paths).includes(url) && url !== '/admin/login') return
+  if (gate.value !== 'authorized' && url !== '/admin/login') return
   history.pushState({}, '', url)
   activePath.value = url
   mobileMenu.value = false
@@ -70,7 +71,11 @@ function navigate(url) {
 function onPop() {
   activePath.value = location.pathname
   mobileMenu.value = false
-  if (!Object.values(paths).includes(activePath.value) && activePath.value !== '/admin/login') navigate('/admin')
+  if (gate.value !== 'authorized') {
+    if (activePath.value !== '/admin/login') navigate('/admin/login')
+    return
+  }
+  if (!Object.values(paths).includes(activePath.value)) navigate('/admin')
 }
 async function logout(note = '') {
   const attempt = ++currentCheck
@@ -184,7 +189,7 @@ async function verify() {
   } finally { busy.value = false }
 }
 onMounted(() => {
-  if (!activePath.value.startsWith('/admin')) navigate('/admin/login')
+  if (!Object.values(paths).includes(activePath.value) && activePath.value !== '/admin/login') navigate('/admin/login')
   if (supabase) {
     const { data } = supabase.auth.onAuthStateChange((event) => {
       // Não chamar métodos async do Auth dentro deste callback.
