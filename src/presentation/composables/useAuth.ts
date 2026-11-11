@@ -69,7 +69,7 @@ function client() {
 export function useAuth() {
   // Links e convites da Preview usam domínio ESTÁVEL, mesmo quando a pessoa
   // está abrindo uma URL única de deployment da Vercel.
-  function emailRedirect(pathname: '/entrar' | '/redefinir-senha'): string {
+  function emailRedirect(pathname: '/confirmar-email' | '/redefinir-senha'): string {
     return safeAuthRedirect(
       pathname,
       window.location.origin,
@@ -92,7 +92,7 @@ export function useAuth() {
         // Se o template do Supabase oferecer link, ele retorna ao frontend HTTPS
         // que iniciou o cadastro, e não à URL Site padrão de outro ambiente.
         // O endereço precisa estar autorizado em Auth > URL Configuration.
-        emailRedirectTo: emailRedirect('/entrar'),
+        emailRedirectTo: emailRedirect('/confirmar-email'),
         data: { display_name: displayName, avatar_icon: 'user' },
       },
     })
@@ -124,7 +124,7 @@ export function useAuth() {
   async function resendSignupCode(email: string): Promise<void> {
     const { error } = await client().auth.resend({
       type: 'signup', email: email.trim(),
-      options: { emailRedirectTo: emailRedirect('/entrar') },
+      options: { emailRedirectTo: emailRedirect('/confirmar-email') },
     })
     if (error) throw new Error(error.message)
   }

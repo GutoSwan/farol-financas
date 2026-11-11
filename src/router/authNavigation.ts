@@ -5,6 +5,7 @@
 const PUBLIC_AUTH_ROUTES = new Set([
   '/entrar',
   '/cadastro',
+  '/confirmar-email',
   '/recuperar-senha',
   '/redefinir-senha',
   '/entrar/celular',

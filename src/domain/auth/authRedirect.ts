@@ -1,5 +1,6 @@
+// Branch fixa de QA: links por e-mail não podem apontar para previews antigos.
 const PREVIEW_DEV_AUTH_ORIGIN =
-  'https://farol-financas-git-security-v027-auth-only-admin-8d8d01-farol13.vercel.app'
+  'https://farol-financas-git-feat-v029-admin-standalone-preview-farol13.vercel.app'
 
 /**
  * Recuperação por e-mail precisa retornar sempre a um endereço estável.
@@ -7,7 +8,7 @@ const PREVIEW_DEV_AUTH_ORIGIN =
  * allowlist do Supabase Auth.
  */
 export function safeAuthRedirect(
-  pathname: '/entrar' | '/redefinir-senha',
+  pathname: '/confirmar-email' | '/entrar' | '/redefinir-senha',
   currentOrigin: string,
   configuredOrigin: string,
   qaDevOnly: boolean,
@@ -15,8 +16,8 @@ export function safeAuthRedirect(
   const selected = configuredOrigin.trim() || currentOrigin
   const u = new URL(selected)
   if (u.protocol !== 'https:' ||
-      u.href !== u.origin + '/' && u.href !== u.origin ||
-      u.username || u.password ||
+      (u.href !== u.origin + '/' && u.href !== u.origin) ||
+      u.username || u.password || u.search || u.hash ||
       (qaDevOnly && u.origin !== PREVIEW_DEV_AUTH_ORIGIN)) {
     throw new Error('A URL de retorno do Auth Dev não está configurada com segurança.')
   }

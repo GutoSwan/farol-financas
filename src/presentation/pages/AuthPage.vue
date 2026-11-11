@@ -11,7 +11,7 @@ import { useAuth } from '../composables/useAuth'
 import { PROFILE_ICONS } from '../../domain/profile/profile'
 import type { ProfileIcon } from '../../domain/profile/profile'
 
-type AuthMode = 'login' | 'signup' | 'forgot' | 'reset' | 'profile'
+type AuthMode = 'login' | 'signup' | 'forgot' | 'reset' | 'profile' | 'confirmed'
 type SignupStep = 'form' | 'verification' | 'success'
 const props = defineProps<{ mode: AuthMode }>()
 const router = useRouter()
@@ -36,6 +36,8 @@ const busy = ref(false)
 const message = ref('')
 const errorText = ref('')
 const signupStep = ref<SignupStep>('form')
+const signupCodeVisible = ref(false)
+const confirmationStatus = ref<'checking' | 'confirmed' | 'unverified'>('checking')
 const verificationEmail = ref('')
 const code = ref('')
 const nextResendAt = ref(0)
@@ -52,10 +54,28 @@ watch(() => props.mode, () => {
   recoveryMfaFactorId.value = ''
   code.value = ''
   signupStep.value = 'form'
+  signupCodeVisible.value = false
+  confirmationStatus.value = 'checking'
   message.value = ''
   errorText.value = ''
   editingProfile.value = false
 })
+// A página pública nunca afirma sucesso por query string: exige usuário validado no Supabase.
+watch([() => props.mode, ready], async ([mode, loaded]) => {
+  if (mode !== 'confirmed' || !loaded) return
+  if (!configured || !supabase) {
+    confirmationStatus.value = 'unverified'
+    return
+  }
+  try {
+    const { data, error } = await supabase.auth.getUser()
+    confirmationStatus.value = !error && data.user?.email_confirmed_at
+      ? 'confirmed' : 'unverified'
+  } catch {
+    confirmationStatus.value = 'unverified'
+  }
+}, { immediate: true })
+
 // O link recuperado inicia AAL1. Nunca mostrar o formulário de senha antes
 // de verificar os fatores atuais e, se houver TOTP, elevar a sessão para AAL2.
 watch([recoveringPassword, () => props.mode], async ([active, mode]) => {
@@ -140,11 +160,12 @@ async function submit(): Promise<void> {
       confirmPassword.value = ''
       verificationEmail.value = email.value.trim()
       signupStep.value = hasSession ? 'success' : 'verification'
+      signupCodeVisible.value = false
       if (hasSession) message.value = 'Cadastro realizado! Sua conta já está confirmada.'
       else message.value = 'Se este e-mail puder ser cadastrado, enviaremos instruções de confirmação. Se já tiver uma conta, entre normalmente ou recupere sua senha.'
     } else if (props.mode === 'forgot') {
       await requestPasswordReset(email.value)
-      message.value = 'Se o e-mail estiver cadastrado no Supabase Dev, você receberá um link. Abra o link para definir a senha; se for redirecionado para outro site, copie o link original do e-mail e cole na página Definir nova senha do Farol.'
+      message.value = 'Se o e-mail estiver cadastrado no Supabase Dev, você receberá um link. Abra-o para voltar à tela Definir nova senha desta Preview. Caso o provedor de e-mail abra outro endereço, use a opção de colar o link original na tela de recuperação, sem compartilhá-lo.'
     } else if (props.mode === 'reset') {
       await updatePassword(password.value)
       password.value = ''
@@ -322,6 +343,20 @@ async function logout(): Promise<void> {
         </div>
       </template>
 
+      <template v-else-if="mode === 'confirmed'">
+        <div class="auth-confirmed" role="status">
+          <span class="auth-confirmed-icon"><UiIcon :name="confirmationStatus === 'confirmed' ? 'check' : 'mail'" :size="32" /></span>
+          <h1>{{ confirmationStatus === 'confirmed' ? 'E-mail confirmado!' : confirmationStatus === 'checking' ? 'Verificando seu e-mail...' : 'Confirmação pendente' }}</h1>
+          <p v-if="confirmationStatus === 'confirmed'">Seu endereço foi confirmado pelo Supabase Dev. Continue para acessar o Farol e concluir a verificação com Authenticator, se necessário.</p>
+          <p v-else-if="confirmationStatus === 'checking'">Conferindo sua sessão com segurança.</p>
+          <p v-else>Não foi possível comprovar a confirmação nesta sessão. Se você abriu o link em outro dispositivo, volte ao login com seu e-mail e senha. Se ainda não confirmou, verifique sua caixa de entrada.</p>
+          <RouterLink class="primary auth-full-button" :to="confirmationStatus === 'confirmed' && isLoggedIn ? '/' : '/entrar'">
+            {{ confirmationStatus === 'confirmed' && isLoggedIn ? 'Continuar para o Farol' : 'Ir para o login' }}
+          </RouterLink>
+          <RouterLink v-if="confirmationStatus === 'unverified'" class="auth-inline-link" to="/cadastro">Voltar ao cadastro</RouterLink>
+        </div>
+      </template>
+
       <template v-else-if="mode === 'signup' && signupStep === 'success'">
         <div class="auth-confirmed">
           <span class="auth-confirmed-icon"><UiIcon name="check" :size="32" /></span>
@@ -335,8 +370,11 @@ async function logout(): Promise<void> {
 
       <template v-else-if="mode === 'signup' && signupStep === 'verification'">
         <h1>Verifique seu e-mail</h1>
-        <p class="auth-subtitle">Enviamos uma mensagem de confirmação para <strong>{{ verificationEmail }}</strong>. Caso ela tenha um código numérico, digite-o abaixo. Se tiver o botão <strong>Confirm address</strong>, use o link e depois volte ao login. Não compartilhe o link nem o código.</p>
-        <form class="auth-form" @submit.prevent="confirmEmail">
+        <p class="auth-subtitle">Se enviamos um e-mail para <strong>{{ verificationEmail }}</strong>, abra o botão <strong>Confirm address</strong> para acessar a nova tela de confirmação do Farol. Se você recebeu um código numérico, use a opção abaixo. Não compartilhe links nem códigos.</p>
+        <button type="button" class="secondary-action auth-full-button" :disabled="busy" @click="signupCodeVisible = !signupCodeVisible">
+          {{ signupCodeVisible ? 'Ocultar campo de código' : 'Recebi um código numérico' }}
+        </button>
+        <form v-if="signupCodeVisible" class="auth-form" @submit.prevent="confirmEmail">
           <label>E-mail que recebeu o código
             <input v-model.trim="verificationEmail" type="email" autocomplete="email"
               required maxlength="254" :disabled="busy" placeholder="voce@exemplo.com" />
@@ -367,7 +405,7 @@ async function logout(): Promise<void> {
             <UiIcon name="smartphone" :size="16" /> Celular <small v-if="!phoneAuthEnabled">Em preparação</small>
           </RouterLink>
         </div>
-        <p class="auth-subtitle">{{ mode === 'login' ? 'Acesse com seu e-mail e sua senha.' : mode === 'signup' ? 'Crie seu acesso. Enviaremos um código de confirmação por e-mail.' : mode === 'forgot' ? 'Enviaremos um link de recuperação para seu e-mail.' : 'Digite a nova senha para sua conta.' }}</p>
+        <p class="auth-subtitle">{{ mode === 'login' ? 'Acesse com seu e-mail e sua senha.' : mode === 'signup' ? 'Crie seu acesso. Enviaremos um e-mail de confirmação, com link ou código conforme a configuração do Supabase.' : mode === 'forgot' ? 'Enviaremos um link de recuperação para seu e-mail.' : 'Digite a nova senha para sua conta.' }}</p>
         <p v-if="mode === 'login'" class="auth-muted">Esta Preview usa o Supabase Dev. A senha da sua conta na versão principal pode não funcionar aqui.</p>
 
         <section v-if="mode === 'reset' && !recoveringPassword && !passwordResetDone" class="auth-warning" aria-label="Confirmar link de recuperação">
@@ -450,11 +488,11 @@ async function logout(): Promise<void> {
               minlength="8" required :disabled="busy || !configured" placeholder="Repita sua senha" />
           </label>
           <button class="primary auth-full-button" type="submit" :disabled="busy || !configured">
-            {{ busy ? 'Processando...' : mode === 'login' ? 'Entrar' : mode === 'signup' ? 'Criar conta e receber código' : mode === 'forgot' ? 'Enviar link de recuperação' : 'Salvar nova senha' }}
+            {{ busy ? 'Processando...' : mode === 'login' ? 'Entrar' : mode === 'signup' ? 'Criar conta e receber e-mail' : mode === 'forgot' ? 'Enviar link de recuperação' : 'Salvar nova senha' }}
           </button>
         </form>
         <button v-if="mode === 'signup'" type="button" class="auth-inline-link"
-          @click="verificationEmail = email.trim(); signupStep = 'verification'; resetMessages()">
+          @click="verificationEmail = email.trim(); signupStep = 'verification'; signupCodeVisible = true; resetMessages()">
           Já tenho um código de confirmação
         </button>
         <p v-if="mode === 'signup'" class="auth-account-hint">

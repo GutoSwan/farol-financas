@@ -45,6 +45,10 @@
       "destination": "/index.html"
     },
     {
+      "source": "/confirmar-email",
+      "destination": "/index.html"
+    },
+    {
       "source": "/recuperar-senha",
       "destination": "/index.html"
     },
