@@ -41,11 +41,15 @@ export async function beginTotpEnrollment(displayName = '') {
 
 /** Em inscrição e login, o desafio precisa ser validado no servidor Supabase. */
 export async function verifyTotpCode(factorId: string, code: string): Promise<void> {
+  // Rejeitar entradas inválidas antes de criar um challenge no Supabase.
+  // Evita requisições desnecessárias e consumo de limites de tentativas.
+  const normalized = validCode(code)
+  if (!/^[0-9a-f-]{36}$/i.test(factorId)) throw new Error('Autenticador inválido. Atualize a lista.')
   const client = requireClient()
   const { data: challenge, error: challengeError } = await client.auth.mfa.challenge({ factorId })
   if (challengeError || !challenge) throw new Error('Não foi possível iniciar a verificação do código.')
   const { error } = await client.auth.mfa.verify({
-    factorId, challengeId: challenge.id, code: validCode(code),
+    factorId, challengeId: challenge.id, code: normalized,
   })
   if (error) throw new Error('Código inválido ou expirado. Abra o autenticador e tente novamente.')
 }
