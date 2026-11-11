@@ -1,0 +1,210 @@
+/* Segurança do Farol: composição mobile-first, sem importar paleta do site Farol Admin. */
+.account-security-page {
+  --sec-card: #ffffff;
+  --sec-ink: #26364d;
+  --sec-muted: #65768e;
+  --sec-outline: #dfe5ef;
+  --sec-subtle: #f1f4f9;
+  --sec-accent: #873953;
+  --sec-accent-soft: #f8edf2;
+  width: min(100%, 1100px);
+  min-width: 0;
+  margin: 0 auto;
+  color: var(--sec-ink);
+  padding-bottom: max(30px, env(safe-area-inset-bottom));
+}
+:root[data-theme="dark"] .account-security-page {
+  --sec-card: #1d3047;
+  --sec-ink: #f4f6fc;
+  --sec-muted: #aec0d7;
+  --sec-outline: #3a506b;
+  --sec-subtle: #17263b;
+  --sec-accent: #efafc5;
+  --sec-accent-soft: #413047;
+}
+.account-security-page *,
+.account-security-page *::before,
+.account-security-page *::after { box-sizing: border-box; }
+.account-security-page .farol-back-navigation { margin-bottom: 20px; }
+.account-security-page .security-hero {
+  display: flex; align-items: flex-start; gap: 20px;
+  padding: clamp(22px, 3.4vw, 37px);
+  border: 1px solid var(--sec-outline);
+  border-radius: 23px;
+  background: linear-gradient(118deg, rgba(136, 59, 88, .10), transparent 58%), var(--sec-card);
+  box-shadow: 0 14px 38px rgba(25, 45, 73, .045);
+  margin-bottom: 22px; overflow: hidden;
+}
+.account-security-page .security-hero-icon {
+  display: grid; place-items: center; flex: 0 0 65px;
+  width: 65px; height: 65px;
+  border-radius: 19px; background: var(--sec-accent-soft);
+  color: var(--sec-accent); border: 1px solid rgba(145,65,93,.18);
+}
+.account-security-page .security-hero-content { min-width: 0; flex: 1; }
+.account-security-page .security-eyebrow,
+.account-security-page .security-step {
+  display: block; margin: 1px 0 10px; color: var(--sec-accent);
+  font-size: 10px; font-weight: 850; letter-spacing: .13em; line-height: 1.5;
+}
+.account-security-page .security-hero h1 {
+  margin: 0; font-size: clamp(27px, 3.2vw, 38px);
+  line-height: 1.15; letter-spacing: -.045em; color: var(--sec-ink);
+}
+.account-security-page .security-hero-description {
+  color: var(--sec-muted); font-size: 13px; line-height: 1.65;
+  margin: 10px 0 17px; max-width: 610px;
+}
+.account-security-page .security-hero-highlights { display: flex; flex-wrap: wrap; gap: 8px; }
+.account-security-page .security-hero-highlights span {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 11px;
+  font-weight: 750; line-height: 1.35; color: var(--sec-accent);
+  border: 1px solid var(--sec-outline); background: var(--sec-accent-soft);
+  border-radius: 100px; padding: 8px 11px;
+}
+.account-security-page .security-section-grid {
+  display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(280px, .85fr);
+  gap: 18px; align-items: start;
+}
+.account-security-page .security-surface {
+  padding: clamp(19px, 2.5vw, 30px);
+  border: 1px solid var(--sec-outline); border-radius: 20px;
+  background: var(--sec-card);
+  box-shadow: 0 12px 28px rgba(20, 39, 62, .035);
+  min-width: 0; overflow: hidden;
+}
+.account-security-page .security-section-label {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding-bottom: 19px; border-bottom: 1px solid var(--sec-outline);
+}
+.account-security-page .security-section-symbol {
+  width: 44px; height: 44px; display: grid; place-items: center; flex: 0 0 44px;
+  color: var(--sec-accent); background: var(--sec-accent-soft);
+  border: 1px solid var(--sec-outline); border-radius: 13px;
+}
+.account-security-page .security-section-symbol-phone {
+  background: var(--sec-subtle); color: var(--sec-muted);
+}
+.account-security-page .security-section-label > div:last-child { min-width: 0; }
+.account-security-page .security-section-label .security-step { margin: 0 0 5px; }
+.account-security-page .security-section-label p {
+  margin: 0; color: var(--sec-muted); font-size: 12px; line-height: 1.55;
+}
+.account-security-page .totp-settings,
+.account-security-page .phone-link-panel {
+  border: 0; padding: 20px 0 0; margin: 0;
+  color: var(--sec-ink); min-width: 0;
+}
+.account-security-page .totp-settings h2,
+.account-security-page .phone-link-panel h2 {
+  color: var(--sec-ink); font-size: 18px; line-height: 1.3;
+  letter-spacing: -.02em; margin: 0 0 8px;
+}
+.account-security-page .totp-settings > p,
+.account-security-page .phone-link-panel > p {
+  color: var(--sec-muted); line-height: 1.65; font-size: 12px;
+}
+.account-security-page .factor-list { gap: 12px; margin: 18px 0; }
+.account-security-page .factor-entry {
+  align-items: stretch; padding: 15px; gap: 12px; min-width: 0;
+  background: var(--sec-subtle); border: 1px solid var(--sec-outline); border-radius: 14px;
+}
+.account-security-page .factor-identity { min-width: 0; gap: 5px; }
+.account-security-page .factor-identity strong { color: var(--sec-ink); font-size: 14px; }
+.account-security-page .factor-identity small { color: var(--sec-muted); font-size: 11px; line-height: 1.5; }
+.account-security-page .factor-actions { gap: 9px; width: 100%; }
+.account-security-page .factor-actions button {
+  min-height: 44px; flex: 1; min-width: 0;
+  padding: 10px 12px; border-radius: 10px; font-size: 12px;
+  text-align: center; white-space: normal;
+}
+.account-security-page .factor-actions .factor-danger {
+  color: #a92f4d; border: 1px solid #b97689; background: transparent;
+}
+:root[data-theme="dark"] .account-security-page .factor-actions .factor-danger {
+  color: #ffb8c8; border-color: #8d5166;
+}
+.account-security-page .totp-enrollment,
+.account-security-page .factor-remove-form,
+.account-security-page .factor-recovery {
+  min-width: 0; border-radius: 13px; padding: 17px;
+  border: 1px solid var(--sec-outline); background: var(--sec-subtle);
+}
+.account-security-page .totp-enrollment { gap: 12px; margin: 16px 0; }
+.account-security-page .factor-recovery { margin-top: 22px; }
+.account-security-page .factor-recovery strong { color: var(--sec-ink); }
+.account-security-page .factor-recovery p { color: var(--sec-muted); font-size: 12px; line-height: 1.7; }
+.account-security-page .factor-name-label,
+.account-security-page .factor-remove-form label {
+  font-weight: 700; color: var(--sec-ink); font-size: 12px; line-height: 1.6;
+}
+.account-security-page .factor-name-label { margin: 18px 0 12px; }
+.account-security-page input,
+.account-security-page select {
+  max-width: 100%; min-width: 0; min-height: 48px;
+  border-radius: 11px; padding: 11px 13px;
+  background: var(--sec-card); color: var(--sec-ink); border: 1px solid var(--sec-outline);
+  font-size: 16px;
+}
+.account-security-page input:focus-visible,
+.account-security-page select:focus-visible,
+.account-security-page button:focus-visible,
+.account-security-page a:focus-visible { outline: 3px solid var(--sec-accent); outline-offset: 3px; }
+.account-security-page .auth-full-button,
+.account-security-page .primary,
+.account-security-page .secondary-action { min-height: 46px; border-radius: 11px; }
+.account-security-page .primary { background: #873953; color: #fff; border: 1px solid #873953; }
+.account-security-page .primary:hover:not(:disabled) { background: #a24d69; }
+.account-security-page .totp-secret { overflow-wrap: anywhere; word-break: break-all; }
+.account-security-page .totp-qr { max-width: min(230px, 100%); }
+.account-security-page .auth-warning,
+.account-security-page .auth-info { border-radius: 11px; min-width: 0; }
+.account-security-page .security-tip {
+  display: flex; align-items: flex-start; gap: 9px; margin-top: 20px;
+  background: var(--sec-subtle); border: 1px solid var(--sec-outline);
+  border-radius: 12px; padding: 14px; color: var(--sec-muted);
+}
+.account-security-page .security-tip svg { flex: 0 0 18px; color: var(--sec-accent); }
+.account-security-page .security-tip p { margin: 0; font-size: 12px; line-height: 1.6; }
+.account-security-page .security-tip strong { color: var(--sec-ink); }
+.account-security-page .security-footer-note {
+  display: flex; align-items: flex-start; gap: 8px; margin: 20px 4px 0;
+  color: var(--sec-muted); font-size: 11px; line-height: 1.6;
+}
+.account-security-page .security-footer-note svg { color: var(--sec-accent); flex: 0 0 16px; }
+@media (max-width: 850px) {
+  .account-security-page .security-section-grid { grid-template-columns: minmax(0,1fr); }
+}
+@media (max-width: 600px) {
+  .account-security-page .farol-back-navigation { margin-bottom: 15px; }
+  .account-security-page .security-hero {
+    display: block; padding: 21px 17px 19px; border-radius: 18px; margin-bottom: 13px;
+  }
+  .account-security-page .security-hero-icon {
+    width: 51px; height: 51px; margin-bottom: 15px; border-radius: 15px;
+  }
+  .account-security-page .security-hero h1 { font-size: clamp(27px, 7vw, 33px); }
+  .account-security-page .security-hero-description { font-size: 12px; line-height: 1.65; }
+  .account-security-page .security-hero-highlights span { font-size: 10px; padding: 7px 9px; }
+  .account-security-page .security-section-grid { gap: 13px; }
+  .account-security-page .security-surface { border-radius: 18px; padding: 18px 15px; }
+  .account-security-page .security-section-label { gap: 10px; padding-bottom: 16px; }
+  .account-security-page .security-section-symbol { width: 40px; height: 40px; flex-basis: 40px; }
+  .account-security-page .factor-entry { display: grid; }
+  .account-security-page .factor-actions { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .account-security-page .factor-remove-form .factor-actions { grid-template-columns: 1fr; }
+  .account-security-page .factor-actions button,
+  .account-security-page .auth-full-button { width: 100%; min-height: 48px; }
+  .account-security-page .totp-enrollment,
+  .account-security-page .factor-remove-form,
+  .account-security-page .factor-recovery { padding: 14px; }
+  .account-security-page .phone-link-panel h2,
+  .account-security-page .totp-settings h2 { font-size: 17px; }
+}
+@media (max-width: 370px) {
+  .account-security-page .security-hero-highlights { display: grid; }
+  .account-security-page .factor-actions { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .account-security-page * { scroll-behavior: auto !important; }
+}
