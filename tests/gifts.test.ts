@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { BrowserGiftRepository, GIFT_STORAGE_KEY } from '../src/infrastructure/persistence/BrowserGiftRepository'
+import { BrowserGiftRepository, GIFT_STORAGE_KEY, giftStorageKeyForUser } from '../src/infrastructure/persistence/BrowserGiftRepository'
 import { normalizeGiftUrl } from '../src/domain/services/giftValidation'
 import { validateGiftPhoto, MAX_GIFT_PHOTO_BYTES } from '../src/infrastructure/persistence/GiftPhotoStorage'
 
 const data = new Map<string, string>()
+const ADMIN_A = '11111111-1111-4111-8111-111111111111'
+const ADMIN_B = '22222222-2222-4222-8222-222222222222'
 beforeEach(() => {
   data.clear()
   Object.defineProperty(globalThis, 'localStorage', {
@@ -11,6 +13,7 @@ beforeEach(() => {
     value: {
       getItem: (key: string) => data.get(key) ?? null,
       setItem: (key: string, value: string) => { data.set(key, value) },
+      removeItem: (key: string) => { data.delete(key) },
     },
   })
 })
@@ -20,18 +23,18 @@ const medium = { name: 'Fone de ouvido', priceCents: 25000, productUrl: '', prio
 
 describe('Presentes pessoais Gustavo e Ana', () => {
   it('adiciona, restaura e separa os presentes das duas pessoas', () => {
-    const repo = new BrowserGiftRepository()
+    const repo = new BrowserGiftRepository(ADMIN_A)
     const gustavo = repo.add('gustavo', high)
     const ana = repo.add('ana', medium)
-    const reopened = new BrowserGiftRepository()
+    const reopened = new BrowserGiftRepository(ADMIN_A)
     expect(reopened.list('gustavo')).toHaveLength(1)
     expect(reopened.list('gustavo')[0]).toMatchObject({ id: gustavo.id, name: 'Notebook dos sonhos', productUrl: 'https://loja.com.br/produto' })
     expect(reopened.list('ana')[0].id).toBe(ana.id)
-    expect(data.has(GIFT_STORAGE_KEY)).toBe(true)
+    expect(data.has(giftStorageKeyForUser(ADMIN_A))).toBe(true)
   })
 
   it('edita valor, link e prioridade e permite remover somente o presente correto', () => {
-    const repo = new BrowserGiftRepository()
+    const repo = new BrowserGiftRepository(ADMIN_A)
     const gustavo = repo.add('gustavo', medium)
     const ana = repo.add('ana', medium)
     repo.update('gustavo', gustavo.id, { ...high, priority: 'low' })
@@ -44,7 +47,7 @@ describe('Presentes pessoais Gustavo e Ana', () => {
   })
 
   it('ordena pela prioridade escolhida, verde antes de amarelo e vermelho', () => {
-    const repo = new BrowserGiftRepository()
+    const repo = new BrowserGiftRepository(ADMIN_A)
     repo.add('gustavo', { ...high, priority: 'low' })
     repo.add('gustavo', medium)
     repo.add('gustavo', high)
@@ -52,7 +55,7 @@ describe('Presentes pessoais Gustavo e Ana', () => {
   })
 
   it('não admite links maliciosos, preço negativo ou nome vazio', () => {
-    const repo = new BrowserGiftRepository()
+    const repo = new BrowserGiftRepository(ADMIN_A)
     expect(() => repo.add('ana', { ...high, productUrl: 'javascript:alert(1)' })).toThrow()
     expect(() => repo.add('ana', { ...high, priceCents: -1 })).toThrow()
     expect(() => repo.add('ana', { ...high, name: ' ' })).toThrow()
@@ -62,10 +65,10 @@ describe('Presentes pessoais Gustavo e Ana', () => {
   })
 
   it('nunca sobrescreve registros locais se o JSON anterior estiver inválido', () => {
-    data.set(GIFT_STORAGE_KEY, 'não é JSON')
-    const repo = new BrowserGiftRepository()
+    data.set(giftStorageKeyForUser(ADMIN_A), 'não é JSON')
+    const repo = new BrowserGiftRepository(ADMIN_A)
     expect(() => repo.add('gustavo', high)).toThrow('Não foi possível ler')
-    expect(data.get(GIFT_STORAGE_KEY)).toBe('não é JSON')
+    expect(data.get(giftStorageKeyForUser(ADMIN_A))).toBe('não é JSON')
   })
 
   it('aceita PNG e impede fotos exageradamente grandes ou arquivos executáveis', () => {
@@ -73,5 +76,36 @@ describe('Presentes pessoais Gustavo e Ana', () => {
     expect(() => validateGiftPhoto(new Blob(['arquivo'], { type: 'image/svg+xml' }))).toThrow()
     expect(() => validateGiftPhoto(new Blob([],{type:'image/png'}))).toThrow()
     expect(MAX_GIFT_PHOTO_BYTES).toBe(8 * 1024 * 1024)
+  })
+})
+
+describe('Privacidade de presentes entre contas no mesmo navegador', () => {
+  it('uma conta não pode carregar ou modificar os presentes da outra pela interface', () => {
+    const alice = new BrowserGiftRepository(ADMIN_A)
+    const bob = new BrowserGiftRepository(ADMIN_B)
+    const gift = alice.add('gustavo', high)
+    expect(bob.list('gustavo')).toEqual([])
+    expect(() => bob.update('gustavo', gift.id, medium)).toThrow('não foi encontrado')
+    expect(() => bob.remove('gustavo', gift.id)).toThrow('não foi encontrado')
+    expect(alice.list('gustavo')).toHaveLength(1)
+    expect(data.has(giftStorageKeyForUser(ADMIN_A))).toBe(true)
+    expect(data.has(giftStorageKeyForUser(ADMIN_B))).toBe(false)
+  })
+
+  it('migra os presentes antigos sem excluir as fotos nem perder dados', () => {
+    const earlier = new BrowserGiftRepository(ADMIN_A)
+    const gift = earlier.add('ana', medium)
+    const oldRecords = data.get(giftStorageKeyForUser(ADMIN_A))!
+    data.delete(giftStorageKeyForUser(ADMIN_A))
+    data.set(GIFT_STORAGE_KEY, oldRecords)
+    const migrated = new BrowserGiftRepository(ADMIN_A)
+    expect(migrated.list('ana')[0].id).toBe(gift.id)
+    expect(data.get(giftStorageKeyForUser(ADMIN_A))).toBe(oldRecords)
+    expect(data.has(GIFT_STORAGE_KEY)).toBe(false)
+  })
+
+  it('recusa ID de usuário inválido antes de tocar no armazenamento', () => {
+    expect(() => new BrowserGiftRepository('anonymous')).toThrow('Identidade inválida')
+    expect(data.size).toBe(0)
   })
 })
