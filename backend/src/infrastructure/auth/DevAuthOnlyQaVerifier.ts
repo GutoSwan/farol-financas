@@ -40,16 +40,15 @@ interface AuthUser {
   email_confirmed_at?: unknown
   app_metadata?: { farol_role?: unknown }
   is_anonymous?: unknown
+  factors?: unknown
 }
 function asAuthUser(value: unknown): AuthUser | null {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
     ? value as AuthUser : null
 }
-function verifiedTotp(value: unknown): boolean {
-  if (!value || typeof value !== 'object') return false
-  const obj = value as { totp?: unknown }
-  if (!Array.isArray(obj.totp)) return false
-  return obj.totp.some((factor: unknown) => {
+function verifiedTotp(factors: unknown): boolean {
+  if (!Array.isArray(factors)) return false
+  return factors.some((factor: unknown) => {
     if (!factor || typeof factor !== 'object') return false
     const f = factor as { factor_type?: unknown; status?: unknown }
     return f.factor_type === 'totp' && f.status === 'verified'
@@ -68,9 +67,9 @@ export class DevAuthOnlyQaVerifier implements AuthVerifier {
   constructor(private readonly publishableKey: string,
     private readonly request: typeof fetch = fetch) {}
 
-  private async getAuth(path: '/user' | '/user/factors', token: string): Promise<unknown> {
+  private async getAuth(token: string): Promise<unknown> {
     if (!/^[A-Za-z0-9._-]{40,8192}$/.test(token)) throw new Error('Token inválido.')
-    const res = await this.request(DEV + '/auth/v1' + path, {
+    const res = await this.request(DEV + '/auth/v1/user', {
       method: 'GET',
       redirect: 'error',
       headers: {
@@ -92,7 +91,7 @@ export class DevAuthOnlyQaVerifier implements AuthVerifier {
       clockTolerance: 5,
     })
     const verified = validQaClaims(payload)
-    const current = asAuthUser(await this.getAuth('/user', token))
+    const current = asAuthUser(await this.getAuth(token))
     if (!current || current.id !== verified.userId ||
         typeof current.email_confirmed_at !== 'string' ||
         current.is_anonymous === true) throw new Error('Conta de teste não autorizada.')
@@ -105,7 +104,7 @@ export class DevAuthOnlyQaVerifier implements AuthVerifier {
       const user = asAuthUser(await this.getAuth('/user', token))
       if (!user || user.id !== userId || typeof user.email_confirmed_at !== 'string' ||
           user.is_anonymous === true || user.app_metadata?.farol_role !== 'super_admin') return false
-      return verifiedTotp(await this.getAuth('/user/factors', token))
+      return verifiedTotp(user.factors)
     } catch { return false }
   }
 
