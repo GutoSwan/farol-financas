@@ -60,10 +60,11 @@ function revalidateOnResume() {
 function onVisibilityChange() {
   if (document.visibilityState === 'visible') revalidateOnResume()
 }
-function navigate(url) {
+function navigate(url, replace = false) {
   if (!Object.values(paths).includes(url) && url !== '/admin/login') return
   if (gate.value !== 'authorized' && url !== '/admin/login') return
-  history.pushState({}, '', url)
+  if (replace) history.replaceState({}, '', url)
+  else history.pushState({}, '', url)
   activePath.value = url
   mobileMenu.value = false
   document.title = (url === '/admin/login' ? 'Acesso restrito' : titles[section.value]) + ' | Farol Admin'
@@ -72,10 +73,10 @@ function onPop() {
   activePath.value = location.pathname
   mobileMenu.value = false
   if (gate.value !== 'authorized') {
-    if (activePath.value !== '/admin/login') navigate('/admin/login')
+    if (activePath.value !== '/admin/login') navigate('/admin/login', true)
     return
   }
-  if (!Object.values(paths).includes(activePath.value)) navigate('/admin')
+  if (!Object.values(paths).includes(activePath.value)) navigate('/admin', true)
 }
 async function logout(note = '') {
   const attempt = ++currentCheck
@@ -189,7 +190,7 @@ async function verify() {
   } finally { busy.value = false }
 }
 onMounted(() => {
-  if (!Object.values(paths).includes(activePath.value) && activePath.value !== '/admin/login') navigate('/admin/login')
+  if (!Object.values(paths).includes(activePath.value) && activePath.value !== '/admin/login') navigate('/admin/login', true)
   if (supabase) {
     const { data } = supabase.auth.onAuthStateChange((event) => {
       // Não chamar métodos async do Auth dentro deste callback.
