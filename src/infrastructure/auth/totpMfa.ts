@@ -26,7 +26,7 @@ export async function listVerifiedTotpFactors() {
 
 /** O QR e o segredo existem apenas na memória do componente de cadastro. */
 export async function beginTotpEnrollment(displayName = '') {
-  const sanitized = displayName.trim().replace(/\\s+/g, ' ').slice(0, 40)
+  const sanitized = displayName.trim().replace(/\s+/g, ' ').slice(0, 40)
   const { data, error } = await requireClient().auth.mfa.enroll({
     factorType: 'totp',
     friendlyName: sanitized || 'Farol Finanças',

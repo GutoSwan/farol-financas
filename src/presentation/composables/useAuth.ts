@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue'
 import type { Session } from '@supabase/supabase-js'
 import { authConfigured, supabase } from '../../infrastructure/auth/supabase'
+import { setVerifiedLocalUser } from '../../infrastructure/persistence/legacyAccess'
 import { normalizeDisplayName, normalizeProfileIcon, readProfile } from '../../domain/profile/profile'
 import { isFarolAdmin, isFarolSuperAdmin } from '../../domain/auth/adminAccess'
 import { parseRecoveryConfirmationLink } from '../../domain/auth/passwordRecovery'
@@ -33,7 +34,9 @@ async function refreshCurrentUser(): Promise<void> {
 }
 
 if (supabase) {
+  let authRevision = 0
   supabase.auth.onAuthStateChange((event, nextSession) => {
+    authRevision++
     session.value = nextSession
     ready.value = true
     if (event === 'PASSWORD_RECOVERY') {
@@ -43,6 +46,8 @@ if (supabase) {
       recoveryTotpFactors.value = []
     }
     if (event === 'SIGNED_OUT') {
+      // Revogar imediatamente a elegibilidade para dados financeiros locais.
+      setVerifiedLocalUser(null)
       recoveringPassword.value = false
       recoveryMfaChecked.value = false
       recoveryMfaRequired.value = false
@@ -51,8 +56,10 @@ if (supabase) {
     }
   })
   // Não chamar outras funções Auth dentro do callback de estado.
+  // Evitar que uma resposta inicial atrasada restaure sessão antiga após logout.
+  const initialRevision = authRevision
   supabase.auth.getSession().then(({ data, error }) => {
-    if (!error) session.value = data.session
+    if (!error && authRevision === initialRevision) session.value = data.session
     ready.value = true
     void refreshCurrentUser()
   }).catch(() => { ready.value = true })
