@@ -39,6 +39,7 @@ model User {
   email       String?
   createdAt   DateTime          @default(now())
   memberships WorkspaceMember[]
+  legacyImportMappings LegacyImportMapping[]
 }
 
 model Workspace {
@@ -50,6 +51,7 @@ model Workspace {
   fixed       FixedExpense[]
   transactions Transaction[]
   projects    BudgetProject[]
+  legacyImportMappings LegacyImportMapping[]
 }
 
 model WorkspaceMember {
@@ -171,4 +173,26 @@ model BudgetQuote {
   createdAt         DateTime    @default(now())
   item              BudgetItem  @relation(fields: [itemId], references: [id], onDelete: Cascade)
   @@index([itemId])
+}
+
+
+// Correspondência imutável entre registros locais e IDs criados no PostgreSQL.
+// Só o backend confiável escreve (na MESMA transação do registro de destino).
+// SHA-256 não é autorização e não substitui validação do proprietário.
+model LegacyImportMapping {
+  id                    String    @id @default(uuid()) @db.Uuid
+  ownerUserId           String    @db.Uuid
+  workspaceId           String    @db.Uuid
+  entityType            String    @db.VarChar(32)
+  sourceWorkspaceKey    String    @db.Char(64)
+  sourceKey             String    @db.Char(64)
+  contentFingerprint    String    @db.Char(64)
+  destinationRecordId   String    @db.Uuid
+  createdAt             DateTime  @default(now())
+  owner                 User      @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  workspace             Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([ownerUserId, sourceKey])
+  @@unique([entityType, destinationRecordId])
+  @@index([ownerUserId, workspaceId])
 }
