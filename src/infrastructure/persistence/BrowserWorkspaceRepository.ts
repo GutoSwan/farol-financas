@@ -71,16 +71,55 @@ export class BrowserWorkspaceRepository implements WorkspaceRepository {
     const rest = existing.filter((item) => item.id !== DEFAULT_WORKSPACE_ID && item.id !== id)
     const previous = this.getActiveId()
 
+    // localStorage não oferece transação entre chaves. Antes de remover
+    // qualquer registro, conservar uma cópia em memória para restaurar caso
+    // o armazenamento falhe no meio da exclusão.
+    const keys = [
+      billsStorageKey(id),
+      billsStorageKey(id) + ':fixed-expenses:v1',
+      transactionStorageKey(id),
+      budgetStorageKey(id),
+      WORKSPACES_KEY,
+      ACTIVE_KEY,
+    ]
+    const originals = new Map<string, string | null>()
     try {
-      // A exclusão de dados vem antes da retirada do espaço da lista.
-      localStorage.removeItem(billsStorageKey(id))
-      localStorage.removeItem(billsStorageKey(id) + ':fixed-expenses:v1')
-      localStorage.removeItem(transactionStorageKey(id))
-      localStorage.removeItem(budgetStorageKey(id))
-      localStorage.setItem(WORKSPACES_KEY, JSON.stringify(rest))
-      if (previous === id) localStorage.setItem(ACTIVE_KEY, DEFAULT_WORKSPACE_ID)
+      for (const key of keys) originals.set(key, localStorage.getItem(key))
     } catch {
-      throw new Error('Falha ao excluir espaço ou seus registros. Confira os dados locais antes de tentar novamente.')
+      throw new Error('Não foi possível conferir os dados deste espaço. Nada foi excluído.')
+    }
+
+    const touched: string[] = []
+    try {
+      for (const key of keys.slice(0, 4)) {
+        if (originals.get(key) !== null) {
+          touched.push(key)
+          localStorage.removeItem(key)
+        }
+      }
+      touched.push(WORKSPACES_KEY)
+      localStorage.setItem(WORKSPACES_KEY, JSON.stringify(rest))
+      if (previous === id) {
+        touched.push(ACTIVE_KEY)
+        localStorage.setItem(ACTIVE_KEY, DEFAULT_WORKSPACE_ID)
+      }
+    } catch {
+      let rollbackFailed = false
+      // Restauro de melhor esforço. Nunca anunciar uma exclusão como concluída
+      // após falha; se a restauração também falhar, orientar preservação local.
+      for (const key of touched.reverse()) {
+        const value = originals.get(key)
+        try {
+          if (value === null || value === undefined) localStorage.removeItem(key)
+          else localStorage.setItem(key, value)
+        } catch {
+          rollbackFailed = true
+        }
+      }
+      if (rollbackFailed) {
+        throw new Error('A exclusão falhou e nem todos os registros puderam ser restaurados. Não limpe os dados do navegador e faça um backup antes de continuar.')
+      }
+      throw new Error('A exclusão falhou. Os registros anteriores foram restaurados; tente novamente depois.')
     }
   }
 }

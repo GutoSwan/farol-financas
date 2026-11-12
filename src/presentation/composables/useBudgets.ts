@@ -4,22 +4,32 @@ import { BrowserBudgetRepository } from '../../infrastructure/persistence/Browse
 import { createBudgetProject, editBudgetProject, addBudgetItem, editBudgetItem, addBudgetQuote, selectBudgetQuote, deleteBudgetQuote } from '../../application/use-cases/manageBudget'
 import type { BudgetProjectStatus } from '../../domain/entities/BudgetProject'
 import { activeWorkspaceId } from './useWorkspaces'
+import { isLegacyOwnerSession } from '../../infrastructure/persistence/legacyAccess'
+import { subscribeFinancialUiReset } from './financialUiSession'
 
 const state = ref<BudgetSnapshot>({ projects: [], items: [], quotes: [] })
 const error = ref('')
 
+subscribeFinancialUiReset(() => {
+  state.value = { projects: [], items: [], quotes: [] }
+  error.value = ''
+})
+
 function repository(): BrowserBudgetRepository {
+  if (!isLegacyOwnerSession()) throw new Error('Acesso aos orçamentos locais não autorizado para esta sessão.')
   return new BrowserBudgetRepository(activeWorkspaceId.value)
 }
 
 function reload() {
   state.value = { projects: [], items: [], quotes: [] }
+  if (!isLegacyOwnerSession()) { error.value = ''; return }
   try { state.value = repository().read(); error.value = '' }
   catch (cause) { error.value = cause instanceof Error ? cause.message : 'Não foi possível carregar orçamentos.' }
 }
 watch(activeWorkspaceId, reload, { immediate: true })
 
 export function useBudgets() {
+  reload()
   function execute(work: (repo: BrowserBudgetRepository) => void): boolean {
     try {
       work(repository())

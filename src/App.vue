@@ -5,6 +5,7 @@ import InstallAppBanner from './presentation/components/InstallAppBanner.vue'
 import { useAuth } from './presentation/composables/useAuth'
 import { canAccessWithoutSession } from './router/authNavigation'
 import { setVerifiedLocalUser } from './infrastructure/persistence/legacyAccess'
+import { invalidateFinancialUiSession } from './presentation/composables/financialUiSession'
 import { restoreThemeFromProfile } from './presentation/composables/useTheme'
 
 const { user, ready, recoveringPassword } = useAuth()
@@ -41,6 +42,7 @@ watch(() => user.value?.id ?? null, (currentId, previousId) => {
   // do guard. A vinculação financeira local nunca acompanha outra identidade.
   privateViewSuspended.value = true
   setVerifiedLocalUser(null)
+  invalidateFinancialUiSession()
   const previousPath = route.path
   void Promise.resolve().then(async () => {
     const nextPath = recoveringPassword.value

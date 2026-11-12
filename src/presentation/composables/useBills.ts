@@ -5,6 +5,8 @@ import { registerMonthlyBill } from '../../application/use-cases/registerMonthly
 import { deleteMonthlyBillEntry } from '../../application/use-cases/deleteMonthlyBillEntry'
 import { updateRecurringBill, setRecurringBillActive, deleteRecurringBill } from '../../application/use-cases/manageRecurringBill'
 import { activeWorkspaceId } from './useWorkspaces'
+import { isLegacyOwnerSession } from '../../infrastructure/persistence/legacyAccess'
+import { subscribeFinancialUiReset } from './financialUiSession'
 import type { RecurringBill } from '../../domain/entities/RecurringBill'
 import type { MonthlyBillEntry } from '../../domain/entities/MonthlyBillEntry'
 
@@ -12,13 +14,21 @@ const bills = ref<RecurringBill[]>([])
 const entries = ref<MonthlyBillEntry[]>([])
 const error = ref('')
 
+subscribeFinancialUiReset(() => {
+  bills.value = []
+  entries.value = []
+  error.value = ''
+})
+
 function repository(): BrowserBillRepository {
+  if (!isLegacyOwnerSession()) throw new Error('Acesso às contas mensais locais não autorizado para esta sessão.')
   return new BrowserBillRepository(activeWorkspaceId.value)
 }
 
 function refresh(): void {
   bills.value = []
   entries.value = []
+  if (!isLegacyOwnerSession()) { error.value = ''; return }
   try {
     bills.value = repository().listBills()
     entries.value = repository().listEntries()

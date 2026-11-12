@@ -130,7 +130,7 @@ function submitWorkspace(): void {
 function removeWorkspace(space: FinancialWorkspace): void {
   if (space.id === DEFAULT_WORKSPACE_ID) return
   const answer = window.prompt(
-    `Excluir permanentemente o espaço "${space.name}"?\n\nIsso APAGARÁ todas as contas mensais, despesas fixas e lançamentos deste espaço neste navegador. Não existe recuperação automática.\n\nDigite exatamente: ${space.name}`
+    `Excluir permanentemente o espaço "${space.name}"?\n\nIsso APAGARÁ contas mensais, gastos fixos, lançamentos e orçamentos deste espaço neste navegador. Não existe recuperação automática.\n\nDigite exatamente: ${space.name}`
   )
   if (answer !== space.name) return
   if (deleteWorkspace(space.id)) {

@@ -2,6 +2,7 @@ import { computed, ref } from 'vue'
 import type { Session } from '@supabase/supabase-js'
 import { authConfigured, claimRecoveryCallbackSession, supabase } from '../../infrastructure/auth/supabase'
 import { setVerifiedLocalUser } from '../../infrastructure/persistence/legacyAccess'
+import { invalidateFinancialUiSession } from './financialUiSession'
 import { normalizeDisplayName, normalizeProfileIcon, readProfile } from '../../domain/profile/profile'
 import { isFarolAdmin, isFarolSuperAdmin } from '../../domain/auth/adminAccess'
 import { parseRecoveryConfirmationLink } from '../../domain/auth/passwordRecovery'
@@ -61,6 +62,7 @@ if (supabase) {
     if (event === 'SIGNED_OUT') {
       // Revogar imediatamente a elegibilidade para dados financeiros locais.
       setVerifiedLocalUser(null)
+      invalidateFinancialUiSession()
       recoveringPassword.value = false
       recoveryMfaChecked.value = false
       recoveryMfaRequired.value = false
@@ -104,6 +106,12 @@ export function useAuth() {
     const { data, error } = await client().auth.signInWithPassword({ email: email.trim(), password })
     if (error) throw new Error(error.message)
     if (data.session) session.value = data.session
+    // Uma nova autenticação normal não herda privilégios de recuperação anteriores.
+    recoveringPassword.value = false
+    recoveryMfaChecked.value = false
+    recoveryMfaRequired.value = false
+    recoveryMfaVerified.value = false
+    recoveryTotpFactors.value = []
     passwordJustChanged.value = false
     await refreshCurrentUser()
   }

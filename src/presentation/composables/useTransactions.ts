@@ -4,16 +4,22 @@ import type { TransactionInput } from '../../application/use-cases/saveTransacti
 import type { Transaction } from '../../domain/entities/Transaction'
 import { BrowserTransactionRepository } from '../../infrastructure/persistence/BrowserTransactionRepository'
 import { activeWorkspaceId } from './useWorkspaces'
+import { isLegacyOwnerSession } from '../../infrastructure/persistence/legacyAccess'
+import { subscribeFinancialUiReset } from './financialUiSession'
 
 const transactions = ref<Transaction[]>([])
 const error = ref('')
 
+subscribeFinancialUiReset(() => { transactions.value = []; error.value = '' })
+
 function repository(): BrowserTransactionRepository {
+  if (!isLegacyOwnerSession()) throw new Error('Acesso aos lançamentos locais não autorizado para esta sessão.')
   return new BrowserTransactionRepository(activeWorkspaceId.value)
 }
 
 function reload(): void {
   transactions.value = []
+  if (!isLegacyOwnerSession()) { error.value = ''; return }
   try {
     transactions.value = repository().list().sort((a, b) =>
       b.occurredOn.localeCompare(a.occurredOn) || b.createdAt.localeCompare(a.createdAt))
@@ -26,6 +32,7 @@ function reload(): void {
 watch(activeWorkspaceId, reload, { immediate: true })
 
 export function useTransactions() {
+  reload()
   function upsert(input: TransactionInput): boolean {
     try {
       saveTransaction(repository(), input)
