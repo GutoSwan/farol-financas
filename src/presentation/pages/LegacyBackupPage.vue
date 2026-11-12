@@ -3,6 +3,9 @@ import { onBeforeUnmount, onMounted, ref } from 'vue'
  import { supabase } from '../../infrastructure/auth/supabase'
 import { localLegacyAccess } from '../../infrastructure/persistence/legacyAccess'
 import { getOnlineIdentity, listOnlineWorkspaces } from '../../infrastructure/api/onlineWorkspaces'
+import { readOnlineFinance } from '../../infrastructure/api/onlineFinance'
+import { compareLocalAndCloud, normalizeName, MODULES } from '../../domain/services/cloudSyncPreflight'
+import type { CloudPreflightReport, RemoteSample, Counts } from '../../domain/services/cloudSyncPreflight'
 import { analyzeLegacyMigration } from '../../application/use-cases/analyzeLegacyMigration'
 import type { MigrationPreview } from '../../application/use-cases/analyzeLegacyMigration'
 import { buildLocalFinancialBackup } from '../../application/use-cases/exportFinancialBackup'
@@ -31,6 +34,9 @@ const inspectionPassword = ref('')
 const restorationPassword = ref('')
 const restorationConsent = ref('')
 const restoredSuccessfully = ref(false)
+const cloudBusy = ref(false)
+const cloudError = ref('')
+const cloudReport = ref<CloudPreflightReport | null>(null)
 const selectedFile = ref<File | null>(null)
 const fileUrl = ref('')
 const fileName = ref('')
@@ -57,6 +63,8 @@ function clearInspectedBackup(): void {
   preview.value = null
   restorationConsent.value = ''
   restorationPassword.value = ''
+  cloudError.value = ''
+  cloudReport.value = null
 }
 
 function disposeDownload(): void {
@@ -178,6 +186,44 @@ async function restoreInspectedFile(): Promise<void> {
     restorationConsent.value = ''
     busy.value = false
   }
+}
+
+async function compareWithCloud(): Promise<void> {
+  if (cloudBusy.value || busy.value || analyzing.value || !inspectedFingerprint.value || !inspectedOwner.value) return
+  cloudBusy.value = true
+  cloudError.value = ''
+  cloudReport.value = null
+  try {
+    const owner = await confirmedOwner()
+    if (owner !== inspectedOwner.value) throw new Error('Sessão alterada desde a conferência do backup.')
+    const snapshot = buildLocalFinancialBackup()
+    if (await fingerprintFinancialBackup(snapshot) !== inspectedFingerprint.value) {
+      throw new Error('Os dados locais mudaram. Gere e confira um novo backup.')
+    }
+    const identity = await getOnlineIdentity()
+    if (identity.id !== owner) throw new Error('Identidade da API não corresponde à conta autenticada.')
+    const remote = await listOnlineWorkspaces()
+    const candidates = remote.filter(r => r.role === 'OWNER' &&
+      remote.filter(x=>normalizeName(x.name)===normalizeName(r.name)).length===1 &&
+      snapshot.workspaces.filter(x=>normalizeName(x.workspace.name)===normalizeName(r.name)).length===1)
+    if (candidates.length > 8) throw new Error('Muitos espaços para uma única consulta. Nenhum dado foi enviado.')
+    const samples:RemoteSample[]=[]
+    for (const workspace of candidates) {
+      const counts:Counts={transactions:0,'recurring-bills':0,'fixed-expenses':0,budgets:0}
+      for (const kind of MODULES) {
+        const records=await readOnlineFinance(workspace,kind,owner)
+        counts[kind]=records.length
+      }
+      samples.push({workspaceId:workspace.id,counts})
+    }
+    if (await confirmedOwner() !== owner ||
+        await fingerprintFinancialBackup(buildLocalFinancialBackup()) !== inspectedFingerprint.value) {
+      throw new Error('A sessão ou os dados locais mudaram durante a conferência.')
+    }
+    cloudReport.value=compareLocalAndCloud(snapshot,remote,samples)
+  } catch(cause) {
+    cloudError.value=cause instanceof Error?cause.message:'Não foi possível analisar a nuvem.'
+  } finally { cloudBusy.value=false }
 }
 
 async function simulateMigration(): Promise<void> {
@@ -406,6 +452,41 @@ onBeforeUnmount(disposeDownload)
       <p v-if="preview.truncated" class="auth-warning">
         Há mais ocorrências além das exibidas. Nenhum dado será importado automaticamente.
       </p>
+    </template>
+  </section>
+  <section class="panel backup-stage" aria-label="Comparação com a nuvem">
+    <div class="panel-title"><div>
+      <h2>6. Comparar dados locais com a nuvem</h2>
+      <p>Prévia somente leitura, sem sincronização automática ou gravação.</p>
+    </div></div>
+    <p class="notice">Com o backup conferido, vamos consultar os quatro módulos dos espaços
+      online que pertencem à sua conta. Nada do seu navegador será enviado. Nomes
+      iguais não comprovam que dois espaços possuem a mesma identidade.</p>
+    <button type="button" class="secondary-action"
+      :disabled="!inspected || busy || analyzing || cloudBusy || loading"
+      @click="compareWithCloud">
+      {{ cloudBusy ? 'Comparando...' : 'Comparar com a nuvem (somente leitura)' }}
+    </button>
+    <p v-if="cloudError" class="error" role="alert">{{ cloudError }}</p>
+    <template v-if="cloudReport">
+      <p class="backup-result" role="status">{{ cloudReport.entries.length }} espaços examinados,
+        {{ cloudReport.warnings }} exigem revisão.</p>
+      <p class="auth-warning">A importação permanece bloqueada até termos um
+        mapeamento seguro e idempotente. Esta consulta não sincronizou dados.</p>
+      <ul class="backup-issues">
+        <li v-for="entry in cloudReport.entries" :key="entry.localId">
+          <strong>{{ entry.name }} · {{ entry.status }}</strong>
+          <span>{{ entry.detail }}</span>
+          <small>Local: {{ entry.localCounts.transactions }} lançamentos,
+            {{ entry.localCounts['recurring-bills'] }} contas,
+            {{ entry.localCounts['fixed-expenses'] }} gastos fixos,
+            {{ entry.localCounts.budgets }} orçamentos</small>
+          <small v-if="entry.remoteCounts">Nuvem: {{ entry.remoteCounts.transactions }} lançamentos,
+            {{ entry.remoteCounts['recurring-bills'] }} contas,
+            {{ entry.remoteCounts['fixed-expenses'] }} gastos fixos,
+            {{ entry.remoteCounts.budgets }} orçamentos (até 50 por módulo)</small>
+        </li>
+      </ul>
     </template>
   </section>
   <p v-if="message" class="success" role="status">{{ message }}</p>
