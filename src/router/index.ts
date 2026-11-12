@@ -23,6 +23,8 @@ import { canAccessWithoutSession, shouldRedirectLoggedInVisitor } from './authNa
 import { requiredMfaRedirect } from './mfaNavigation'
 import { isFarolAdmin, isFarolSuperAdmin } from '../domain/auth/adminAccess'
 import { routeDocumentTitle } from './documentTitle'
+import { allowedSuperAdminRecoveryRoute } from './superAdminRecovery'
+import { useAuth } from '../presentation/composables/useAuth'
 import AccountSecurityPage from '../presentation/pages/AccountSecurityPage.vue'
 
 const router = createRouter({
@@ -66,6 +68,8 @@ const router = createRouter({
 // no SERVIDOR antes de consultar dados, mesmo se alguém ignorar o roteador.
 router.beforeEach(async (to) => {
   setVerifiedLocalUser(null)
+  const { recoveringPassword, recoveryMfaVerified } = useAuth()
+  let superAdminRecoveryProfile = false
   if (!supabase) {
     return canAccessWithoutSession(to.path) ? true : { path: '/entrar', replace: true }
   }
@@ -77,10 +81,19 @@ router.beforeEach(async (to) => {
     const { data, error } = await supabase.auth.getUser()
     authenticated = !error && !!data.user
     if (authenticated && data.user && isFarolSuperAdmin(data.user)) {
-      // Esta conta só pode acessar o site Farol Admin.
-      authenticated = false
-      setVerifiedLocalUser(null)
-      await supabase.auth.signOut({ scope: 'local' })
+      const allowed = allowedSuperAdminRecoveryRoute(
+        to.path, recoveringPassword.value, recoveryMfaVerified.value,
+      )
+      if (!allowed) {
+        // A conta Super Admin continua bloqueada em todas as áreas financeiras.
+        authenticated = false
+        setVerifiedLocalUser(null)
+        await supabase.auth.signOut({ scope: 'local' })
+      } else {
+        superAdminRecoveryProfile = to.path === '/conta'
+        // Nunca dar acesso aos dados financeiros locais neste site.
+        setVerifiedLocalUser(null)
+      }
     } else if (authenticated && data.user) setVerifiedLocalUser(data.user.id)
   } catch {
     // Não mostrar telas financeiras se a sessão não puder ser restaurada.
@@ -103,6 +116,11 @@ router.beforeEach(async (to) => {
       // A lista de fatores verificados é consultada no Supabase, nunca em
       // localStorage: apagar o app do celular não desativa o TOTP no servidor.
       const factors = await listVerifiedTotpFactors()
+      // A exceção de Meu perfil para Super Admin exige AAL2 REAL e fator ativo.
+      if (superAdminRecoveryProfile &&
+          (data.currentLevel !== 'aal2' || factors.length === 0)) {
+        return { path: '/redefinir-senha', replace: true }
+      }
       const target = requiredMfaRedirect(
         to.path,
         Boolean(to.meta.requiresLegacyData || to.meta.requiresFinancialData) || to.path === '/vincular-dados-locais',
@@ -112,6 +130,8 @@ router.beforeEach(async (to) => {
       )
       if (target) return { path: target, replace: true }
     } catch {
+      // Não encaminhar um Super Admin em recuperação para login financeiro.
+      if (superAdminRecoveryProfile) return { path: '/redefinir-senha', replace: true }
       // Em falha da verificação MFA, NÃO liberar dados financeiros.
       if (to.path !== '/verificar-2fa' && to.path !== '/configurar-2fa') {
         return { path: '/verificar-2fa', replace: true }

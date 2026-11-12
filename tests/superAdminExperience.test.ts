@@ -20,6 +20,11 @@ describe('Super Admin separado do Farol financeiro',()=>{
   expect(layout).not.toContain('to="/administracao"')
   expect(login).not.toContain('to="/administracao"')
   expect(routes).toContain("signOut({ scope: 'local' })")
+  expect(routes).toContain('allowedSuperAdminRecoveryRoute(')
+  expect(routes).toContain("superAdminRecoveryProfile = to.path === '/conta'")
+  expect(routes).toContain("data.currentLevel !== 'aal2' || factors.length === 0")
+  expect(login).toContain('restrictedSuperAdminRecovery')
+  expect(login).toContain('v-if="!restrictedSuperAdminRecovery" class="profile-quick-links"')
   expect(login).toContain('isFarolSuperAdmin(identity.user)')
  })
  it('site Admin usa senha, MFA e autorizacao da API',()=>{

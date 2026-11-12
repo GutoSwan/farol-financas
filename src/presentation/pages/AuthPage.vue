@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { supabase } from '../../infrastructure/auth/supabase'
 import { isFarolSuperAdmin } from '../../domain/auth/adminAccess'
@@ -29,6 +29,10 @@ const confirmPassword = ref('')
 const recoveryLinkInput = ref('')
 const passwordResetDone = ref(false)
 const showProfilePassword = ref(false)
+const restrictedSuperAdminRecovery = computed(() =>
+  isFarolSuperAdmin(user.value) &&
+  recoveringPassword.value && recoveryMfaVerified.value
+)
 const recoveryMfaCode = ref('')
 const recoveryMfaFactorId = ref('')
 const displayName = ref('')
@@ -321,8 +325,9 @@ async function logout(): Promise<void> {
 <template>
   <div class="auth-screen">
     <div class="auth-card">
-      <BackNavigation v-if="mode !== 'login'" :fallback="mode === 'profile' ? '/' : '/entrar'" />
-      <RouterLink class="auth-brand" to="/">◈ Farol <span>Finanças</span></RouterLink>
+      <BackNavigation v-if="mode !== 'login' && !restrictedSuperAdminRecovery" :fallback="mode === 'profile' ? '/' : '/entrar'" />
+      <RouterLink v-if="!restrictedSuperAdminRecovery" class="auth-brand" to="/">◈ Farol <span>Finanças</span></RouterLink>
+      <span v-else class="auth-brand">◈ Farol <span>Finanças</span></span>
       <button type="button" class="auth-theme-button" :aria-label="isDark ? 'Ativar tema claro' : 'Ativar tema escuro'" :title="isDark ? 'Ativar tema claro' : 'Ativar tema escuro'" @click="toggleTheme">
         <UiIcon :name="isDark ? 'sun' : 'moon'" :size="19" />
       </button>
@@ -337,7 +342,12 @@ async function logout(): Promise<void> {
 
       <template v-else-if="mode === 'profile'">
         <h1>Meu perfil</h1>
-        <p class="auth-subtitle">Personalize seu nome e ícone. As alterações serão salvas na sua conta Supabase.</p>
+        <p class="auth-subtitle">{{ restrictedSuperAdminRecovery
+          ? 'Recuperação administrativa: altere apenas sua senha após confirmar e-mail e Authenticator.'
+          : 'Personalize seu nome e ícone. As alterações serão salvas na sua conta Supabase.' }}</p>
+        <p v-if="restrictedSuperAdminRecovery" class="auth-info" role="status">
+          Acesso temporário e restrito à troca de senha. Os dados financeiros e as ferramentas de administração permanecem indisponíveis neste site.
+        </p>
         <div v-if="!ready" class="auth-muted">Verificando sua sessão...</div>
         <template v-else-if="isLoggedIn">
           <div class="auth-identity">
@@ -345,7 +355,7 @@ async function logout(): Promise<void> {
             <div><strong>{{ profile.displayName }}</strong><small>{{ user?.email ?? 'Conta autenticada' }}</small></div>
           </div>
 
-          <form v-if="editingProfile" class="auth-form profile-edit-form" @submit.prevent="saveProfile">
+          <form v-if="editingProfile && !restrictedSuperAdminRecovery" class="auth-form profile-edit-form" @submit.prevent="saveProfile">
             <label>Nome que será exibido
               <input v-model="editedName" type="text" minlength="2" maxlength="40" autocomplete="nickname"
                 required :disabled="busy" placeholder="Como podemos te chamar?" />
@@ -365,11 +375,11 @@ async function logout(): Promise<void> {
               <button type="button" class="secondary-action" :disabled="busy" @click="editingProfile = false">Cancelar</button>
             </div>
           </form>
-          <button v-else type="button" class="primary auth-full-button" @click="startProfileEdit">
+          <button v-else-if="!restrictedSuperAdminRecovery" type="button" class="primary auth-full-button" @click="startProfileEdit">
             <UiIcon name="edit" :size="17" /> Editar nome e ícone
           </button>
 
-          <nav class="profile-quick-links" aria-label="Opções da minha conta">
+          <nav v-if="!restrictedSuperAdminRecovery" class="profile-quick-links" aria-label="Opções da minha conta">
             <RouterLink to="/seguranca"><UiIcon name="settings" :size="17" /> Segurança e autenticadores</RouterLink>
             <RouterLink to="/dados-online"><UiIcon name="folder" :size="17" /> Meus dados na nuvem</RouterLink>
           </nav>
