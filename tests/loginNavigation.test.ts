@@ -5,9 +5,14 @@ import routerSource from '../src/router/index.ts?raw'
 
 describe('Fluxo de login do Farol', () => {
   it('redireciona para a Visão geral após login, não para o perfil', () => {
-    expect(authPage).toContain("await signIn(email.value, password.value)")
-    expect(authPage).toContain("await router.replace('/')")
-    expect(authPage).not.toContain("await router.replace('/conta')")
+    const loginStart = authPage.indexOf("if (props.mode === 'login') {")
+    const signupStart = authPage.indexOf("} else if (props.mode === 'signup')", loginStart)
+    expect(loginStart).toBeGreaterThan(-1)
+    expect(signupStart).toBeGreaterThan(loginStart)
+    const loginHandler = authPage.slice(loginStart, signupStart)
+    expect(loginHandler).toContain("await signIn(email.value, password.value)")
+    expect(loginHandler).toContain("await router.replace('/')")
+    expect(loginHandler).not.toContain("await router.replace('/conta')")
   })
 
   it('direciona visitantes já autenticados que abrem login ou cadastro', () => {
