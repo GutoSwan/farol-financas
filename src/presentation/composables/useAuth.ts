@@ -6,6 +6,7 @@ import { normalizeDisplayName, normalizeProfileIcon, readProfile } from '../../d
 import { isFarolAdmin, isFarolSuperAdmin } from '../../domain/auth/adminAccess'
 import { parseRecoveryConfirmationLink } from '../../domain/auth/passwordRecovery'
 import { safeAuthRedirect } from '../../domain/auth/authRedirect'
+import { recoveryEmailRequestError } from '../../domain/auth/recoveryEmailRateLimit'
 import { getTotpAssurance, listVerifiedTotpFactors, verifyTotpCode } from '../../infrastructure/auth/totpMfa'
 import type { ProfileIcon } from '../../domain/profile/profile'
 
@@ -168,7 +169,7 @@ export function useAuth() {
     const { error } = await client().auth.resetPasswordForEmail(email.trim(), {
       redirectTo: emailRedirect('/redefinir-senha'),
     })
-    if (error) throw new Error(error.message)
+    if (error) throw recoveryEmailRequestError(error)
   }
 
   /**

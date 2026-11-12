@@ -8,6 +8,7 @@ import BackNavigation from '../components/BackNavigation.vue'
 import { useTheme } from '../composables/useTheme'
 import { phoneAuthEnabled } from '../../infrastructure/auth/phoneAuth'
 import { useAuth } from '../composables/useAuth'
+import { RecoveryEmailRateLimitError } from '../../domain/auth/recoveryEmailRateLimit'
 import { PROFILE_ICONS } from '../../domain/profile/profile'
 import type { ProfileIcon } from '../../domain/profile/profile'
 
@@ -46,6 +47,7 @@ const confirmationStatus = ref<'checking' | 'confirmed' | 'unverified'>('checkin
 const verificationEmail = ref('')
 const code = ref('')
 const nextResendAt = ref(0)
+const recoveryEmailRateLimited = ref(false)
 const editingProfile = ref(false)
 const editedName = ref('')
 const editedIcon = ref<ProfileIcon>('user')
@@ -55,6 +57,7 @@ watch(() => props.mode, () => {
   confirmPassword.value = ''
   recoveryLinkInput.value = ''
   passwordResetDone.value = false
+  recoveryEmailRateLimited.value = false
   showProfilePassword.value = false
   recoveryMfaCode.value = ''
   recoveryMfaFactorId.value = ''
@@ -148,7 +151,7 @@ function resetMessages(): void {
 }
 
 async function submit(): Promise<void> {
-  if (busy.value || !configured) return
+  if (busy.value || !configured || (props.mode === 'forgot' && recoveryEmailRateLimited.value)) return
   resetMessages()
   if ((props.mode === 'signup' || props.mode === 'reset') && password.value !== confirmPassword.value) {
     errorText.value = 'As senhas informadas não são iguais.'
@@ -190,6 +193,11 @@ async function submit(): Promise<void> {
       message.value = 'Senha atualizada! Entre novamente e confirme seu autenticador para abrir o Farol.'
     }
   } catch (cause) {
+    if (props.mode === 'forgot' && cause instanceof RecoveryEmailRateLimitError) {
+      // Não continuar enviando pedidos inúteis ao servidor nesta tela.
+      // O bloqueio é do Supabase, sem prazo preciso conhecido pelo navegador.
+      recoveryEmailRateLimited.value = true
+    }
     const reason = errorMessage(cause)
     errorText.value = props.mode === 'login' && /invalid login credentials|invalid email or password/i.test(reason)
       ? 'E-mail ou senha não reconhecidos neste ambiente. O Supabase Dev possui uma senha independente da versão principal do Farol. Use “Esqueci minha senha” para definir a senha do Dev.'
@@ -569,10 +577,14 @@ async function logout(): Promise<void> {
             <input v-model="confirmPassword" :type="showPassword ? 'text' : 'password'" autocomplete="new-password"
               minlength="8" required :disabled="busy || !configured" placeholder="Repita sua senha" />
           </label>
-          <button class="primary auth-full-button" type="submit" :disabled="busy || !configured">
-            {{ busy ? 'Processando...' : mode === 'login' ? 'Entrar' : mode === 'signup' ? 'Criar conta e receber e-mail' : mode === 'forgot' ? 'Enviar link de recuperação' : 'Salvar nova senha' }}
+          <button class="primary auth-full-button" type="submit"
+            :disabled="busy || !configured || (mode === 'forgot' && recoveryEmailRateLimited)">
+            {{ busy ? 'Processando...' : mode === 'login' ? 'Entrar' : mode === 'signup' ? 'Criar conta e receber e-mail' : mode === 'forgot' && recoveryEmailRateLimited ? 'Envio temporariamente limitado' : mode === 'forgot' ? 'Enviar link de recuperação' : 'Salvar nova senha' }}
           </button>
         </form>
+        <p v-if="mode === 'forgot' && recoveryEmailRateLimited" class="auth-muted" role="status">
+          Por segurança, novos envios foram interrompidos nesta tela. Quando o limite do Supabase for liberado, abra novamente a recuperação para tentar. O Farol não pode remover esse limite.
+        </p>
         <button v-if="mode === 'signup'" type="button" class="auth-inline-link"
           @click="verificationEmail = email.trim(); signupStep = 'verification'; signupCodeVisible = true; resetMessages()">
           Já tenho um código de confirmação
