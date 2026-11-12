@@ -8,6 +8,9 @@ import type { InvoiceRepository } from '../domain/repositories/InvoiceRepository
 import type { FinancialCatalogRepository } from '../domain/repositories/FinancialCatalogRepository.js'
 import type { CatalogKind, CatalogCreate, CatalogUpdate, FinancialCatalogMutations } from '../domain/repositories/FinancialCatalogMutations.js'
 import { StaleFinancialRecordError } from '../domain/errors/StaleFinancialRecordError.js'
+import type { LegacyConnectionService } from '../application/use-cases/PrismaLegacyTransactionConnectionService.js'
+import { LegacyConnectionValidationError, LegacyConnectionAccessError, LegacyConnectionOccupiedError } from '../application/use-cases/PrismaLegacyTransactionConnectionService.js'
+import { LegacyMappingConflictError } from '../infrastructure/repositories/PrismaLegacyImportMappingService.js'
 
 // A versão obrigatória vem da última leitura do registro: If-Match: "1".
  // Uma rota sem precondição nunca pode sobrescrever dados silenciosamente.
@@ -120,6 +123,9 @@ export interface AppDependencies {
   corsOrigin?: string
   /** Preview usa banco real por enquanto: impedir gravações HTTP no servidor. */
   allowWorkspaceWrites?: boolean
+  /** Flag independente: nunca habilitar migração via flag geral de escrita. */
+  allowLegacyConnectionWrites?: boolean
+  legacyConnectionService?: LegacyConnectionService
 }
 
 // Permite que o entrypoint serverless crie Fastify diretamente para o detector da Vercel.
@@ -393,6 +399,43 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
     // Em quarentena: não é possível abrir o PDF até análise segura do conteúdo.
     return reply.code(202).send({ data: result })
   })
+
+
+  // Primeira conexão real: associar espaço e ATÉ 25 lançamentos.
+  // Desativada em produção e Preview até auditoria E2E; nunca confiar no
+  // workspaceId ou no ownerUserId vindos do corpo da requisição.
+  app.post<{ Params:{ workspaceId:string } }>(
+    '/api/v1/workspaces/:workspaceId/legacy-connect', async (request,reply) => {
+      const identity=await authorized(request,reply)
+      if(!identity)return
+      if(identity.assuranceLevel!=='aal2')return reply.code(403).send({error:'Confirme o Authenticator.'})
+      const id=z.string().uuid().safeParse(request.params.workspaceId)
+      if(!id.success)return reply.code(404).send({error:'Espaço não encontrado.'})
+      if(deps.allowWorkspaceWrites!==true || deps.allowLegacyConnectionWrites!==true) {
+        return reply.code(403).send({error:'Conexão de registros ainda indisponível neste ambiente.'})
+      }
+      try {
+        await deps.workspaceService.requireMember(identity.userId,id.data,['OWNER'])
+      } catch {
+        return reply.code(404).send({error:'Espaço não encontrado.'})
+      }
+      if(!deps.legacyConnectionService)return reply.code(503).send({error:'Conexão indisponível.'})
+      try {
+        const result=await deps.legacyConnectionService.connect(identity.userId,id.data,request.body)
+        return reply.code(200).send({data:result})
+      } catch(error) {
+        if(error instanceof LegacyConnectionValidationError)return reply.code(400).send({error:error.message})
+        if(error instanceof LegacyConnectionAccessError)return reply.code(404).send({error:'Espaço não encontrado.'})
+        if(error instanceof LegacyMappingConflictError || error instanceof LegacyConnectionOccupiedError ||
+           (typeof error==='object' && error!==null && 'code' in error &&
+            ['P2002','P2034'].includes(String(error.code)))) {
+          return reply.code(409).send({error:'Conflito de conexão: revise os registros e tente novamente sem sobrescrever.'})
+        }
+        // Não expor stack/SQL/IDs/secrets ao navegador.
+        return reply.code(503).send({error:'Falha na conexão. Nenhum lote foi confirmado.'})
+      }
+    },
+  )
 
   // Catálogos financeiros em modo somente leitura. Não fornecer acesso às
   // tabelas filhas sem verificar a associação ao workspace do registro pai.

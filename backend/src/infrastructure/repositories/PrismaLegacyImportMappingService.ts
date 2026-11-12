@@ -147,7 +147,14 @@ export class PrismaLegacyImportMappingService {
 
   async importOnce(source: LegacyMappingSource, createTarget: TargetFactory): Promise<LegacyMappingResult> {
     validateLegacyMappingSource(source)
-    return this.prisma.$transaction(async tx => {
+    return this.prisma.$transaction(tx => this.importWithinTransaction(tx, source, createTarget))
+  }
+
+  /** Permite executar múltiplas correspondências na MESMA transação do lote. */
+  async importWithinTransaction(
+    tx: Prisma.TransactionClient, source: LegacyMappingSource, createTarget: TargetFactory,
+  ): Promise<LegacyMappingResult> {
+      validateLegacyMappingSource(source)
       await ensureOwner(tx, source)
       await ensureWorkspaceMapped(tx, source)
 
@@ -182,6 +189,5 @@ export class PrismaLegacyImportMappingService {
         },
       })
       return { status: 'created', destinationRecordId }
-    })
   }
 }

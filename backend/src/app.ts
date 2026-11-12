@@ -11,6 +11,7 @@ import type { InvoiceRepository } from './domain/repositories/InvoiceRepository.
 import { isVerifiedDevPreviewEnvironment } from './infrastructure/security/environmentIsolation.js'
 import { DevAuthOnlyQaVerifier, isVerifiedAuthOnlyDevPreview } from './infrastructure/auth/DevAuthOnlyQaVerifier.js'
 import type { PrismaTransactionRepository } from './infrastructure/repositories/PrismaTransactionRepository.js'
+import type { LegacyConnectionService } from './application/use-cases/PrismaLegacyTransactionConnectionService.js'
 import type { AuthVerifier } from './infrastructure/auth/SupabaseJwtVerifier.js'
 import type { PrismaWorkspaceRepository } from './infrastructure/repositories/PrismaWorkspaceRepository.js'
 import type { PrismaClient } from '@prisma/client'
@@ -127,6 +128,16 @@ const lazyMutations: FinancialCatalogMutations = {
   async create(input) { return (await getMutations()).create(input) },
   async update(input) { return (await getMutations()).update(input) },
   async delete(kind, workspaceId, id, expectedVersion) { return (await getMutations()).delete(kind, workspaceId, id, expectedVersion) },
+}
+
+// Instância lazy: a migração permanece desligada; /health não abre o DB.
+const lazyLegacyConnection: LegacyConnectionService = {
+  async connect(ownerUserId, workspaceId, data) {
+    const [prisma, module] = await Promise.all([
+      getPrisma(), import('./application/use-cases/PrismaLegacyTransactionConnectionService.js'),
+    ])
+    return new module.PrismaLegacyTransactionConnectionService(prisma).connect(ownerUserId,workspaceId,data)
+  },
 }
 
 let invoiceRepositoryPromise: Promise<InvoiceRepository> | undefined
@@ -284,6 +295,10 @@ const app = buildApp({
   financialCatalog: lazyCatalog,
   financialCatalogMutations: lazyMutations,
   invoiceRepository: lazyInvoices,
+  legacyConnectionService: lazyLegacyConnection,
+  // Segurança: sem ativação por variável ambiental, mesmo se escritas comuns
+  // estiverem habilitadas. Liberar só após QA real e revisão separada.
+  allowLegacyConnectionWrites: false,
   allowInvoiceReads: process.env.FAROL_INVOICE_READS_ENABLED === 'true',
   allowInvoiceUploads: process.env.FAROL_INVOICE_UPLOADS_ENABLED === 'true' &&
     process.env.FAROL_FINANCIAL_WRITES_ENABLED === 'true' &&
