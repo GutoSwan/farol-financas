@@ -1,10 +1,13 @@
 import { createHash } from 'node:crypto'
 import { z } from 'zod'
 import type { PrismaClient } from '@prisma/client'
-import { PrismaLegacyImportMappingService, LegacyMappingConflictError } from '../infrastructure/repositories/PrismaLegacyImportMappingService.js'
+import { PrismaLegacyImportMappingService, LegacyMappingConflictError } from '../../infrastructure/repositories/PrismaLegacyImportMappingService.js'
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-const isoDate = z.iso.date().refine(value => new Date(value + 'T00:00:00.000Z').toISOString().slice(0,10) === value)
+const isoDate = z.iso.date().refine(value => {
+  const dt=new Date(value+'T00:00:00.000Z')
+  return !Number.isNaN(dt.getTime()) && dt.toISOString().slice(0,10)===value
+})
 const timestamp = z.string().min(1).max(70).refine(v => !Number.isNaN(Date.parse(v)))
 const workspaceSchema = z.object({
   id: z.string().min(1).max(128).regex(/^[A-Za-z0-9_-]+$/),
