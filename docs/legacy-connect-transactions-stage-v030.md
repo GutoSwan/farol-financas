@@ -1,33 +1,48 @@
-# Farol Finanças: conexão transacional dos lançamentos (etapa inicial)
+# Farol Finanças: conexão segura de registros (Preview)
 
-## Entregue
-- O backend agora possui um serviço de conexão para um espaço local já existente
-  e até **25 lançamentos sem vínculos orçamentários** por pedido.
-- Validação no servidor (Zod) de todos os campos e rejeição de campos desconhecidos.
-- SHA-256 dos registros calculado novamente no servidor a partir do conteúdo,
-  com a mesma codificação do manifesto da interface. IDs/hash/clientes jamais autorizam acesso.
-- Associação da origem e criação dos lançamentos no banco dentro da mesma
-  transação PostgreSQL **Serializable**.
-- Checagem de papel OWNER e existência do espaço no banco; nome correspondente obrigatório.
-- Primeiro vínculo bloqueado se a nuvem já contém lançamentos, contas, gastos fixos
-  ou orçamentos, evitando misturar bases desconhecidas.
-- Repetição com o mesmo conteúdo reutiliza correspondências; mudança de conteúdo
-  retorna conflito sem sobrescrita.
-- IDs duplicados, datas inválidas, campos inesperados e lançamentos associados a
-  orçamentos não migrados são rejeitados. Nenhum registro é descartado silenciosamente.
-- Rota preparada: POST /api/v1/workspaces/:workspaceId/legacy-connect.
+## O que o backend já prepara
+A rota autenticada `POST /api/v1/workspaces/:workspaceId/legacy-connect` foi criada,
+**mas permanece explicitamente DESATIVADA** no entrypoint, mesmo se outras
+escritas estiverem ligadas. Não há botão de envio no frontend.
 
-## Bloqueio obrigatório
-A rota está **desativada por padrão e explicitamente com allowLegacyConnectionWrites: false**
-no entrypoint do servidor. A flag geral de escrita também permanece desativada em Preview.
-Não foi criado botão de importação real e **nenhum registro financeiro foi enviado**.
-Testes são executados com injeção Fastify e banco falso, sem alterar dados reais.
+A classe de conexão reconhece, em um mesmo espaço local:
+- Lançamentos, incluindo vínculos aos projetos/itens.
+- Contas mensais e histórico por competência.
+- Gastos fixos sem meses pagos.
+- Projetos de orçamento, itens e cotações.
 
-## Próximas etapas
-1. Testar o fluxo em PostgreSQL Dev isolado com duas contas e rollback real.
-2. Incluir contas, históricos, gastos fixos, orçamentos e dependências pai-filho.
-3. Resolver pagamentos antigos sem data, com decisão explícita do usuário.
-4. Criar interface de confirmação de destino e resumo dos dados com prova de
-   integridade e proteção contra alteração de sessão durante envio.
-5. Só depois revisar liberação controlada de POST em um ambiente de teste
-   realmente isolado; em produção exige aprovação e QA completo.
+A entrada é validada pelo backend, com limites de até 25 registros por
+categoria e rejeição de IDs duplicados, vínculos ausentes e campos extras.
+Valores monetários são em centavos, sem arredondamentos.
+Pagamentos de despesas fixas cujo histórico não registra a data da quitação
+**não são migrados automaticamente**.
+
+## Regras de segurança
+- É necessário JWT válido, MFA AAL2 e papel OWNER no espaço online.
+- No primeiro vínculo, o espaço remoto precisa estar vazio.
+- Os hashes SHA-256 de origem e conteúdo são calculados **no backend**
+  usando o mesmo formato do manifesto do navegador.
+- Referências entre contas, históricos, projetos, itens e lançamentos
+  são traduzidas para os UUIDs dos novos registros no PostgreSQL.
+- Toda a ligação e seus registros ocorrem dentro da mesma transação
+  `Serializable`; em falha, toda a tentativa é desfeita.
+- Reenvio idêntico reutiliza mapeamentos; dados modificados geram conflito.
+
+## Verificação concluída em 12/11/2026
+Foi realizado teste direto contra o **PostgreSQL Supabase Dev**,
+com registros fictícios dentro de `BEGIN ... ROLLBACK`, verificando
+restrições de unicidade e cancelamento em falha. O banco permaneceu
+com 4 espaços, 4 lançamentos e 0 mapeamentos.
+Os testes da classe de conexão usam um banco simulado em memória;
+ainda falta um E2E autenticado rodando o serviço Prisma contra um
+Postgres descartável.
+
+## Antes da liberação real
+1. Teste ponta a ponta com duas contas QA, MFA e Postgres isolado.
+2. Conferência de espaços remotos existentes e reconhecimento de dados
+   que possam ter sido acrescentados fora da migração.
+3. Fluxo visual com confirmação explícita de destino, backup e totais.
+4. Resolver a migração de parcelas já pagas sem data de quitação.
+5. Lotes maiores, retomada segura e sincronização entre dispositivos.
+
+**Não transferir dados pessoais nem promover para produção nesta etapa.**

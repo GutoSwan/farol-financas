@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
 import type { PrismaClient } from '@prisma/client'
 import { PrismaLegacyTransactionConnectionService } from '../src/application/use-cases/PrismaLegacyTransactionConnectionService.js'
+import { legacyFinancialBatchSchema } from '../src/application/use-cases/legacyFinancialPayload.js'
 
 const owner='11111111-1111-4111-8111-111111111111'
 const space='33333333-3333-4333-8333-333333333333'
@@ -154,5 +155,15 @@ describe('Conexão de contas, históricos e orçamentos na mesma transação',()
     const f=fixture()
     const invalid={...full,transactions:[{...full.transactions[0],budgetProjectId:'outro-projeto'}]}
     await expect(f.service.connect(owner,space,invalid)).rejects.toThrow('inválido')
+  })
+  it('preserva o texto original exatamente para não alterar a impressão digital SHA-256',()=>{
+    const raw=structuredClone(full)
+    raw.bills[0].name='  Energia  '
+    raw.budgets.projects[0].title='  Reforma  '
+    raw.workspace.name='  Casa  '
+    const verified=legacyFinancialBatchSchema.parse(raw)
+    expect(verified.bills[0].name).toBe('  Energia  ')
+    expect(verified.budgets.projects[0].title).toBe('  Reforma  ')
+    expect(verified.workspace.name).toBe('  Casa  ')
   })
 })

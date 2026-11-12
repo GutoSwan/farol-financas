@@ -17,7 +17,7 @@ export interface LegacyConnectionService {
 }
 export class LegacyConnectionValidationError extends Error {
   constructor() {
-    super('Lote inválido ou incompatível com a migração segura de lançamentos.')
+    super('Lote inválido ou incompatível com a migração segura de registros financeiros.')
     this.name = 'LegacyConnectionValidationError'
   }
 }
