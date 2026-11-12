@@ -81,6 +81,10 @@
       "destination": "/index.html"
     },
     {
+      "source": "/revisar-migracao",
+      "destination": "/index.html"
+    },
+    {
       "source": "/vincular-dados-locais",
       "destination": "/index.html"
     },

@@ -22,7 +22,7 @@ describe('Preparação do Farol para Vercel', () => {
       '/relatorios', '/relatorios/detalhes', '/presentes', '/entrar', '/cadastro', '/confirmar-email', '/recuperar-senha',
       '/redefinir-senha', '/conta', '/verificar-2fa', '/configurar-2fa',
       '/entrar/celular', '/cadastro/celular', '/recuperar-celular',
-      '/calendario', '/dados-online', '/vincular-dados-locais', '/seguranca', '/backup-financeiro',
+      '/calendario', '/dados-online', '/vincular-dados-locais', '/seguranca', '/backup-financeiro', '/revisar-migracao',
     ]
     expect(config.rewrites.map(rule => rule.source).sort()).toEqual(routes.sort())
     expect(config.rewrites.every(rule => rule.destination === '/index.html')).toBe(true)

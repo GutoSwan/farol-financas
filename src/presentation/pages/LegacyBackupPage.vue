@@ -563,6 +563,16 @@ onBeforeUnmount(disposeDownload)
       </p>
     </template>
   </section>
+  <section class="panel backup-stage" aria-label="Revisar a futura migração">
+    <div class="panel-title">
+      <div>
+        <h2>8. Revisar antes de enviar à nuvem</h2>
+        <p>Confira o espaço de destino, os registros e possíveis conflitos numa tela dedicada.</p>
+      </div>
+    </div>
+    <p class="auth-muted">A revisão é somente leitura. Transferências continuam desativadas.</p>
+    <RouterLink class="primary" to="/revisar-migracao">Abrir revisão da migração</RouterLink>
+  </section>
   <p v-if="message" class="success" role="status">{{ message }}</p>
   <p v-if="errorText" class="error" role="alert">{{ errorText }}</p>
 </template>
