@@ -222,7 +222,7 @@ function removeWorkspace(space: FinancialWorkspace): void {
             <UiIcon name="folder" :size="16" /> Backup e restauração
           </RouterLink>
           <RouterLink v-if="isLoggedIn" to="/revisar-migracao" @click="profileMenuOpen = false">
-            <UiIcon name="file-check" :size="16" /> Revisar migração
+            <UiIcon name="folder" :size="16" /> Revisar migração
           </RouterLink>
           <button v-if="isLoggedIn" type="button" :disabled="profileBusy" @click="logoutFromSidebar">
             <UiIcon name="log-out" :size="16" /> {{ profileBusy ? 'Saindo...' : 'Sair da conta' }}
