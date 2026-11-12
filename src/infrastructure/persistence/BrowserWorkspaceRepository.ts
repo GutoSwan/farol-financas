@@ -5,8 +5,8 @@ import { billsStorageKey } from './BrowserBillRepository'
 import { transactionStorageKey } from './BrowserTransactionRepository'
 import { budgetStorageKey } from './BrowserBudgetRepository'
 
-const WORKSPACES_KEY = 'farol-financas:workspaces:v1'
-const ACTIVE_KEY = 'farol-financas:active-workspace:v1'
+export const WORKSPACES_KEY = 'farol-financas:workspaces:v1'
+export const ACTIVE_KEY = 'farol-financas:active-workspace:v1'
 
 function validateWorkspace(value: unknown): value is FinancialWorkspace {
   if (!value || typeof value !== 'object') return false

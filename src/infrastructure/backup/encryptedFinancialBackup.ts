@@ -184,10 +184,11 @@ export async function encryptFinancialBackup(
   }
 }
 
-/** Descriptografa somente em memória para verificar conteúdo e fingerprint. */
-export async function inspectEncryptedFinancialBackupWithFingerprint(
+/** Descriptografa em memória; não grava no navegador nem no servidor.
+ * Uma restauração exige validações adicionais e confirmação explícita. */
+export async function decryptVerifiedFinancialBackup(
   raw: unknown, password: string, expectedUserId: string,
-): Promise<InspectedFinancialBackup> {
+): Promise<FinancialBackup> {
   validUserId(expectedUserId)
   if (!record(raw) || raw.format !== 'farol-financas-encrypted-backup' ||
       raw.version !== 1 || raw.ownerUserId !== expectedUserId ||
@@ -218,9 +219,19 @@ export async function inspectEncryptedFinancialBackupWithFingerprint(
   } catch {
     throw new Error('Conteúdo do backup está danificado.')
   }
-  const summary = summarizeFinancialBackup(parsed)
-  const fingerprint = await fingerprintFinancialBackup(parsed)
-  return { summary, fingerprint }
+  summarizeFinancialBackup(parsed)
+  return parsed as FinancialBackup
+}
+
+/** Mantém a conferência por fingerprint sem expor o conteúdo descriptografado. */
+export async function inspectEncryptedFinancialBackupWithFingerprint(
+  raw: unknown, password: string, expectedUserId: string,
+): Promise<InspectedFinancialBackup> {
+  const snapshot = await decryptVerifiedFinancialBackup(raw, password, expectedUserId)
+  return {
+    summary: summarizeFinancialBackup(snapshot),
+    fingerprint: await fingerprintFinancialBackup(snapshot),
+  }
 }
 
 /** Mantém o contrato anterior para chamadas que apenas precisam do inventário. */

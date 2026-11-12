@@ -8,10 +8,11 @@ import { analyzeLegacyMigration } from '../../application/use-cases/analyzeLegac
 import type { MigrationPreview } from '../../application/use-cases/analyzeLegacyMigration'
 import { buildLocalFinancialBackup } from '../../application/use-cases/exportFinancialBackup'
 import {
-  encryptFinancialBackup, inspectEncryptedFinancialBackupWithFingerprint, fingerprintFinancialBackup,
+  encryptFinancialBackup, decryptVerifiedFinancialBackup, inspectEncryptedFinancialBackupWithFingerprint, fingerprintFinancialBackup,
   summarizeFinancialBackup,
 } from '../../infrastructure/backup/encryptedFinancialBackup'
 import type { FinancialBackupSummary } from '../../infrastructure/backup/encryptedFinancialBackup'
+import { restoreLocalFinancialBackup, mayRestoreIntoCurrentBrowser } from '../../infrastructure/backup/restoreLocalFinancialBackup'
 
 const route = useRoute()
 const summary = ref<FinancialBackupSummary | null>(null)
@@ -29,6 +30,9 @@ const approved = ref(false)
 const password = ref('')
 const passwordConfirmation = ref('')
 const inspectionPassword = ref('')
+const restorationPassword = ref('')
+const restorationConsent = ref('')
+const restoredSuccessfully = ref(false)
 const selectedFile = ref<File | null>(null)
 const fileUrl = ref('')
 const fileName = ref('')
@@ -53,6 +57,8 @@ function clearInspectedBackup(): void {
   inspectedFingerprint.value = ''
   inspectedOwner.value = ''
   preview.value = null
+  restorationConsent.value = ''
+  restorationPassword.value = ''
 }
 
 function disposeDownload(): void {
@@ -108,6 +114,7 @@ async function prepareBackup(): Promise<void> {
 
 function selectBackupFile(event: Event): void {
   clearInspectedBackup()
+  restoredSuccessfully.value = false
   errorText.value = ''
   const input = event.target as HTMLInputElement
   selectedFile.value = input.files?.[0] ?? null
@@ -137,6 +144,40 @@ async function inspectBackupFile(): Promise<void> {
     errorText.value = cause instanceof Error ? cause.message : 'Não foi possível conferir o backup.'
   } finally {
     inspectionPassword.value = ''
+    busy.value = false
+  }
+}
+
+async function restoreInspectedFile(): Promise<void> {
+  if (busy.value || loading.value || !selectedFile.value || !inspected.value ||
+      !inspectedFingerprint.value || !inspectedOwner.value || restorationConsent.value !== 'RESTAURAR') return
+  busy.value = true
+  errorText.value = ''
+  message.value = ''
+  try {
+    const owner = await confirmedOwner()
+    if (owner !== inspectedOwner.value) throw new Error('A sessão mudou. Confira o arquivo novamente.')
+    if (!mayRestoreIntoCurrentBrowser(owner)) {
+      throw new Error('Este navegador não está vazio. A restauração só é permitida sem outros registros financeiros.')
+    }
+    const raw: unknown = JSON.parse(await selectedFile.value.text())
+    const snapshot = await decryptVerifiedFinancialBackup(raw, restorationPassword.value, owner)
+    if (await fingerprintFinancialBackup(snapshot) !== inspectedFingerprint.value) {
+      throw new Error('O arquivo mudou desde a conferência. Confira novamente antes de restaurar.')
+    }
+    if (await confirmedOwner() !== owner) throw new Error('A sessão mudou durante a conferência.')
+    // Após a última verificação remota, nenhuma chamada assíncrona separa
+    // a checagem da sessão do início das gravações locais.
+    const result = restoreLocalFinancialBackup(snapshot, owner)
+    restoredSuccessfully.value = true
+    summary.value = result
+    message.value = 'Restauração local concluída. Atualize o Farol para recarregar os espaços e os registros recuperados.'
+    clearInspectedBackup()
+  } catch (cause) {
+    errorText.value = cause instanceof Error ? cause.message : 'A restauração não pôde ser concluída.'
+  } finally {
+    restorationPassword.value = ''
+    restorationConsent.value = ''
     busy.value = false
   }
 }
@@ -279,10 +320,49 @@ onBeforeUnmount(disposeDownload)
     </p>
     <p class="auth-muted">Conferir não grava no navegador nem importa para o Supabase. A migração com autorização e prevenção de duplicações será uma etapa separada.</p>
   </section>
+  <section class="panel backup-stage" aria-label="Restauração local">
+    <div class="panel-title">
+      <div>
+        <h2>4. Restaurar o backup neste navegador</h2>
+        <p>Somente para um destino sem registros financeiros. Nunca substitui dados existentes.</p>
+      </div>
+    </div>
+    <p class="auth-warning">
+      Antes de começar: utilize uma conta financeira com Authenticator confirmado e um navegador
+      já vinculado a essa conta, porém sem lançamentos, contas, espaços extras ou orçamentos.
+      A restauração acontece somente neste aparelho, não na nuvem. Guarde o arquivo original.
+    </p>
+    <p v-if="inspected" class="notice">
+      O arquivo conferido contém {{ inspected.spaces }} espaços, {{ inspected.transactions }} lançamentos,
+      {{ inspected.monthlyEntries }} históricos e {{ inspected.budgetProjects }} projetos de orçamento.
+      Se já houver dados no navegador, a operação será bloqueada sem mesclar ou apagar registros.
+    </p>
+    <form class="backup-form" @submit.prevent="restoreInspectedFile">
+      <label>
+        Senha do backup conferido
+        <input v-model="restorationPassword" type="password" autocomplete="off"
+          required :disabled="busy || !inspected || restoredSuccessfully" />
+      </label>
+      <label>
+        Para confirmar, digite RESTAURAR
+        <input v-model.trim="restorationConsent" type="text" autocomplete="off"
+          required :disabled="busy || !inspected || restoredSuccessfully" placeholder="RESTAURAR" />
+      </label>
+      <button type="submit" class="primary"
+        :disabled="busy || loading || !inspected || !selectedFile || restoredSuccessfully ||
+          restorationConsent !== 'RESTAURAR' || !restorationPassword">
+        {{ busy ? 'Verificando...' : 'Restaurar somente em destino vazio' }}
+      </button>
+    </form>
+    <p v-if="restoredSuccessfully" class="success" role="status">
+      Restauração concluída. <button type="button" class="secondary-action"
+        @click="window.location.reload()">Atualizar para ver meus dados</button>
+    </p>
+  </section>
   <section class="panel backup-stage" aria-label="Simulação da migração">
     <div class="panel-title">
       <div>
-        <h2>4. Simular a migração sem gravar nada</h2>
+        <h2>5. Simular a migração sem gravar nada</h2>
         <p>Confira limites de valores, datas, vínculos dos orçamentos e possíveis conflitos de espaços.</p>
       </div>
     </div>
