@@ -27,7 +27,7 @@ describe('Recuperação com MFA obrigatório: sessão AAL2 antes da senha', () =
 
   it('esconde o formulário de nova senha antes da validação do autenticador', () => {
     expect(page).toContain('recoveryMfaChecked && recoveryMfaRequired && !recoveryMfaVerified')
-    expect(page).toContain("mode !== 'reset' || (recoveringPassword && recoveryMfaChecked && recoveryMfaVerified && !passwordResetDone)")
+    expect(page).toContain("mode !== 'reset' || (recoveringPassword && recoveryMfaChecked && !recoveryMfaRequired && recoveryMfaVerified && !passwordResetDone)")
     expect(useAuth).toContain('if (!recoveryMfaChecked.value || !recoveryMfaVerified.value)')
   })
 

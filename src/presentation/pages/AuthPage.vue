@@ -18,9 +18,9 @@ const router = useRouter()
 const { isDark, toggleTheme } = useTheme()
 const {
   configured, ready, user, profile, isLoggedIn, signIn, signUp, verifySignupCode, resendSignupCode,
-  updateProfile, signOut, requestPasswordReset, recoverFromEmailLink, recoveringPassword,
+  updateProfile, signOut, requestPasswordReset, recoverFromEmailLink, recoveringPassword, passwordJustChanged,
   recoveryMfaChecked, recoveryMfaRequired, recoveryMfaVerified, recoveryTotpFactors,
-  prepareRecoveryMfa, verifyRecoveryMfa, updatePassword,
+  prepareRecoveryMfa, verifyRecoveryMfa, updatePassword, changePasswordInProfile,
 } = useAuth()
 
 const email = ref('')
@@ -28,6 +28,7 @@ const password = ref('')
 const confirmPassword = ref('')
 const recoveryLinkInput = ref('')
 const passwordResetDone = ref(false)
+const showProfilePassword = ref(false)
 const recoveryMfaCode = ref('')
 const recoveryMfaFactorId = ref('')
 const displayName = ref('')
@@ -50,6 +51,7 @@ watch(() => props.mode, () => {
   confirmPassword.value = ''
   recoveryLinkInput.value = ''
   passwordResetDone.value = false
+  showProfilePassword.value = false
   recoveryMfaCode.value = ''
   recoveryMfaFactorId.value = ''
   code.value = ''
@@ -60,6 +62,11 @@ watch(() => props.mode, () => {
   errorText.value = ''
   editingProfile.value = false
 })
+watch([() => props.mode, recoveringPassword, recoveryMfaVerified],
+  ([mode, recovering, verified]) => {
+    if (mode === 'profile' && recovering && verified) showProfilePassword.value = true
+  }, { immediate: true })
+
 // A página pública nunca afirma sucesso por query string: exige usuário validado no Supabase.
 watch([() => props.mode, ready, user], async ([mode, loaded]) => {
   if (mode !== 'confirmed' || !loaded) return
@@ -90,8 +97,12 @@ async function loadRecoveryMfa(): Promise<void> {
   try {
     await prepareRecoveryMfa()
     recoveryMfaFactorId.value = recoveryTotpFactors.value[0]?.id ?? ''
+    if (recoveryMfaRequired.value && recoveryMfaVerified.value) {
+      await router.replace('/conta')
+      return
+    }
     if (recoveryMfaRequired.value && !recoveryMfaVerified.value) {
-      message.value = 'Link confirmado. Informe o código do Authenticator para autorizar a nova senha.'
+      message.value = 'Link confirmado. Valide o Authenticator para acessar Meu perfil e alterar a senha.'
     }
   } catch (cause) {
     errorText.value = errorMessage(cause)
@@ -107,7 +118,8 @@ async function confirmRecoveryTotp(): Promise<void> {
   try {
     await verifyRecoveryMfa(recoveryMfaFactorId.value, recoveryMfaCode.value)
     recoveryMfaCode.value = ''
-    message.value = 'Authenticator confirmado! Agora você pode definir a nova senha.'
+    // Com AAL2 confirmado pelo Supabase, abrir Meu perfil; nunca o Dashboard direto.
+    await router.replace('/conta')
   } catch (cause) {
     errorText.value = errorMessage(cause)
   } finally {
@@ -193,8 +205,12 @@ async function confirmRecoveryLink(): Promise<void> {
     // a confirmação manual do link também mostre o desafio sem clique extra.
     await prepareRecoveryMfa()
     recoveryMfaFactorId.value = recoveryTotpFactors.value[0]?.id ?? ''
+    if (recoveryMfaRequired.value && recoveryMfaVerified.value) {
+      await router.replace('/conta')
+      return
+    }
     message.value = recoveryMfaRequired.value && !recoveryMfaVerified.value
-      ? 'Link confirmado. Informe o código do Authenticator para continuar.'
+      ? 'Link confirmado. Informe o código do Authenticator para abrir Meu perfil.'
       : 'Link confirmado. Agora você pode definir sua nova senha.'
   } catch (cause) {
     errorText.value = errorMessage(cause)
@@ -234,6 +250,30 @@ async function resendCode(): Promise<void> {
     await resendSignupCode(verificationEmail.value)
     nextResendAt.value = Date.now() + 60_000
     message.value = 'Reenvio solicitado. Confira a caixa de entrada e o spam. O Supabase pode enviar outro link em vez de código; se o e-mail já foi confirmado, entre pelo login.'
+  } catch (cause) {
+    errorText.value = errorMessage(cause)
+  } finally {
+    busy.value = false
+  }
+}
+
+async function submitProfilePassword(): Promise<void> {
+  if (busy.value) return
+  resetMessages()
+  if (password.value !== confirmPassword.value) {
+    errorText.value = 'As senhas informadas não são iguais.'
+    return
+  }
+  if (password.value.length < 8) {
+    errorText.value = 'Escolha uma senha com pelo menos 8 caracteres.'
+    return
+  }
+  busy.value = true
+  try {
+    await changePasswordInProfile(password.value)
+    password.value = ''
+    confirmPassword.value = ''
+    await router.replace('/entrar')
   } catch (cause) {
     errorText.value = errorMessage(cause)
   } finally {
@@ -333,6 +373,35 @@ async function logout(): Promise<void> {
             <RouterLink to="/seguranca"><UiIcon name="settings" :size="17" /> Segurança e autenticadores</RouterLink>
             <RouterLink to="/dados-online"><UiIcon name="folder" :size="17" /> Meus dados na nuvem</RouterLink>
           </nav>
+          <section class="profile-password-panel" aria-label="Alterar senha da conta">
+            <h2>Senha da conta</h2>
+            <p v-if="recoveringPassword && recoveryMfaVerified" class="auth-info">
+              E-mail e Authenticator confirmados. Defina uma nova senha aqui em Meu perfil.
+            </p>
+            <p v-else class="auth-muted">Para alterar a senha é necessário estar com o Authenticator validado.</p>
+            <button v-if="!showProfilePassword" type="button" class="secondary-action auth-full-button"
+              :disabled="busy" @click="showProfilePassword = true">
+              Alterar senha
+            </button>
+            <form v-else class="auth-form" @submit.prevent="submitProfilePassword">
+              <label>Nova senha
+                <input v-model="password" type="password" autocomplete="new-password"
+                  minlength="8" required :disabled="busy" placeholder="Pelo menos 8 caracteres" />
+              </label>
+              <label>Confirmar nova senha
+                <input v-model="confirmPassword" type="password" autocomplete="new-password"
+                  minlength="8" required :disabled="busy" placeholder="Digite novamente a senha" />
+              </label>
+              <button type="submit" class="primary auth-full-button" :disabled="busy">
+                {{ busy ? 'Alterando...' : 'Salvar nova senha' }}
+              </button>
+              <button type="button" class="auth-inline-link" :disabled="busy"
+                @click="showProfilePassword = false; password = ''; confirmPassword = ''; resetMessages()">
+                Cancelar
+              </button>
+              <p class="auth-muted">Após alterar a senha, entre novamente e confirme seu Authenticator.</p>
+            </form>
+          </section>
           <button type="button" class="secondary-action auth-full-button" :disabled="busy" @click="logout">
             <UiIcon name="log-out" :size="16" /> Sair da conta
           </button>
@@ -407,6 +476,9 @@ async function logout(): Promise<void> {
         </div>
         <p class="auth-subtitle">{{ mode === 'login' ? 'Acesse com seu e-mail e sua senha.' : mode === 'signup' ? 'Crie seu acesso. Enviaremos um e-mail de confirmação, com link ou código conforme a configuração do Supabase.' : mode === 'forgot' ? 'Enviaremos um link de recuperação para seu e-mail.' : 'Digite a nova senha para sua conta.' }}</p>
         <p v-if="mode === 'login'" class="auth-muted">Esta Preview usa o Supabase Dev. A senha da sua conta na versão principal pode não funcionar aqui.</p>
+        <p v-if="mode === 'login' && passwordJustChanged" class="success" role="status">
+          Senha alterada com sucesso. Entre novamente e confirme seu Authenticator, se houver.
+        </p>
 
         <section v-if="mode === 'reset' && !recoveringPassword && !passwordResetDone" class="auth-warning" aria-label="Confirmar link de recuperação">
           <div>
@@ -434,7 +506,7 @@ async function logout(): Promise<void> {
           class="auth-warning" aria-label="Confirmar autenticador para recuperar senha">
           <div>
             <strong>Confirme sua identidade com o Authenticator</strong>
-            <p>O link por e-mail foi aceito. Para alterar a senha de uma conta com 2FA, o Supabase exige uma sessão AAL2.</p>
+            <p>O link por e-mail foi aceito. Confirme seu Authenticator para entrar em Meu perfil e trocar a senha por lá. Seus dados financeiros permanecem bloqueados até concluir esta etapa.</p>
             <form class="auth-form" @submit.prevent="confirmRecoveryTotp">
               <label v-if="recoveryTotpFactors.length > 1">Selecione o autenticador
                 <select v-model="recoveryMfaFactorId" :disabled="busy">
@@ -452,9 +524,9 @@ async function logout(): Promise<void> {
             </form>
           </div>
         </section>
-        <div v-if="mode === 'reset' && recoveringPassword && recoveryMfaVerified && !passwordResetDone"
+        <div v-if="mode === 'reset' && recoveringPassword && recoveryMfaVerified && !recoveryMfaRequired && !passwordResetDone"
           class="auth-info" role="status">
-          Identidade confirmada. Agora escolha sua nova senha do Supabase Dev.
+          E-mail confirmado. Esta conta não possui Authenticator: defina sua nova senha abaixo. O acesso às finanças continuará exigindo configurar o 2FA.
         </div>
         <div v-if="mode === 'reset' && passwordResetDone" class="auth-confirmed" role="status">
           <h2>Senha alterada com sucesso</h2>
@@ -463,7 +535,7 @@ async function logout(): Promise<void> {
         </div>
         <div v-if="isLoggedIn && mode !== 'reset'" class="auth-info">Você já está autenticado. <RouterLink to="/conta">Ver meu perfil</RouterLink>.</div>
 
-        <form v-if="mode !== 'reset' || (recoveringPassword && recoveryMfaChecked && recoveryMfaVerified && !passwordResetDone)"
+        <form v-if="mode !== 'reset' || (recoveringPassword && recoveryMfaChecked && !recoveryMfaRequired && recoveryMfaVerified && !passwordResetDone)"
           class="auth-form" @submit.prevent="submit">
           <label v-if="mode === 'signup'">Nome de exibição
             <input v-model="displayName" type="text" required minlength="2" maxlength="40" autocomplete="nickname"

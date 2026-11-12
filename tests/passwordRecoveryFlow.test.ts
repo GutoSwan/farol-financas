@@ -27,7 +27,7 @@ describe('Fluxo guiado de recuperação de senha',()=>{
  })
  it('não permite mudar a senha antes de confirmar a recuperação',()=>{
    expect(auth).toContain('if (!recoveringPassword.value)')
-   expect(page).toContain("mode !== 'reset' || (recoveringPassword && recoveryMfaChecked && recoveryMfaVerified && !passwordResetDone)")
+   expect(page).toContain("mode !== 'reset' || (recoveringPassword && recoveryMfaChecked && !recoveryMfaRequired && recoveryMfaVerified && !passwordResetDone)")
  })
  it('apaga o link colado e encerra a sessão de recuperação após a troca',()=>{
    expect(page).toContain("recoveryLinkInput.value = ''")

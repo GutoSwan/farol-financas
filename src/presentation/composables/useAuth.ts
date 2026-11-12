@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue'
 import type { Session } from '@supabase/supabase-js'
-import { authConfigured, supabase } from '../../infrastructure/auth/supabase'
+import { authConfigured, claimRecoveryCallbackSession, supabase } from '../../infrastructure/auth/supabase'
 import { setVerifiedLocalUser } from '../../infrastructure/persistence/legacyAccess'
 import { normalizeDisplayName, normalizeProfileIcon, readProfile } from '../../domain/profile/profile'
 import { isFarolAdmin, isFarolSuperAdmin } from '../../domain/auth/adminAccess'
@@ -12,6 +12,7 @@ import type { ProfileIcon } from '../../domain/profile/profile'
 const session = ref<Session | null>(null)
 const ready = ref(!authConfigured)
 const recoveringPassword = ref(false)
+const passwordJustChanged = ref(false)
 const recoveryMfaChecked = ref(false)
 const recoveryMfaRequired = ref(false)
 const recoveryMfaVerified = ref(false)
@@ -33,6 +34,14 @@ async function refreshCurrentUser(): Promise<void> {
   }
 }
 
+function startRecoverySession(): void {
+  recoveringPassword.value = true
+  recoveryMfaChecked.value = false
+  recoveryMfaRequired.value = false
+  recoveryMfaVerified.value = false
+  recoveryTotpFactors.value = []
+}
+
 if (supabase) {
   let authRevision = 0
   supabase.auth.onAuthStateChange((event, nextSession) => {
@@ -40,10 +49,13 @@ if (supabase) {
     session.value = nextSession
     ready.value = true
     if (event === 'PASSWORD_RECOVERY') {
-      recoveringPassword.value = true
-      recoveryMfaChecked.value = false
-      recoveryMfaVerified.value = false
-      recoveryTotpFactors.value = []
+      // O link é confirmado pelo SDK e será revalidado por getUser().
+      claimRecoveryCallbackSession(nextSession?.access_token)
+      startRecoverySession()
+    } else if (claimRecoveryCallbackSession(nextSession?.access_token)) {
+      // Fallback seguro: alguns retornos chegam como SIGNED_IN/INITIAL_SESSION.
+      // Exigir que o token da URL corresponda à sessão aceita pelo Supabase.
+      startRecoverySession()
     }
     if (event === 'SIGNED_OUT') {
       // Revogar imediatamente a elegibilidade para dados financeiros locais.
@@ -59,7 +71,10 @@ if (supabase) {
   // Evitar que uma resposta inicial atrasada restaure sessão antiga após logout.
   const initialRevision = authRevision
   supabase.auth.getSession().then(({ data, error }) => {
-    if (!error && authRevision === initialRevision) session.value = data.session
+    if (!error && authRevision === initialRevision) {
+      session.value = data.session
+      if (claimRecoveryCallbackSession(data.session?.access_token)) startRecoverySession()
+    }
     ready.value = true
     void refreshCurrentUser()
   }).catch(() => { ready.value = true })
@@ -88,6 +103,7 @@ export function useAuth() {
     const { data, error } = await client().auth.signInWithPassword({ email: email.trim(), password })
     if (error) throw new Error(error.message)
     if (data.session) session.value = data.session
+    passwordJustChanged.value = false
     await refreshCurrentUser()
   }
 
@@ -175,7 +191,7 @@ export function useAuth() {
     recoveryMfaChecked.value = false
     recoveryMfaVerified.value = false
     recoveryTotpFactors.value = []
-    recoveringPassword.value = true
+    startRecoverySession()
   }
 
   /** Consulta os fatores cadastrados no servidor após a recuperação por e-mail. */
@@ -250,9 +266,36 @@ export function useAuth() {
     recoveryMfaRequired.value = false
     recoveryMfaVerified.value = false
     recoveryTotpFactors.value = []
+    passwordJustChanged.value = true
     // Encerrar apenas a sessão temporária de recuperação. Para acessar
     // qualquer tela financeira a pessoa deverá entrar novamente e cumprir 2FA.
     await auth.auth.signOut({ scope: 'local' })
+    session.value = null
+  }
+
+  /** Alteração em Meu perfil: somente identidade remota validada e TOTP AAL2. */
+  async function changePasswordInProfile(password: string): Promise<void> {
+    if (password.length < 8) throw new Error('Escolha uma senha com pelo menos 8 caracteres.')
+    const auth = client().auth
+    const [{ data: current, error: sessionError }, { data: identity, error: identityError },
+      factors, assurance] = await Promise.all([
+      auth.getSession(), auth.getUser(), listVerifiedTotpFactors(), getTotpAssurance(),
+    ])
+    if (sessionError || identityError || !current.session || !identity.user ||
+        identity.user.id !== current.session.user.id ||
+        factors.length === 0 || assurance.currentLevel !== 'aal2') {
+      throw new Error('Confirme seu Authenticator para alterar a senha em Meu perfil.')
+    }
+    const { error } = await auth.updateUser({ password })
+    if (error) throw new Error(error.message)
+    passwordJustChanged.value = true
+    recoveringPassword.value = false
+    recoveryMfaChecked.value = false
+    recoveryMfaRequired.value = false
+    recoveryMfaVerified.value = false
+    recoveryTotpFactors.value = []
+    // Forçar novo login e MFA após a alteração; não reutilizar sessão de recuperação.
+    await auth.signOut({ scope: 'local' })
     session.value = null
   }
 
@@ -292,12 +335,13 @@ export function useAuth() {
     isAdmin: computed(() => isFarolAdmin(session.value?.user)),
     profile: computed(() => readProfile(session.value?.user?.user_metadata as Record<string, unknown> | undefined, session.value?.user?.email)),
     recoveringPassword: computed(() => recoveringPassword.value),
+    passwordJustChanged: computed(() => passwordJustChanged.value),
     recoveryMfaChecked: computed(() => recoveryMfaChecked.value),
     recoveryMfaRequired: computed(() => recoveryMfaRequired.value),
     recoveryMfaVerified: computed(() => recoveryMfaVerified.value),
     recoveryTotpFactors: computed(() => recoveryTotpFactors.value),
     prepareRecoveryMfa, verifyRecoveryMfa,
     signIn, signUp, verifySignupCode, resendSignupCode, updateProfile,
-    signOut, requestPasswordReset, recoverFromEmailLink, updatePassword, checkApiAuth,
+    signOut, requestPasswordReset, recoverFromEmailLink, updatePassword, changePasswordInProfile, checkApiAuth,
   }
 }
