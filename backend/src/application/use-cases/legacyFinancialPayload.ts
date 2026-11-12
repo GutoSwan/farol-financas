@@ -2,6 +2,8 @@ import { z } from 'zod'
 
 // Formato reconhecido exclusivamente para a PRIMEIRA migração de um espaço.
 // Todos os valores financeiros são inteiros em centavos, nunca floats.
+// Preservar espaços nos textos: mudar caracteres alteraria o SHA-256
+// em relação ao manifesto assinado pelo navegador. Validar sem normalizar.
 const key=z.string().min(1).max(128).regex(/^[a-zA-Z0-9_-]+$/)
 const timestamp=z.string().min(1).max(70).refine(v=>!Number.isNaN(Date.parse(v)))
 const yearMonth=z.string().regex(/^[0-9]{4}-(0[1-9]|1[0-2])$/)
@@ -12,17 +14,17 @@ const date=z.iso.date().refine(v=>{
 const cents=z.number().int().min(0).max(2147483647)
 const due=z.number().int().min(1).max(31)
 const workspace=z.object({
-  id:key,name:z.string().trim().min(1).max(60),createdAt:timestamp,
+  id:key,name:z.string().min(1).max(60).refine(value=>value.trim().length>0),createdAt:timestamp,
 }).strict()
 const transaction=z.object({
-  id:key,description:z.string().trim().min(1).max(120),
-  category:z.string().trim().min(1).max(40),
+  id:key,description:z.string().min(1).max(120).refine(value=>value.trim().length>0),
+  category:z.string().min(1).max(40).refine(value=>value.trim().length>0),
   amountCents:cents.min(1),kind:z.enum(['income','expense']),
   occurredOn:date,createdAt:timestamp,
   budgetProjectId:key.optional(),budgetItemId:key.optional(),
 }).strict()
 const bill=z.object({
-  id:key,name:z.string().trim().min(1).max(80),
+  id:key,name:z.string().min(1).max(80).refine(value=>value.trim().length>0),
   dueDay:due,active:z.boolean(),createdAt:timestamp,
 }).strict()
 const monthlyEntry=z.object({
@@ -30,22 +32,22 @@ const monthlyEntry=z.object({
   status:z.enum(['paid','pending']),paidAt:timestamp.nullable(),
 }).strict().refine(e=> (e.status==='paid')===(e.paidAt!==null),{message:'Histórico mensal inconsistente'})
 const fixed=z.object({
-  id:key,name:z.string().trim().min(1).max(80),amountCents:cents,
+  id:key,name:z.string().min(1).max(80).refine(value=>value.trim().length>0),amountCents:cents,
   dueDay:due,startMonth:yearMonth,endBeforeMonth:yearMonth.nullable(),
   paidMonths:z.array(yearMonth).max(120),createdAt:timestamp,
 }).strict().refine(e=>!e.endBeforeMonth || e.endBeforeMonth>e.startMonth)
 const project=z.object({
-  id:key,title:z.string().trim().min(1).max(120),
-  category:z.string().trim().min(1).max(40),
+  id:key,title:z.string().min(1).max(120).refine(value=>value.trim().length>0),
+  category:z.string().min(1).max(40).refine(value=>value.trim().length>0),
   targetCents:cents,status:z.enum(['planning','quoting','approved','in-progress','completed']),
   notes:z.string().max(4000),createdAt:timestamp,
 }).strict()
 const item=z.object({
-  id:key,projectId:key,title:z.string().trim().min(1).max(120),
+  id:key,projectId:key,title:z.string().min(1).max(120).refine(value=>value.trim().length>0),
   plannedCents:cents.nullable(),createdAt:timestamp,
 }).strict()
 const quote=z.object({
-  id:key,itemId:key,provider:z.string().trim().min(1).max(120),
+  id:key,itemId:key,provider:z.string().min(1).max(120).refine(value=>value.trim().length>0),
   amountCents:cents,estimatedDays:z.number().int().min(0).max(36500).nullable(),
   materialsIncluded:z.boolean(),notes:z.string().max(4000),
   selected:z.boolean(),createdAt:timestamp,
