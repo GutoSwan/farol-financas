@@ -35,7 +35,7 @@ export function compareLocalAndCloud(
 ): CloudPreflightReport {
   const sampleIndex=new Map(samples.map(s=>[s.workspaceId,s]))
   if(sampleIndex.size!==samples.length) throw new Error('A API retornou resultados repetidos.')
-  const entries=local.workspaces.map(ws:FinancialBackup['workspaces'][number]):CloudPreflightItem=>{
+  const entries=local.workspaces.map((ws:FinancialBackup['workspaces'][number]):CloudPreflightItem=>{
     const base={name:ws.workspace.name,localId:ws.workspace.id,localCounts:inventory(ws)}
     const matching=remote.filter(r=>normalizeName(r.name)===normalizeName(ws.workspace.name))
     const fallback={remoteCounts:null,remoteRole:null}
