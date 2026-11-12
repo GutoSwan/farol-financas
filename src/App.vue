@@ -41,19 +41,29 @@ watch(() => user.value?.id ?? null, (currentId, previousId) => {
   // do guard. A vinculação financeira local nunca acompanha outra identidade.
   privateViewSuspended.value = true
   setVerifiedLocalUser(null)
+  const previousPath = route.path
   void Promise.resolve().then(async () => {
     const nextPath = recoveringPassword.value
       ? '/redefinir-senha'
       : currentId ? '/dados-online' : '/entrar'
     try {
       await router.replace(nextPath)
-    } finally {
-      // Se a navegação for recusada, o v-if continuará bloqueando a rota
-      // financeira quando não houver sessão.
-      privateViewSuspended.value = false
+      // Um guard pode cancelar o redirecionamento sem lançar exceção.
+      // Não revelar a tela local antiga enquanto a rota continuar nela.
+      if (router.currentRoute.value.path !== previousPath &&
+          !router.currentRoute.value.matched.some(record => record.meta.requiresLegacyData)) {
+        privateViewSuspended.value = false
+      }
+    } catch {
+      // Manter o escudo até a pessoa entrar numa rota sem dados locais.
     }
-  }).catch(() => { privateViewSuspended.value = false })
+  })
 }, { immediate: true, flush: 'sync' })
+
+watch(() => route.path, (path) => {
+  // A pessoa consegue voltar ao login mesmo se o roteador cancelou a troca.
+  if (canAccessWithoutSession(path)) privateViewSuspended.value = false
+})
 </script>
 
 <template>

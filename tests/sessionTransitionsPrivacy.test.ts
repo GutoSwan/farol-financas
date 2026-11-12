@@ -21,6 +21,9 @@ describe('Privacidade ao sair ou trocar de conta', () => {
     expect(app).toContain("flush: 'sync'")
     expect(app).toContain('privateViewSuspended.value = true')
     expect(app).toContain("await router.replace(nextPath)")
+    expect(app).toContain('router.currentRoute.value.path !== previousPath')
+    expect(app).toContain('!router.currentRoute.value.matched.some(record => record.meta.requiresLegacyData)')
+    expect(app).not.toContain('} finally {\\n      // Se a navegação for recusada')
   })
   it('invalida acesso local no logout e impede restauração por resposta antiga', () => {
     expect(auth).toContain("if (event === 'SIGNED_OUT') {")
