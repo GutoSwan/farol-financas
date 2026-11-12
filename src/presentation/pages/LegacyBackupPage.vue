@@ -7,6 +7,8 @@ import { readOnlineFinance } from '../../infrastructure/api/onlineFinance'
 import { compareLocalAndCloud, normalizeName, MODULES } from '../../domain/services/cloudSyncPreflight'
 import type { CloudPreflightReport, RemoteSample, Counts } from '../../domain/services/cloudSyncPreflight'
 import { analyzeLegacyMigration } from '../../application/use-cases/analyzeLegacyMigration'
+import { planLegacyIdentifiers } from '../../application/use-cases/planLegacyIdentifiers'
+import type { LegacyIdentityManifest } from '../../application/use-cases/planLegacyIdentifiers'
 import type { MigrationPreview } from '../../application/use-cases/analyzeLegacyMigration'
 import { buildLocalFinancialBackup } from '../../application/use-cases/exportFinancialBackup'
 import {
@@ -37,6 +39,9 @@ const restoredSuccessfully = ref(false)
 const cloudBusy = ref(false)
 const cloudError = ref('')
 const cloudReport = ref<CloudPreflightReport | null>(null)
+const identityPlan = ref<LegacyIdentityManifest | null>(null)
+const planningIdentities = ref(false)
+const identityPlanError = ref('')
 const selectedFile = ref<File | null>(null)
 const fileUrl = ref('')
 const fileName = ref('')
@@ -65,6 +70,8 @@ function clearInspectedBackup(): void {
   restorationPassword.value = ''
   cloudError.value = ''
   cloudReport.value = null
+  identityPlan.value = null
+  identityPlanError.value = ''
 }
 
 function disposeDownload(): void {
@@ -224,6 +231,35 @@ async function compareWithCloud(): Promise<void> {
   } catch(cause) {
     cloudError.value=cause instanceof Error?cause.message:'Não foi possível analisar a nuvem.'
   } finally { cloudBusy.value=false }
+}
+
+async function generateIdentityPlan(): Promise<void> {
+  if (planningIdentities.value || busy.value || analyzing.value || cloudBusy.value ||
+      !inspected.value || !inspectedOwner.value || !inspectedFingerprint.value) return
+  planningIdentities.value = true
+  identityPlan.value = null
+  identityPlanError.value = ''
+  try {
+    const owner = await confirmedOwner()
+    if (owner !== inspectedOwner.value) throw new Error('A conta mudou desde a conferência do backup.')
+    const snapshot = buildLocalFinancialBackup()
+    if (await fingerprintFinancialBackup(snapshot) !== inspectedFingerprint.value) {
+      throw new Error('O arquivo conferido não corresponde mais aos registros deste navegador.')
+    }
+    // O manifesto é gerado inteiramente no aparelho. IDs legados em texto
+    // claro e hashes NÃO são transmitidos ao backend nesta etapa.
+    const plan = await planLegacyIdentifiers(snapshot, owner)
+    if (await confirmedOwner() !== owner ||
+        await fingerprintFinancialBackup(buildLocalFinancialBackup()) !== inspectedFingerprint.value) {
+      throw new Error('A conta ou os registros mudaram durante a preparação do manifesto.')
+    }
+    identityPlan.value = plan
+  } catch (cause) {
+    identityPlanError.value = cause instanceof Error ? cause.message :
+      'Não foi possível preparar as identidades locais.'
+  } finally {
+    planningIdentities.value = false
+  }
 }
 
 async function simulateMigration(): Promise<void> {
@@ -492,6 +528,39 @@ onBeforeUnmount(disposeDownload)
             {{ entry.remoteCounts.budgets }} orçamentos (até 50 por módulo)</small>
         </li>
       </ul>
+    </template>
+  </section>
+  <section class="panel backup-stage" aria-label="Manifesto de identidades legadas">
+    <div class="panel-title"><div>
+      <h2>7. Preparar identidades para a futura importação</h2>
+      <p>Gerar um inventário de correspondências SHA-256 sem enviar ou gravar registros.</p>
+    </div></div>
+    <p class="notice">
+      O banco de desenvolvimento já tem a estrutura para associar registros antigos e IDs online.
+      Nesta etapa, o Farol apenas confere os dados atuais e gera o plano local.
+      A importação permanece desativada até a validação transacional completa.
+    </p>
+    <button type="button" class="secondary-action"
+      :disabled="!inspected || busy || analyzing || cloudBusy || planningIdentities || loading"
+      @click="generateIdentityPlan">
+      {{ planningIdentities ? 'Calculando identidades...' : 'Gerar prévia das identidades locais' }}
+    </button>
+    <p v-if="identityPlanError" class="error" role="alert">{{ identityPlanError }}</p>
+    <template v-if="identityPlan">
+      <p class="backup-result" role="status">
+        <strong>{{ identityPlan.records.length }} identidades locais verificadas</strong>
+        · <strong>{{ identityPlan.records.filter(r => r.type === 'workspace').length }} espaços</strong>
+        · <strong>{{ identityPlan.records.filter(r => r.type === 'transaction').length }} lançamentos</strong>
+        · <strong>{{ identityPlan.records.filter(r => r.type === 'bill').length }} contas mensais</strong>
+      </p>
+      <p v-if="identityPlan.requiresPaymentDateReview" class="auth-warning">
+        {{ identityPlan.requiresPaymentDateReview }} pagamento(s) de gasto fixo exigem revisão:
+        o registro original não guarda a data real da quitação.
+      </p>
+      <p class="auth-muted">
+        As chaves foram calculadas em memória para a conta atual, sem transmitir seus registros ao servidor.
+        Nenhuma correspondência foi cadastrada no banco e nenhum lançamento foi importado.
+      </p>
     </template>
   </section>
   <p v-if="message" class="success" role="status">{{ message }}</p>
