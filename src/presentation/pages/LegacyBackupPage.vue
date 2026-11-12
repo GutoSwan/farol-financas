@@ -475,7 +475,12 @@ onBeforeUnmount(disposeDownload)
         mapeamento seguro e idempotente. Esta consulta não sincronizou dados.</p>
       <ul class="backup-issues">
         <li v-for="entry in cloudReport.entries" :key="entry.localId">
-          <strong>{{ entry.name }} · {{ entry.status }}</strong>
+          <strong>{{ entry.name }} · {{ entry.status === 'missing' ? 'Sem correspondência' :
+            entry.status === 'ambiguous' ? 'Nome duplicado na nuvem' :
+            entry.status === 'not-owner' ? 'Sem permissão de proprietário' :
+            entry.status === 'truncated' ? 'Consulta incompleta' :
+            entry.status === 'occupied' ? 'Já existem dados na nuvem' :
+            'Módulos online consultados vazios' }}</strong>
           <span>{{ entry.detail }}</span>
           <small>Local: {{ entry.localCounts.transactions }} lançamentos,
             {{ entry.localCounts['recurring-bills'] }} contas,
