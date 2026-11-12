@@ -27,7 +27,7 @@ const month = (value: unknown): value is string => typeof value === 'string' && 
 const date = (value: unknown): value is string => typeof value === 'string' && DATE.test(value)
 const iso = (value: unknown) => str(value, 70) && !Number.isNaN(Date.parse(value as string))
 
-function allUnique(items: Row[]): boolean {
+function allUnique<T extends { id: string }>(items: T[]): boolean {
   const ids = items.map(item => item.id)
   return ids.every(id) && new Set(ids).size === ids.length
 }
@@ -47,10 +47,10 @@ export function validateRestorableFinancialBackup(snapshot: FinancialBackup): Fi
   for (const group of snapshot.workspaces) {
     const { workspace, bills, monthlyEntries, fixedExpenses, transactions, budgets } = group
     if (!id(workspace.id) || !str(workspace.name, 60) || !iso(workspace.createdAt) ||
-        !allUnique(bills as Row[]) || !allUnique(monthlyEntries as Row[]) ||
-        !allUnique(fixedExpenses as Row[]) || !allUnique(transactions as Row[]) ||
-        !allUnique(budgets.projects as Row[]) || !allUnique(budgets.items as Row[]) ||
-        !allUnique(budgets.quotes as Row[])) fail('identificadores ou espaços inválidos')
+        !allUnique(bills) || !allUnique(monthlyEntries) ||
+        !allUnique(fixedExpenses) || !allUnique(transactions) ||
+        !allUnique(budgets.projects) || !allUnique(budgets.items) ||
+        !allUnique(budgets.quotes)) fail('identificadores ou espaços inválidos')
     const billIds = new Set(bills.map(bill => bill.id))
     const projectIds = new Set(budgets.projects.map(project => project.id))
     const itemIds = new Set(budgets.items.map(item => item.id))

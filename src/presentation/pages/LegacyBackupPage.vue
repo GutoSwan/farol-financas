@@ -223,6 +223,10 @@ async function simulateMigration(): Promise<void> {
   }
 }
 
+function refreshAfterRestore(): void {
+  window.location.reload()
+}
+
 onMounted(() => { void refreshInventory() })
 onBeforeUnmount(disposeDownload)
 </script>
@@ -356,7 +360,7 @@ onBeforeUnmount(disposeDownload)
     </form>
     <p v-if="restoredSuccessfully" class="success" role="status">
       Restauração concluída. <button type="button" class="secondary-action"
-        @click="window.location.reload()">Atualizar para ver meus dados</button>
+        @click="refreshAfterRestore">Atualizar para ver meus dados</button>
     </p>
   </section>
   <section class="panel backup-stage" aria-label="Simulação da migração">
