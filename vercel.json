@@ -77,6 +77,10 @@
       "destination": "/index.html"
     },
     {
+      "source": "/backup-financeiro",
+      "destination": "/index.html"
+    },
+    {
       "source": "/vincular-dados-locais",
       "destination": "/index.html"
     },

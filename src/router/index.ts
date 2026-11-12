@@ -12,6 +12,7 @@ import BudgetsPage from '../presentation/pages/BudgetsPage.vue'
 import ComingSoonPage from '../presentation/pages/ComingSoonPage.vue'
 import CalendarPage from '../presentation/pages/CalendarPage.vue'
 import LegacyDataAccessPage from '../presentation/pages/LegacyDataAccessPage.vue'
+import LegacyBackupPage from '../presentation/pages/LegacyBackupPage.vue'
 import { localLegacyAccess, setVerifiedLocalUser } from '../infrastructure/persistence/legacyAccess'
 import AuthPage from '../presentation/pages/AuthPage.vue'
 import PhoneAuthPage from '../presentation/pages/PhoneAuthPage.vue'
@@ -44,6 +45,8 @@ const router = createRouter({
       { path: 'calendario', component: CalendarPage, meta: { title: 'Calendário' } },
       { path: 'presentes', component: GiftsPage, meta: { title: 'Presentes', requiresAdmin: true } },
       { path: 'relatorios/detalhes', component: MonthlyExpensesPage, meta: { title: 'Detalhes do mês' } },
+      { path: 'backup-financeiro', component: LegacyBackupPage,
+        meta: { title: 'Backup e restauração', requiresLegacyData: true } },
     ],
   },
   // A tela online fica fora do AppLayout: não lê/mostra dados locais de outra conta.

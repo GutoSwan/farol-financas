@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
-import { supabase } from '../../infrastructure/auth/supabase'
+ import { supabase } from '../../infrastructure/auth/supabase'
 import { localLegacyAccess } from '../../infrastructure/persistence/legacyAccess'
 import { getOnlineIdentity, listOnlineWorkspaces } from '../../infrastructure/api/onlineWorkspaces'
 import { analyzeLegacyMigration } from '../../application/use-cases/analyzeLegacyMigration'
@@ -14,8 +13,7 @@ import {
 import type { FinancialBackupSummary } from '../../infrastructure/backup/encryptedFinancialBackup'
 import { restoreLocalFinancialBackup, mayRestoreIntoCurrentBrowser } from '../../infrastructure/backup/restoreLocalFinancialBackup'
 
-const route = useRoute()
-const summary = ref<FinancialBackupSummary | null>(null)
+ const summary = ref<FinancialBackupSummary | null>(null)
 const inspected = ref<FinancialBackupSummary | null>(null)
 const inspectedFingerprint = ref('')
 const inspectedOwner = ref('')
@@ -234,11 +232,11 @@ onBeforeUnmount(disposeDownload)
 <template>
   <div class="heading">
     <div>
-      <p class="eyebrow">MIGRAÇÃO SEGURA · ETAPA 1</p>
+      <p class="eyebrow">PROTEÇÃO DE DADOS · BACKUP E RESTAURAÇÃO</p>
       <h1>Backup financeiro protegido</h1>
-      <p>Prepare uma cópia criptografada antes de migrarmos os registros deste navegador.</p>
+      <p>Exporte, confira ou restaure um backup criptografado neste navegador, sem substituir registros existentes.</p>
     </div>
-    <RouterLink class="secondary-action" :to="route.path.startsWith('/administracao') ? '/administracao' : '/'">{{ route.path.startsWith('/administracao') ? 'Voltar à Administração' : 'Voltar à visão geral' }}</RouterLink>
+    <RouterLink class="secondary-action" to="/">Voltar à visão geral</RouterLink>
   </div>
 
   <section class="panel">

@@ -12,7 +12,8 @@ presentes ou fotos.
 - Fechar outras abas da mesma Preview durante a restauração.
 
 ## Fluxo
-1. Abrir Backup financeiro, fazer login e confirmar AAL2.
+1. No Farol financeiro, usar Meu perfil > Backup e restauração ou /backup-financeiro;
+   entrar com a conta financeira e confirmar AAL2.
 2. Conferir arquivo .json (etapa 3) com senha do backup; o Farol mostra só o inventário.
 3. Na etapa 4, digitar novamente a senha e RESTAURAR, com confirmação explícita.
 4. O Farol valida de novo identidade/AAL2, conteúdo e fingerprint.

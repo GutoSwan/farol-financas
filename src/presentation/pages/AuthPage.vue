@@ -390,6 +390,7 @@ async function logout(): Promise<void> {
           <nav v-if="!restrictedSuperAdminRecovery" class="profile-quick-links" aria-label="Opções da minha conta">
             <RouterLink to="/seguranca"><UiIcon name="settings" :size="17" /> Segurança e autenticadores</RouterLink>
             <RouterLink to="/dados-online"><UiIcon name="folder" :size="17" /> Meus dados na nuvem</RouterLink>
+            <RouterLink to="/backup-financeiro"><UiIcon name="folder" :size="17" /> Backup e restauração</RouterLink>
           </nav>
           <section class="profile-password-panel" aria-label="Alterar senha da conta">
             <h2>Senha da conta</h2>
