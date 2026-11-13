@@ -94,7 +94,7 @@ export function clearTrust():void{
 type AuthClient={
   getUser:()=>Promise<{data:{user:{id:string}|null};error:unknown}>
   getSession:()=>Promise<{data:{session:{user:{id:string};access_token:string}|null};error:unknown}>
-  mfa:{getAuthenticatorAssuranceLevel:()=>Promise<{data:{currentLevel:string}|null};error:unknown}>}
+  mfa:{getAuthenticatorAssuranceLevel:()=>Promise<{data:{currentLevel:string}|null;error:unknown}>}
 }
 /** Depois de confirmar o autenticador, vincula a preferência à sessão AAL2. */
 export async function activateTrustAfterMfa(auth:AuthClient):Promise<boolean>{
