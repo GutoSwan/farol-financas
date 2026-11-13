@@ -28,6 +28,7 @@ const loading=ref(true)
 const checking=ref(false)
 const errorText=ref('')
 const reviewMessage=ref('')
+const cloudUnavailable=ref(false)
 let generation=0
 let unsubscribe: (()=>void)|null=null
 
@@ -97,6 +98,7 @@ function clearSensitive(): void {
   localId.value=''
   destinationId.value=''
   inspection.value=null
+  cloudUnavailable.value=false
   loading.value=false
   checking.value=false
 }
@@ -134,13 +136,22 @@ async function loadReview():Promise<void>{
   errorText.value=''
   reviewMessage.value=''
   try{
-    if(!apiConfigured)throw new Error('A API da nuvem não está configurada nesta Preview.')
     const owner=await confirmedOwner()
     const local=buildLocalFinancialBackup()
     const fingerprint=await fingerprintFinancialBackup(local)
-    const identity=await getOnlineIdentity()
-    if(identity.id!==owner)throw new Error('A API reconheceu uma conta diferente.')
-    const remote=await listOnlineWorkspaces()
+    // A falta da API NÃO impede a conferência local de uma conta já
+    // autenticada com MFA AAL2, mas bloqueia qualquer afirmação sobre destino.
+    let unavailable=!apiConfigured
+    let remote:OnlineWorkspace[]=[]
+    if(apiConfigured){
+      const identity=await getOnlineIdentity().catch(()=>null)
+      if(identity && identity.id!==owner)throw new Error('A API reconheceu uma conta diferente.')
+      if(!identity) unavailable=true
+      else {
+        try { remote=await listOnlineWorkspaces() }
+        catch { unavailable=true }
+      }
+    }
     if(await confirmedOwner(owner)!==owner ||
        await fingerprintFinancialBackup(buildLocalFinancialBackup())!==fingerprint){
       throw new Error('Os dados ou a conta mudaram durante a revisão.')
@@ -151,7 +162,10 @@ async function loadReview():Promise<void>{
     ownerId.value=owner
     localId.value=local.activeWorkspaceId
     remoteSpaces.value=remote
-    reviewMessage.value='Dados carregados para conferência. Nenhuma transferência foi iniciada.'
+    cloudUnavailable.value=unavailable
+    reviewMessage.value=unavailable
+      ? 'Registros locais disponíveis para conferência. A nuvem não pôde ser verificada neste ambiente; não há transferência habilitada.'
+      : 'Dados carregados para conferência. Nenhuma transferência foi iniciada.'
   }catch(cause){
     if(seq===generation){
       clearSensitive()
@@ -269,7 +283,10 @@ onBeforeUnmount(()=>{
             {{ space.name }} · {{ space.role==='OWNER'?'Proprietário':space.role==='EDITOR'?'Editor':'Leitura' }}
           </option>
         </select>
-        <p v-if="!remoteSpaces.length" class="migration-hint">
+        <p v-if="cloudUnavailable" class="migration-hint" role="status">
+          Consulta à nuvem indisponível nesta Preview. Revise os registros locais; a comparação online ficará pendente.
+        </p>
+        <p v-else-if="!remoteSpaces.length" class="migration-hint">
           Esta conta não tem espaços online disponíveis. Não é possível transferir dados ainda.
         </p>
         <div class="migration-actions">
