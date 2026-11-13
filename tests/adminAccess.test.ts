@@ -23,7 +23,7 @@ describe('Acesso ao painel de Presentes: conta administradora', () => {
     expect(layout).toContain('to="/presentes"')
     expect(routes).toContain("meta: { title: 'Presentes', requiresAdmin: true }")
     expect(routes).toContain('supabase.auth.getUser()')
-    expect(routes).toContain('isFarolAdmin(data.user)')
+    expect(routes).toContain('isFarolAdmin(validatedUser)')
   })
 
   it('a página também impede leitura, criação e exclusão sem papel de admin', () => {
