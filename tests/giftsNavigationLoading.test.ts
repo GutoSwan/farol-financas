@@ -19,6 +19,6 @@ describe('Presentes sem espera silenciosa e com acesso protegido', () => {
     expect(router).toContain("meta: { title: 'Presentes', requiresAdmin: true }")
     expect(router).toContain("const access = localLegacyAccess(validatedUser.id)")
     const body=router.slice(router.indexOf('router.beforeEach(async'), router.indexOf('router.afterEach'))
-    expect((body.match(/supabase\.auth\.getUser\(\)/g) ?? []).toHaveLength(1)
+    expect((body.match(/supabase\.auth\.getUser\(\)/g) ?? [])).toHaveLength(1)
   })
 })
