@@ -41,3 +41,28 @@ export function isVerifiedDevPreviewEnvironment(env: NodeJS.ProcessEnv): boolean
     return false
   }
 }
+
+/**
+ * Diagnóstico codificado e não sensível: nunca imprime URL, usuário completo,
+ * senha ou segredo. Usado apenas nos logs privados de /ready.
+ */
+export function readonlyQaConfigIssue(env: NodeJS.ProcessEnv): string {
+  if (env.FAROL_PREVIEW_ADMIN_QA_READONLY !== 'true') return 'qa-mode-not-enabled'
+  if (env.FAROL_DEV_SUPABASE_REF !== 'tvirkrjkgdtybtcundon') return 'unexpected-dev-project'
+  if (env.FAROL_FINANCIAL_WRITES_ENABLED === 'true' ||
+      env.FAROL_INVOICE_UPLOADS_ENABLED === 'true') return 'financial-writes-enabled'
+  try {
+    const supabase = new URL(env.SUPABASE_URL ?? '')
+    if (supabase.origin !== 'https://tvirkrjkgdtybtcundon.supabase.co' ||
+        supabase.pathname !== '/') return 'supabase-dev-url'
+    const db = new URL(env.DATABASE_URL ?? '')
+    if (!['postgresql:','postgres:'].includes(db.protocol)) return 'db-protocol'
+    if (!db.hostname.endsWith('.pooler.supabase.com')) return 'db-not-supabase-pooler'
+    if (db.port !== '6543') return 'db-not-transaction-pooler'
+    if (db.pathname !== '/postgres') return 'db-name'
+    if (decodeURIComponent(db.username) !== 'farol_preview_adminqa_ro.tvirkrjkgdtybtcundon')
+      return 'db-role-not-readonly'
+    if (db.password.length < 24) return 'db-password-missing-or-short'
+    return 'unexpected-guard-mismatch'
+  } catch { return 'db-connection-url-invalid' }
+}

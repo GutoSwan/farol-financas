@@ -8,7 +8,7 @@ import type { TransactionRepository } from './domain/repositories/TransactionRep
 import type { FinancialCatalogRepository } from './domain/repositories/FinancialCatalogRepository.js'
 import type { FinancialCatalogMutations } from './domain/repositories/FinancialCatalogMutations.js'
 import type { InvoiceRepository } from './domain/repositories/InvoiceRepository.js'
-import { isVerifiedDevPreviewEnvironment } from './infrastructure/security/environmentIsolation.js'
+import { isVerifiedDevPreviewEnvironment, readonlyQaConfigIssue } from './infrastructure/security/environmentIsolation.js'
 import { DevAuthOnlyQaVerifier, isVerifiedAuthOnlyDevPreview } from './infrastructure/auth/DevAuthOnlyQaVerifier.js'
 import type { PrismaTransactionRepository } from './infrastructure/repositories/PrismaTransactionRepository.js'
 import type { LegacyConnectionService } from './application/use-cases/PrismaLegacyTransactionConnectionService.js'
@@ -343,7 +343,12 @@ const app = buildApp({
     if (authOnlyQa) return isVerifiedAuthOnlyDevPreview(process.env) &&
       !!qaVerifier && await qaVerifier.ready()
     // Nem mesmo o endpoint readiness deve contactar um banco inesperado.
-    if (!isVerifiedDevPreviewEnvironment(process.env)) return false
+    if (!isVerifiedDevPreviewEnvironment(process.env)) {
+      if (process.env.VERCEL_ENV === 'preview') {
+        console.warn('[farol-api] Preview QA isolada indisponível:', readonlyQaConfigIssue(process.env))
+      }
+      return false
+    }
     // Validação de variáveis e consulta SQL apenas em /ready, nunca em /health.
     const config = readConfig(process.env)
     if (process.env.VERCEL_ENV === 'preview') {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { isVerifiedDevPreviewEnvironment } from '../src/infrastructure/security/environmentIsolation.js'
+import { isVerifiedDevPreviewEnvironment, readonlyQaConfigIssue } from '../src/infrastructure/security/environmentIsolation.js'
 const ref='tvirkrjkgdtybtcundon'
 const base={
   VERCEL_ENV:'preview',
@@ -14,6 +14,14 @@ const base={
   FAROL_INVOICE_UPLOADS_ENABLED:'false',
 }
 describe('Conta técnica QA isolada e sem escrita',()=>{
+  it('classifica o erro sem expor senha, endereço ou token',()=>{
+    expect(readonlyQaConfigIssue(base)).toBe('unexpected-guard-mismatch')
+    expect(readonlyQaConfigIssue({...base,DATABASE_URL:base.DATABASE_URL.replace('farol_preview_adminqa_ro.','postgres.')})).toBe('db-role-not-readonly')
+    expect(readonlyQaConfigIssue({...base,DATABASE_URL:base.DATABASE_URL.replace(':6543/',':5432/')})).toBe('db-not-transaction-pooler')
+    expect(readonlyQaConfigIssue({...base,DATABASE_URL:'not-a-url'})).toBe('db-connection-url-invalid')
+    expect(readonlyQaConfigIssue({...base,DATABASE_URL:base.DATABASE_URL.replace('test-only-not-a-secret-123456','short')})).toBe('db-password-missing-or-short')
+    expect(JSON.stringify(readonlyQaConfigIssue(base))).not.toContain('test-only-not-a-secret-123456')
+  })
   it('aceita somente Supabase Dev e role limitado',()=>{
     expect(isVerifiedDevPreviewEnvironment(base)).toBe(true)
     expect(isVerifiedDevPreviewEnvironment({...base,SUPABASE_URL:'https://xwzbcabyjhmgggbkaxvt.supabase.co'})).toBe(false)
