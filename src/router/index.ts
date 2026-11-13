@@ -26,6 +26,8 @@ import { requiredMfaRedirect } from './mfaNavigation'
 import { isFarolAdmin, isFarolSuperAdmin } from '../domain/auth/adminAccess'
 import { routeDocumentTitle } from './documentTitle'
 import { allowedSuperAdminRecoveryRoute } from './superAdminRecovery'
+import { canReuseSidebarAuth, isFastSidebarPath } from './fastSidebarNavigation'
+import type { VerifiedSidebarAuth } from './fastSidebarNavigation'
 import { useAuth } from '../presentation/composables/useAuth'
 import AccountSecurityPage from '../presentation/pages/AccountSecurityPage.vue'
 
@@ -70,9 +72,30 @@ const router = createRouter({
   ],
 })
 
+/**
+ * Somente navegações ENTRE páginas comuns da sidebar podem reutilizar por até
+ * 45 segundos uma validação server-side de identidade e MFA já concluída.
+ * Restauração, backup, Presentes, autenticação e Admin SEMPRE passam pelo fluxo completo.
+ * JWT, dono local e validade do token são conferidos novamente em cada clique.
+ */
+let recentSidebarAuth: VerifiedSidebarAuth | null = null
+function invalidateRecentSidebarAuth(): void { recentSidebarAuth = null }
+if (supabase) {
+  supabase.auth.onAuthStateChange((event) => {
+    if (event !== 'INITIAL_SESSION') invalidateRecentSidebarAuth()
+  })
+}
+if (typeof window !== 'undefined') {
+  window.addEventListener('focus', invalidateRecentSidebarAuth)
+  window.addEventListener('storage', invalidateRecentSidebarAuth)
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') invalidateRecentSidebarAuth()
+  })
+}
+
 // Frontend controla a navegação, mas APIs financeiras devem validar AAL2
 // no SERVIDOR antes de consultar dados, mesmo se alguém ignorar o roteador.
-router.beforeEach(async (to) => {
+router.beforeEach(async (to, from) => {
   setVerifiedLocalUser(null)
   const { recoveringPassword, recoveryMfaVerified } = useAuth()
   let superAdminRecoveryProfile = false
@@ -80,7 +103,31 @@ router.beforeEach(async (to) => {
     return canAccessWithoutSession(to.path) ? true : { path: '/entrar', replace: true }
   }
 
+  // A revisão rápida NÃO confia em getSession() sozinho. Só aceita um token
+  // idêntico ao que foi previamente verificado com getUser() e MFA AAL2.
+  // Permissões financeiras continuam obrigatoriamente validadas pela API.
+  if (!recoveringPassword.value && recentSidebarAuth &&
+      isFastSidebarPath(from.path) && isFastSidebarPath(to.path)) {
+    try {
+      const { data, error } = await supabase.auth.getSession()
+      const current = data.session
+      if (!error && current && canReuseSidebarAuth(recentSidebarAuth, {
+        userId: current.user.id,
+        accessToken: current.access_token,
+        expiresAt: current.expires_at ?? null,
+      })) {
+        setVerifiedLocalUser(current.user.id)
+        if (localLegacyAccess(current.user.id) === 'allowed') return true
+      }
+    } catch {
+      // Token inválido, sessão trocada ou falha local: exigir a verificação completa.
+    }
+  }
+  invalidateRecentSidebarAuth()
+
   let authenticated = false
+  let verifiedUserId: string | null = null
+  let mfaAal2Verified = false
   try {
     // getSession() lê o estado local e não garante que o usuário ainda esteja válido.
     // getUser() consulta o Supabase Auth e valida o token antes de abrir rotas privadas.
@@ -101,8 +148,8 @@ router.beforeEach(async (to) => {
         setVerifiedLocalUser(null)
       }
     } else if (authenticated && data.user) {
-      // Login comum, inclusive super_admin: o acesso financeiro continua limitado
-      // ao próprio usuário, ao vínculo local e às permissões server-side da API.
+      // Login comum, inclusive super_admin: a identidade já foi validada no Auth.
+      verifiedUserId = data.user.id
       setVerifiedLocalUser(data.user.id)
     }
   } catch {
@@ -126,6 +173,7 @@ router.beforeEach(async (to) => {
       // A lista de fatores verificados é consultada no Supabase, nunca em
       // localStorage: apagar o app do celular não desativa o TOTP no servidor.
       const factors = await listVerifiedTotpFactors()
+      mfaAal2Verified = data.currentLevel === 'aal2' && factors.length > 0
       // Durante recuperação do Super Admin, Meu perfil exige AAL2 real e fator ativo.
       if (superAdminRecoveryProfile &&
           (data.currentLevel !== 'aal2' || factors.length === 0)) {
@@ -181,6 +229,26 @@ router.beforeEach(async (to) => {
     }
   }
 
+  // Só guardar a autorização recente após passar por sessão remota válida,
+  // Authenticator AAL2 e vínculo local da MESMA identidade.
+  if (!recoveringPassword.value && verifiedUserId && mfaAal2Verified &&
+      isFastSidebarPath(to.path) && localLegacyAccess(verifiedUserId) === 'allowed') {
+    try {
+      const { data, error } = await supabase.auth.getSession()
+      const current = data.session
+      if (!error && current && current.user.id === verifiedUserId &&
+          typeof current.expires_at === 'number') {
+        recentSidebarAuth = {
+          userId: verifiedUserId,
+          accessToken: current.access_token,
+          expiresAt: current.expires_at,
+          verifiedAt: Date.now(),
+        }
+      }
+    } catch {
+      invalidateRecentSidebarAuth()
+    }
+  }
   return true
 })
 
