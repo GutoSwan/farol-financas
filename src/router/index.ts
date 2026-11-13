@@ -86,21 +86,25 @@ router.beforeEach(async (to) => {
     // getUser() consulta o Supabase Auth e valida o token antes de abrir rotas privadas.
     const { data, error } = await supabase.auth.getUser()
     authenticated = !error && !!data.user
-    if (authenticated && data.user && isFarolSuperAdmin(data.user)) {
+    if (authenticated && data.user && isFarolSuperAdmin(data.user) && recoveringPassword.value) {
       const allowed = allowedSuperAdminRecoveryRoute(
         to.path, recoveringPassword.value, recoveryMfaVerified.value,
       )
       if (!allowed) {
-        // A conta Super Admin continua bloqueada em todas as áreas financeiras.
+        // Durante recuperação de senha, o Super Admin só acessa as telas estritamente permitidas.
         authenticated = false
         setVerifiedLocalUser(null)
         await supabase.auth.signOut({ scope: 'local' })
       } else {
         superAdminRecoveryProfile = to.path === '/conta'
-        // Nunca dar acesso aos dados financeiros locais neste site.
+        // Nunca vincular dados locais durante a recuperação por e-mail.
         setVerifiedLocalUser(null)
       }
-    } else if (authenticated && data.user) setVerifiedLocalUser(data.user.id)
+    } else if (authenticated && data.user) {
+      // Login comum, inclusive super_admin: o acesso financeiro continua limitado
+      // ao próprio usuário, ao vínculo local e às permissões server-side da API.
+      setVerifiedLocalUser(data.user.id)
+    }
   } catch {
     // Não mostrar telas financeiras se a sessão não puder ser restaurada.
   }
@@ -122,7 +126,7 @@ router.beforeEach(async (to) => {
       // A lista de fatores verificados é consultada no Supabase, nunca em
       // localStorage: apagar o app do celular não desativa o TOTP no servidor.
       const factors = await listVerifiedTotpFactors()
-      // A exceção de Meu perfil para Super Admin exige AAL2 REAL e fator ativo.
+      // Durante recuperação do Super Admin, Meu perfil exige AAL2 real e fator ativo.
       if (superAdminRecoveryProfile &&
           (data.currentLevel !== 'aal2' || factors.length === 0)) {
         return { path: '/redefinir-senha', replace: true }
@@ -136,7 +140,7 @@ router.beforeEach(async (to) => {
       )
       if (target) return { path: target, replace: true }
     } catch {
-      // Não encaminhar um Super Admin em recuperação para login financeiro.
+      // Não encaminhar um Super Admin em recuperação para o fluxo financeiro.
       if (superAdminRecoveryProfile) return { path: '/redefinir-senha', replace: true }
       // Em falha da verificação MFA, NÃO liberar dados financeiros.
       if (to.path !== '/verificar-2fa' && to.path !== '/configurar-2fa') {
