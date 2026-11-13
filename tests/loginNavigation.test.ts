@@ -20,7 +20,7 @@ describe('Fluxo de login do Farol', () => {
     expect(shouldRedirectLoggedInVisitor('/cadastro', true)).toBe(true)
     expect(shouldRedirectLoggedInVisitor('/entrar', false)).toBe(false)
     expect(shouldRedirectLoggedInVisitor('/cadastro', false)).toBe(false)
-    expect(routerSource).toContain('router.beforeEach(async (to) =>')
+    expect(routerSource).toContain('router.beforeEach(async (to, from) =>')
   })
 
   it('não interfere na recuperação de senha, edição do perfil ou dashboard', () => {
