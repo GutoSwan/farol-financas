@@ -17,6 +17,11 @@ const localAccessAllowed = computed(() => !!user.value && localLegacyAccess(user
 const profileMenuOpen = ref(false)
 const profileBusy = ref(false)
 const profileError = ref('')
+const loadingGiftRoute = ref(false)
+function openGiftRoute(): void { loadingGiftRoute.value = true }
+// O aviso aparece IMEDIATAMENTE, enquanto o guard aguarda login e 2FA.
+const stopGiftProgress = router.afterEach(() => { loadingGiftRoute.value = false })
+const stopGiftError = router.onError(() => { loadingGiftRoute.value = false })
 const { isDark, toggleTheme } = useTheme()
 const { workspaces, activeWorkspaceId, error: workspaceError, selectWorkspace, createWorkspace, deleteWorkspace } = useWorkspaces()
 const managing = ref(false)
@@ -78,6 +83,8 @@ watch(mobileMenuOpen, async (open) => {
 onMounted(() => window.addEventListener('resize', onViewportResize))
 onBeforeUnmount(() => {
   window.removeEventListener('resize', onViewportResize)
+  stopGiftProgress()
+  stopGiftError()
   if (mobileMenuOpen.value) document.body.style.overflow = originalOverflow
 })
 const newName = ref('')
@@ -160,7 +167,8 @@ function removeWorkspace(space: FinancialWorkspace): void {
           <span>{{ link.label }}</span>
         </RouterLink>
         <RouterLink v-if="isAdmin" to="/presentes" class="side-nav-link"
-          :class="{ active: route.path === '/presentes' }" @click="closeMobileMenu(true)">
+          :class="{ active: route.path === '/presentes' }"
+          @click="openGiftRoute(); closeMobileMenu(true)">
           <UiIcon name="gift" :size="17" /><span>Presentes</span>
         </RouterLink>
       </nav>
@@ -256,6 +264,10 @@ function removeWorkspace(space: FinancialWorkspace): void {
       </header>
       <BackNavigation v-if="route.path !== '/'" />
       <p v-if="workspaceError" class="workspace-error" role="alert">{{ workspaceError }}</p>
+      <div v-if="loadingGiftRoute" class="gift-route-loading" role="status" aria-live="polite" aria-label="Abrindo a página de Presentes">
+        <span class="gift-route-spinner" aria-hidden="true"></span>
+        <div><strong>Abrindo Presentes...</strong><small>Conferindo seu acesso com segurança.</small></div>
+      </div>
       <main class="content" :key="activeWorkspaceId"><RouterView /></main>
     </div>
   </div>

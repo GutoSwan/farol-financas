@@ -128,11 +128,13 @@ router.beforeEach(async (to, from) => {
   let authenticated = false
   let verifiedUserId: string | null = null
   let mfaAal2Verified = false
+  let validatedUser: Awaited<ReturnType<typeof supabase.auth.getUser>>['data']['user'] = null
   try {
     // getSession() lê o estado local e não garante que o usuário ainda esteja válido.
     // getUser() consulta o Supabase Auth e valida o token antes de abrir rotas privadas.
     const { data, error } = await supabase.auth.getUser()
     authenticated = !error && !!data.user
+    validatedUser = authenticated ? data.user : null
     if (authenticated && data.user && isFarolSuperAdmin(data.user) && recoveringPassword.value) {
       const allowed = allowedSuperAdminRecoveryRoute(
         to.path, recoveringPassword.value, recoveryMfaVerified.value,
@@ -198,24 +200,20 @@ router.beforeEach(async (to, from) => {
   }
 
   if (to.meta.requiresAdmin) {
-    try {
-      const { data, error } = await supabase.auth.getUser()
-      if (error || !data.user) return { path: '/entrar', replace: true }
-      if (!isFarolAdmin(data.user)) return { path: '/', replace: true }
-    } catch {
-      return { path: '/entrar', replace: true }
-    }
+    // A identidade e o papel já vieram do getUser remoto nesta navegação.
+    // Repetir a chamada aqui adicionava uma ida desnecessária ao servidor.
+    if (!validatedUser) return { path: '/entrar', replace: true }
+    if (!isFarolAdmin(validatedUser)) return { path: '/', replace: true }
   }
 
   if (to.meta.requiresLegacyData || to.path === '/vincular-dados-locais') {
     // Nunca carregar o layout, a sidebar ou os composables locais antes
     // de verificar o vínculo da conta; eles leem localStorage no setup.
-    const { data, error } = await supabase.auth.getUser()
-    if (error || !data.user) {
+    if (!validatedUser) {
       setVerifiedLocalUser(null)
       return { path: '/entrar', replace: true }
     }
-    const access = localLegacyAccess(data.user.id)
+    const access = localLegacyAccess(validatedUser.id)
     // Se este navegador pertence a outra identidade, abrir somente a nuvem
     // sem inicializar telas nem repositórios financeiros locais.
     if (to.meta.requiresLegacyData && access === 'different-user') {

@@ -239,3 +239,24 @@
   .gift-person-option { transition: none; }
   .gift-person-option:hover { transform: none; }
 }
+
+/* Resposta visual imediata durante a verificação da rota administrativa. */
+.gift-route-loading {
+  display: flex; align-items: center; gap: 14px;
+  margin: 14px 22px 0; padding: 14px 17px;
+  border: 1px solid var(--farol-border, #c9d4e1);
+  background: var(--farol-card, #fff);
+  color: var(--farol-text, #243247);
+  border-radius: 12px;
+}
+.gift-route-loading > div { display: grid; gap: 3px; }
+.gift-route-loading strong { font-size: 13px; }
+.gift-route-loading small { font-size: 12px; color: var(--farol-muted, #67788e); }
+.gift-route-spinner {
+  width: 22px; height: 22px; flex: 0 0 22px;
+  border: 3px solid var(--farol-border, #c9d4e1);
+  border-top-color: var(--farol-wine, #893b54);
+  border-radius: 50%; animation: farol-gift-spin .7s linear infinite;
+}
+@keyframes farol-gift-spin { to { transform: rotate(360deg) } }
+@media (prefers-reduced-motion: reduce) { .gift-route-spinner { animation-duration: 2s } }
