@@ -179,6 +179,14 @@ function getVerifier(): Promise<AuthVerifier> {
           // Somente o servidor consulta auth.sessions; não expor service_role no frontend.
           // Query parametrizada, que bloqueia o JWT após logout/remoção da conta.
           const prisma = await getPrisma()
+          // A conta técnica Dev NÃO recebe acesso direto às tabelas auth.
+          // Uma função PRIVADA, restrita a esse papel, devolve apenas true/false.
+          if (process.env.FAROL_PREVIEW_ADMIN_QA_READONLY === 'true') {
+            const flags = await prisma.$queryRaw<Array<{ active: boolean }>>`
+              SELECT farol_qa_private.is_active_session(${userId}::uuid, ${sessionId}::uuid) AS active
+            `
+            return flags.length === 1 && flags[0].active === true
+          }
           const rows = await prisma.$queryRaw<Array<{ active: boolean }>>`
             SELECT EXISTS (
               SELECT 1 FROM auth.sessions s
@@ -258,11 +266,15 @@ guardedFastify.addHook('onRequest', async (request, reply) => {
     return
   }
 
-  // Isolated Admin QA has no write privileges, including HTTP mutations.
+  // A conta técnica Dev jamais recebe operações de escrita ou Admin.
   if (process.env.FAROL_PREVIEW_ADMIN_QA_READONLY === 'true' &&
-      path.startsWith('/api/v1/') &&
-      !['GET', 'HEAD', 'OPTIONS'].includes(request.method)) {
-    return reply.code(403).send({ error: 'Preview administrativa somente leitura.' })
+      path.startsWith('/api/v1/')) {
+    if (path.startsWith('/api/v1/admin/')) {
+      return reply.code(404).send({ error: 'Recurso indisponível nesta Preview.' })
+    }
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(request.method)) {
+      return reply.code(403).send({ error: 'Preview financeira somente leitura.' })
+    }
   }
   if (path.startsWith('/api/v1/') &&
       path !== '/api/v1/health' && path !== '/api/v1/ready' &&
@@ -274,6 +286,9 @@ guardedFastify.addHook('onRequest', async (request, reply) => {
 const app = buildApp({
   auth,
   async checkSuperAdmin(userId, token) {
+    // A Preview de migração é estritamente financeira e só de leitura.
+    // Não concede nem inspeciona acesso ao Farol Admin.
+    if (process.env.FAROL_PREVIEW_ADMIN_QA_READONLY === 'true') return false
     if (authOnlyQa) {
       if (!isVerifiedAuthOnlyDevPreview(process.env) || !qaVerifier) return false
       return qaVerifier.checkSuperAdmin(userId, token)

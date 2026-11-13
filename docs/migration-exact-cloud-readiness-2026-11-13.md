@@ -30,3 +30,11 @@
 - Garantir reconciliação de espaço ocupado, falhas de rede e alterações simultâneas.
 - Antes da transferência, usuário deve validar backup e aprovar destino e totais.
 - Os dados locais não são apagados automaticamente.
+
+## Credencial técnica de leitura (Supabase Dev)
+
+- Projeto **exclusivo Dev**: `tvirkrjkgdtybtcundon`. Papel `farol_preview_adminqa_ro`, sem `BYPASSRLS`, sem `CREATE/INSERT/UPDATE/DELETE` e com `LOGIN` ativado separadamente do schema.
+- `SELECT` foi concedido às 11 tabelas financeiras necessárias. Políticas RLS `TO farol_preview_adminqa_ro` preservam bloqueio a todos os demais papéis; a API valida JWT, sessão viva, AAL2 e proprietário antes de consultar os dados.
+- Verificação de sessão é feita por `farol_qa_private.is_active_session(UUID, UUID)`, função SQL SECURITY DEFINER em schema **não exposto**, com `search_path` vazio e `EXECUTE` concedido exclusivamente ao papel técnico. Nenhum acesso direto a `auth.users` ou `auth.sessions`.
+- O frontend QA usa Supabase Dev; o backend QA usa uma `DATABASE_URL` de pooler Dev, guardada somente na Vercel. O verificador de ambiente rejeita outros projetos/usuários de DB e só permite GET.
+- Sem ativação da rota `legacy-connect`, sem alteração dos dados financeiros reais e sem publicação em produção.
