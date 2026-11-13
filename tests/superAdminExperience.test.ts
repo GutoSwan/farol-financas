@@ -8,7 +8,7 @@ const login=read('src/presentation/pages/AuthPage.vue')
 const gifts=read('src/presentation/pages/GiftsPage.vue')
 const admin=read('admin-web/src/App.vue')
 
-describe('Super Admin separado do Farol financeiro',()=>{
+describe('Super Admin usa o Farol normal sem misturar permissões administrativas',()=>{
  it('papeis de Presentes e Super Admin sao distintos',()=>{
   expect(isFarolAdmin({app_metadata:{farol_role:'administrador'}})).toBe(true)
   expect(isFarolSuperAdmin({app_metadata:{farol_role:'administrador'}})).toBe(false)
@@ -19,13 +19,15 @@ describe('Super Admin separado do Farol financeiro',()=>{
   expect(routes).not.toContain("path: '/administracao'")
   expect(layout).not.toContain('to="/administracao"')
   expect(login).not.toContain('to="/administracao"')
-  expect(routes).toContain("signOut({ scope: 'local' })")
+  expect(routes).toContain('isFarolSuperAdmin(data.user) && recoveringPassword.value')
+  expect(login).not.toContain('Esta conta pertence exclusivamente ao site Farol Admin.')
+  expect(login).not.toContain('if (isFarolSuperAdmin(identity.user))')
   expect(routes).toContain('allowedSuperAdminRecoveryRoute(')
   expect(routes).toContain("superAdminRecoveryProfile = to.path === '/conta'")
   expect(routes).toContain("data.currentLevel !== 'aal2' || factors.length === 0")
   expect(login).toContain('restrictedSuperAdminRecovery')
   expect(login).toContain('v-if="!restrictedSuperAdminRecovery" class="profile-quick-links"')
-  expect(login).toContain('isFarolSuperAdmin(identity.user)')
+  expect(login).toContain('restrictedSuperAdminRecovery')
  })
  it('site Admin usa senha, MFA e autorizacao da API',()=>{
   expect(admin).toContain("storageKey: 'farol-admin-web-dev-v1'")
