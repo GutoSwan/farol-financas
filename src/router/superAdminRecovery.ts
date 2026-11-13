@@ -1,10 +1,10 @@
 /**
- * O Farol financeiro não aceita uma sessão Super Admin para áreas privadas.
- * Exceção estritamente limitada à recuperação por e-mail (rota pública) e
- * ao perfil de troca de senha APÓS confirmação do TOTP pelo Supabase.
+ * Uma sessão Super Admin de login NORMAL pode acessar o Farol financeiro como
+ * qualquer usuário, mantendo MFA, vínculo local e isolamento pelo backend.
  *
- * A autorização AAL2 e o papel são verificados novamente no router e no
- * servidor Supabase antes de alterar a senha. Nunca liberar finanças.
+ * Já durante a RECUPERAÇÃO de senha por e-mail, o acesso é restrito à rota
+ * pública de redefinição e ao perfil APÓS confirmação TOTP no Supabase.
+ * Essa sessão temporária não deve liberar nenhuma tela financeira.
  */
 export function allowedSuperAdminRecoveryRoute(
   path: string,
