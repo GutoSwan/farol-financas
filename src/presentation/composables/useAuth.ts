@@ -9,6 +9,7 @@ import { parseRecoveryConfirmationLink } from '../../domain/auth/passwordRecover
 import { safeAuthRedirect } from '../../domain/auth/authRedirect'
 import { recoveryEmailRequestError } from '../../domain/auth/recoveryEmailRateLimit'
 import { getTotpAssurance, listVerifiedTotpFactors, verifyTotpCode } from '../../infrastructure/auth/totpMfa'
+import { clearTrust, trustedSessionExpired } from '../../infrastructure/auth/trustedComputer'
 import type { ProfileIcon } from '../../domain/profile/profile'
 
 const session = ref<Session | null>(null)
@@ -60,6 +61,7 @@ if (supabase) {
       startRecoverySession()
     }
     if (event === 'SIGNED_OUT') {
+      clearTrust()
       // Revogar imediatamente a elegibilidade para dados financeiros locais.
       setVerifiedLocalUser(null)
       invalidateFinancialUiSession()
@@ -82,7 +84,10 @@ if (supabase) {
     void refreshCurrentUser()
   }).catch(() => { ready.value = true })
   if (typeof window !== 'undefined') {
-    window.addEventListener('focus', () => { void refreshCurrentUser() })
+    window.addEventListener('focus', () => {
+      if (trustedSessionExpired()) { void supabase!.auth.signOut({ scope: 'local' }); return }
+      void refreshCurrentUser()
+    })
   }
 }
 
@@ -309,6 +314,7 @@ export function useAuth() {
   }
 
   async function signOut(): Promise<void> {
+    clearTrust()
     const { error } = await client().auth.signOut()
     if (error) throw new Error(error.message)
     // Não apaga os dados locais do Farol durante a migração.
