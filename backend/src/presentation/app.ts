@@ -9,6 +9,7 @@ import type { FinancialCatalogRepository } from '../domain/repositories/Financia
 import type { CatalogKind, CatalogCreate, CatalogUpdate, FinancialCatalogMutations } from '../domain/repositories/FinancialCatalogMutations.js'
 import { StaleFinancialRecordError } from '../domain/errors/StaleFinancialRecordError.js'
 import type { LegacyConnectionService } from '../application/use-cases/PrismaLegacyTransactionConnectionService.js'
+import { LegacyReadinessForbiddenError, type LegacyReadinessInspector } from '../application/use-cases/LegacyReadinessInspector.js'
 import { LegacyConnectionValidationError, LegacyConnectionAccessError, LegacyConnectionOccupiedError } from '../application/use-cases/PrismaLegacyTransactionConnectionService.js'
 import { LegacyMappingConflictError } from '../infrastructure/repositories/PrismaLegacyImportMappingService.js'
 
@@ -126,6 +127,8 @@ export interface AppDependencies {
   /** Flag independente: nunca habilitar migração via flag geral de escrita. */
   allowLegacyConnectionWrites?: boolean
   legacyConnectionService?: LegacyConnectionService
+  /** Leitura exata em transação: não habilita a conexão de dados legados. */
+  legacyReadinessInspector?: LegacyReadinessInspector
 }
 
 // Permite que o entrypoint serverless crie Fastify diretamente para o detector da Vercel.
@@ -400,6 +403,43 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
     return reply.code(202).send({ data: result })
   })
 
+
+  /**
+   * Prévia exata da nuvem. Sem body financeiro e sem writes.
+   * Autenticado por JWT, AAL2, dono OWNER no serviço E no snapshot Prisma.
+   * Resposta contém apenas contagens, sem valores ou nomes de terceiros.
+   */
+  app.get<{ Params: { workspaceId: string } }>(
+    '/api/v1/workspaces/:workspaceId/legacy-readiness', async (request, reply) => {
+      const identity = await authorized(request, reply)
+      if (!identity) return
+      if (identity.assuranceLevel !== 'aal2') {
+        return reply.code(403).send({ error: 'Confirme o Authenticator.' })
+      }
+      const id = z.string().uuid().safeParse(request.params.workspaceId)
+      if (!id.success) return reply.code(404).send({ error: 'Espaço não encontrado.' })
+      try {
+        await deps.workspaceService.requireMember(identity.userId, id.data, ['OWNER'])
+      } catch (error) {
+        if (error instanceof Error && error.message === 'Acesso negado ao espaço financeiro.') {
+          return reply.code(404).send({ error: 'Espaço não encontrado.' })
+        }
+        return reply.code(503).send({ error: 'Não foi possível conferir o destino.' })
+      }
+      if (!deps.legacyReadinessInspector) {
+        return reply.code(503).send({ error: 'Conferência indisponível.' })
+      }
+      try {
+        const result = await deps.legacyReadinessInspector.inspect(identity.userId, id.data)
+        return { data: result }
+      } catch (error) {
+        if (error instanceof LegacyReadinessForbiddenError) {
+          return reply.code(404).send({ error: 'Espaço não encontrado.' })
+        }
+        return reply.code(503).send({ error: 'Não foi possível conferir o destino.' })
+      }
+    },
+  )
 
   // Primeira conexão real: associar espaço e ATÉ 25 lançamentos.
   // Desativada em produção e Preview até auditoria E2E; nunca confiar no

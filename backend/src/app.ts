@@ -12,6 +12,7 @@ import { isVerifiedDevPreviewEnvironment } from './infrastructure/security/envir
 import { DevAuthOnlyQaVerifier, isVerifiedAuthOnlyDevPreview } from './infrastructure/auth/DevAuthOnlyQaVerifier.js'
 import type { PrismaTransactionRepository } from './infrastructure/repositories/PrismaTransactionRepository.js'
 import type { LegacyConnectionService } from './application/use-cases/PrismaLegacyTransactionConnectionService.js'
+import type { LegacyReadinessInspector } from './application/use-cases/LegacyReadinessInspector.js'
 import type { AuthVerifier } from './infrastructure/auth/SupabaseJwtVerifier.js'
 import type { PrismaWorkspaceRepository } from './infrastructure/repositories/PrismaWorkspaceRepository.js'
 import type { PrismaClient } from '@prisma/client'
@@ -137,6 +138,16 @@ const lazyLegacyConnection: LegacyConnectionService = {
       getPrisma(), import('./application/use-cases/PrismaLegacyTransactionConnectionService.js'),
     ])
     return new module.PrismaLegacyTransactionConnectionService(prisma).connect(ownerUserId,workspaceId,data)
+  },
+}
+
+// A leitura exata só inicializa Prisma quando o usuário solicita a conferência.
+const lazyReadiness: LegacyReadinessInspector = {
+  async inspect(ownerUserId, workspaceId) {
+    const [prisma, { PrismaLegacyReadinessInspector }] = await Promise.all([
+      getPrisma(), import('./infrastructure/repositories/PrismaLegacyReadinessInspector.js'),
+    ])
+    return new PrismaLegacyReadinessInspector(prisma).inspect(ownerUserId, workspaceId)
   },
 }
 
@@ -296,6 +307,7 @@ const app = buildApp({
   financialCatalogMutations: lazyMutations,
   invoiceRepository: lazyInvoices,
   legacyConnectionService: lazyLegacyConnection,
+  legacyReadinessInspector: lazyReadiness,
   // Segurança: sem ativação por variável ambiental, mesmo se escritas comuns
   // estiverem habilitadas. Liberar só após QA real e revisão separada.
   allowLegacyConnectionWrites: false,
