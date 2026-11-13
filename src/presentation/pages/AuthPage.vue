@@ -165,11 +165,6 @@ async function submit(): Promise<void> {
   try {
     if (props.mode === 'login') {
       await signIn(email.value, password.value)
-      const { data: identity } = await supabase!.auth.getUser()
-      if (isFarolSuperAdmin(identity.user)) {
-        await supabase!.auth.signOut({ scope: 'local' })
-        throw new Error('Esta conta pertence exclusivamente ao site Farol Admin.')
-      }
       password.value = ''
       // Após autenticar, abrir a Visão geral. O perfil continua no menu lateral.
       await router.replace('/')
