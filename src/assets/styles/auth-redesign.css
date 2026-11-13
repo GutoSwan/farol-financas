@@ -186,3 +186,17 @@
 @media (prefers-reduced-motion: reduce) {
   .auth-screen .auth-form input { transition: none; }
 }
+
+.auth-screen .auth-form .auth-trusted-computer {
+  display: flex; align-items: flex-start; gap: 11px; cursor: pointer;
+  margin: 3px 0 5px; padding: 12px; border-radius: 11px;
+  border: 1px solid var(--farol-border, #d6deeb);
+  background: var(--farol-card-muted, #f0f4f9);
+}
+.auth-screen .auth-form .auth-trusted-computer input[type="checkbox"] {
+  flex: 0 0 18px; width: 18px; height: 18px; min-height: 18px;
+  margin: 2px 0 0; accent-color: #85354f; cursor: pointer;
+}
+.auth-trusted-computer span { display: grid; gap: 5px; }
+.auth-trusted-computer strong { color: var(--farol-text); font-size: 12px; }
+.auth-trusted-computer small { color: var(--farol-muted); font-size: 11px; line-height: 1.5; }
