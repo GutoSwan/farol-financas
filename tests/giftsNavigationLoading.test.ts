@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import router from '../src/router/index.ts?raw'
 import layout from '../src/presentation/layouts/AppLayout.vue?raw'
-import styles from '../src/assets/styles/gifts.css?raw'
+import { readFileSync } from 'node:fs'
+const styles = readFileSync(new URL('../src/assets/styles/gifts.css', import.meta.url), 'utf8')
 
 describe('Presentes sem espera silenciosa e com acesso protegido', () => {
   it('mostra progresso durante a navegação e limpa após conclusão/erro', () => {
