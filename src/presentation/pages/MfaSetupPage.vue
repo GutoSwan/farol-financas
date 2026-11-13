@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router'
 import { supabase } from '../../infrastructure/auth/supabase'
 import { getTotpAssurance, listVerifiedTotpFactors } from '../../infrastructure/auth/totpMfa'
 import TotpSettings from '../components/TotpSettings.vue'
+import { activateTrustAfterMfa } from '../../infrastructure/auth/trustedComputer'
 
 const router = useRouter()
 const loading = ref(true)
@@ -52,6 +53,7 @@ async function onActivated(): Promise<void> {
     if (factors.length === 0 || aal.currentLevel !== 'aal2') {
       throw new Error('O segundo fator ainda não foi confirmado pelo Supabase.')
     }
+    try { await activateTrustAfterMfa(supabase.auth) } catch { /* sessão permanece na aba */ }
     await router.replace('/')
   } catch (cause) {
     errorText.value = cause instanceof Error ? cause.message : 'Falha ao validar o segundo fator.'
