@@ -5,12 +5,12 @@ import { localLegacyAccess } from '../../infrastructure/persistence/legacyAccess
 import { subscribeFinancialUiReset } from '../composables/financialUiSession'
 import { getOnlineIdentity, listOnlineWorkspaces } from '../../infrastructure/api/onlineWorkspaces'
 import type { OnlineWorkspace } from '../../infrastructure/api/onlineWorkspaces'
-import { readOnlineFinance } from '../../infrastructure/api/onlineFinance'
+import { inspectOnlineLegacyReadiness } from '../../infrastructure/api/legacyReadiness'
 import { apiConfigured } from '../../infrastructure/api/apiEndpoint'
 import { buildLocalFinancialBackup } from '../../application/use-cases/exportFinancialBackup'
 import type { FinancialBackup } from '../../infrastructure/backup/encryptedFinancialBackup'
 import { fingerprintFinancialBackup } from '../../infrastructure/backup/encryptedFinancialBackup'
-import { REVIEW_KINDS, summarizeMigrationSource, reviewMigrationDestination } from '../../domain/services/migrationReview'
+import { summarizeMigrationSource, reviewMigrationDestination } from '../../domain/services/migrationReview'
 import type { DestinationInspection } from '../../domain/services/migrationReview'
 import { formatBRL } from '../../domain/value-objects/Money'
 
@@ -79,6 +79,13 @@ const remoteModules=[
   {key:'recurring-bills' as const,label:'Contas mensais'},
   {key:'fixed-expenses' as const,label:'Gastos fixos'},
   {key:'budgets' as const,label:'Projetos de orçamento'},
+]
+const remoteExtras=[
+  {key:'monthlyEntries' as const,label:'Históricos mensais'},
+  {key:'fixedPayments' as const,label:'Pagamentos fixos'},
+  {key:'budgetItems' as const,label:'Itens de orçamento'},
+  {key:'budgetQuotes' as const,label:'Cotações'},
+  {key:'legacyMappings' as const,label:'Correspondências anteriores'},
 ]
 
 function clearSensitive(): void {
@@ -167,23 +174,32 @@ async function inspectDestination():Promise<void>{
     if(await fingerprintFinancialBackup(buildLocalFinancialBackup())!==originalFingerprint.value){
       throw new Error('Os dados locais mudaram desde que a revisão começou.')
     }
+    // Um GET único calcula a contagem EXATA no mesmo snapshot PostgreSQL.
+    // Nenhum dado financeiro local é enviado ao servidor.
+    const ready=await inspectOnlineLegacyReadiness(dest,owner)
+    if(seq!==generation)return
     const counts:DestinationInspection['counts']={
-      transactions:0,'recurring-bills':0,'fixed-expenses':0,budgets:0,
-    }
-    let incomplete=false
-    for(const kind of REVIEW_KINDS){
-      const rows=await readOnlineFinance(dest,kind,owner)
-      if(seq!==generation)return
-      counts[kind]=rows.length
-      if(rows.length>=50)incomplete=true
+      transactions:ready.counts.transactions,
+      'recurring-bills':ready.counts.recurringBills,
+      'fixed-expenses':ready.counts.fixedExpenses,
+      budgets:ready.counts.budgetProjects,
     }
     if(await confirmedOwner(owner)!==owner ||
        await fingerprintFinancialBackup(buildLocalFinancialBackup())!==originalFingerprint.value){
       throw new Error('A conta ou os dados locais mudaram durante a consulta.')
     }
     if(seq!==generation || destinationId.value!==dest.id || localId.value!==source.workspace.id)return
-    inspection.value={workspaceId:dest.id,counts,incomplete}
-    reviewMessage.value='Comparação finalizada, sem enviar ou alterar registros financeiros.'
+    inspection.value={
+      workspaceId:dest.id,counts,incomplete:false,exact:true,
+      extraCounts:{
+        monthlyEntries:ready.counts.monthlyEntries,
+        fixedPayments:ready.counts.fixedPayments,
+        budgetItems:ready.counts.budgetItems,
+        budgetQuotes:ready.counts.budgetQuotes,
+        legacyMappings:ready.counts.legacyMappings,
+      },
+    }
+    reviewMessage.value='Contagem exata de nove tabelas concluída. Nenhum registro foi enviado ou alterado.'
   }catch(cause){
     if(seq===generation)errorText.value=cause instanceof Error?cause.message:
       'Não foi possível conferir o espaço da nuvem.'
@@ -297,11 +313,20 @@ onBeforeUnmount(()=>{
         <span class="migration-index">4</span>
         <div><h2>Resultado da conferência</h2><p>O Farol avisa antes de qualquer risco de duplicação ou perda.</p></div>
       </div>
+      <p v-if="inspection?.exact" class="migration-hint" role="status">
+        Consulta exata ao banco, sem limite de 50 registros. Os números mostram o estado do destino no momento da conferência.
+      </p>
       <div v-if="inspection" class="migration-category-grid">
         <div v-for="module in remoteModules" :key="module.key" class="migration-category">
-          <strong>{{ inspection.counts[module.key] }}{{ inspection.counts[module.key]>=50?'+':'' }}</strong>
+          <strong>{{ inspection.counts[module.key] }}{{ !inspection.exact && inspection.counts[module.key]>=50?'+':'' }}</strong>
           <span>{{ module.label }} na nuvem</span>
         </div>
+        <template v-if="inspection.extraCounts">
+          <div v-for="module in remoteExtras" :key="module.key" class="migration-category">
+            <strong>{{ inspection.extraCounts[module.key] }}</strong>
+            <span>{{ module.label }} na nuvem</span>
+          </div>
+        </template>
       </div>
       <p v-if="errorText" class="error" role="alert">{{ errorText }}</p>
       <p v-if="reviewMessage" class="migration-hint" role="status">{{ reviewMessage }}</p>

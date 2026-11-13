@@ -13,6 +13,15 @@ export interface DestinationInspection {
   workspaceId: string
   counts: ReviewCounts
   incomplete: boolean
+  /** Contagem sem paginação obtida de um único snapshot no servidor. */
+  exact?: boolean
+  extraCounts?: {
+    monthlyEntries: number
+    fixedPayments: number
+    budgetItems: number
+    budgetQuotes: number
+    legacyMappings: number
+  }
 }
 export interface ReviewSummary {
   lines: Array<{ label:string; count:number }>
@@ -104,10 +113,15 @@ export function reviewMigrationDestination(
     issues.push('Confira os registros existentes neste espaço da nuvem.')
   }else if(inspected.incomplete || REVIEW_KINDS.some(kind=>
     !Number.isSafeInteger(inspected.counts[kind]) || inspected.counts[kind]<0 ||
-    inspected.counts[kind]>=50)){
+    (!inspected.exact && inspected.counts[kind]>=50)) ||
+    (inspected.exact && (!inspected.extraCounts ||
+      Object.values(inspected.extraCounts).some(count=>!Number.isSafeInteger(count)||count<0)))){
     issues.push('A nuvem retornou uma consulta incompleta. Não é seguro concluir que o espaço está vazio.')
-  }else if(REVIEW_KINDS.some(kind=>inspected.counts[kind]>0)){
-    issues.push('Já existem registros no espaço online. Uma importação sem mesclagem poderia duplicá-los.')
+  }else if((inspected.extraCounts?.legacyMappings??0)>0){
+    issues.push('Este espaço tem correspondências de migração anteriores. É necessária uma reconciliação antes de enviar registros.')
+  }else if(REVIEW_KINDS.some(kind=>inspected.counts[kind]>0) ||
+    (inspected.extraCounts && Object.values(inspected.extraCounts).some(count=>count>0))){
+    issues.push('Já existem registros no espaço online, inclusive históricos ou itens vinculados. Uma importação sem mesclagem poderia duplicá-los.')
   }
   return issues
 }

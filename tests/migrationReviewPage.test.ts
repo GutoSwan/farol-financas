@@ -58,6 +58,22 @@ describe('Prévia da revisão de migração',()=>{
       {...empty,counts:{...empty.counts,budgets:50}}).join()).toContain('incompleta')
     expect(reviewMigrationDestination(source,[source],remote,[remote],empty)).toEqual([])
   })
+  it('contagem exata aceita 50+ linhas sem confundir paginação com truncamento',()=>{
+    const precise:DestinationInspection={...empty,exact:true,counts:{...empty.counts,transactions:51},
+      extraCounts:{monthlyEntries:0,fixedPayments:0,budgetItems:0,budgetQuotes:0,legacyMappings:0}}
+    const issues=reviewMigrationDestination(source,[source],remote,[remote],precise)
+    expect(issues.join()).toContain('Já existem registros')
+    expect(issues.join()).not.toContain('incompleta')
+  })
+  it('não declara destino vazio quando há filhos ou mapeamentos existentes',()=>{
+    const extras={monthlyEntries:0,fixedPayments:0,budgetItems:0,budgetQuotes:0,legacyMappings:0}
+    const child:DestinationInspection={...empty,exact:true,extraCounts:{...extras,monthlyEntries:3}}
+    expect(reviewMigrationDestination(source,[source],remote,[remote],child).join()).toContain('históricos')
+    const mapped:DestinationInspection={...empty,exact:true,extraCounts:{...extras,legacyMappings:1}}
+    expect(reviewMigrationDestination(source,[source],remote,[remote],mapped).join()).toContain('correspondências')
+    const missing:DestinationInspection={...empty,exact:true}
+    expect(reviewMigrationDestination(source,[source],remote,[remote],missing).join()).toContain('incompleta')
+  })
   it('não expõe uma ação de envio e mantém acesso protegido pela rota',()=>{
     const page=readFileSync(new URL('../src/presentation/pages/MigrationReviewPage.vue',import.meta.url),'utf8')
     const route=readFileSync(new URL('../src/router/index.ts',import.meta.url),'utf8')
