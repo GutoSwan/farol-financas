@@ -27,6 +27,7 @@ import { isFarolAdmin, isFarolSuperAdmin } from '../domain/auth/adminAccess'
 import { routeDocumentTitle } from './documentTitle'
 import { allowedSuperAdminRecoveryRoute } from './superAdminRecovery'
 import { canReuseSidebarAuth, isFastSidebarPath } from './fastSidebarNavigation'
+import { trustedSessionExpired, clearTrust } from '../infrastructure/auth/trustedComputer'
 import type { VerifiedSidebarAuth } from './fastSidebarNavigation'
 import { useAuth } from '../presentation/composables/useAuth'
 import AccountSecurityPage from '../presentation/pages/AccountSecurityPage.vue'
@@ -102,6 +103,12 @@ router.beforeEach(async (to, from) => {
   if (!supabase) {
     return canAccessWithoutSession(to.path) ? true : { path: '/entrar', replace: true }
   }
+  // Prazo de 30 dias expira mesmo se o token Supabase ainda existir.
+  if (trustedSessionExpired()) {
+    clearTrust()
+    try { await supabase.auth.signOut({ scope: 'local' }) } catch { /* acesso negado */ }
+    return { path: '/entrar', replace: true }
+  }
 
   // A revisão rápida NÃO confia em getSession() sozinho. Só aceita um token
   // idêntico ao que foi previamente verificado com getUser() e MFA AAL2.
@@ -128,7 +135,7 @@ router.beforeEach(async (to, from) => {
   let authenticated = false
   let verifiedUserId: string | null = null
   let mfaAal2Verified = false
-  let validatedUser: Awaited<ReturnType<typeof supabase.auth.getUser>>['data']['user'] = null
+  let validatedUser: import('@supabase/supabase-js').User | null = null
   try {
     // getSession() lê o estado local e não garante que o usuário ainda esteja válido.
     // getUser() consulta o Supabase Auth e valida o token antes de abrir rotas privadas.
