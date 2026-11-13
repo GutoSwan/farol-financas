@@ -10,8 +10,8 @@ Todas as verificações nesta versão são realizadas em **Supabase Dev/Preview*
 
 | Capacidade | Conta comum (`authenticated`) | Conta `administrador` | Conta `super_admin` |
 |---|---|---|---|
-| Login do Farol financeiro | Sim, após MFA | Sim, após MFA | **Não**: sessão técnica é recusada na rota e no login |
-| Visão geral, contas, lançamentos, relatórios | Apenas seus dados autorizados | Apenas seus dados autorizados | Não no Farol financeiro |
+| Login do Farol financeiro | Sim, após MFA | Sim, após MFA | **Sim**, como usuário normal, após MFA |
+| Visão geral, contas, lançamentos, relatórios | Apenas seus dados autorizados | Apenas seus dados autorizados | **Somente seus próprios dados autorizados**, sem privilégios financeiros extras |
 | Presentes de Gustavo/Ana | Não; menu, rota e métodos da página são guardados | Sim, apenas seus registros locais | Não automaticamente; papel separado |
 | Login no site `farol-admin` | Não | Não | Sim, exigindo senha + TOTP AAL2 |
 | Ferramentas técnicas `/admin/*` | Não | Não | Sim, somente após confirmação da API |
@@ -22,11 +22,12 @@ Todas as verificações nesta versão são realizadas em **Supabase Dev/Preview*
 ### Validação em camadas
 
 1. A URL e a navegação do Farol financeiro não incluem a rota `/administracao` nem link do console.
-2. O papel provém exclusivamente de `app_metadata.farol_role`, não de e-mail, nome, `user_metadata` ou preferência local.
-3. A interface Admin deve solicitar autenticação no seu próprio domínio e armazenamento de sessão, usando chave **publishable** do Supabase Dev, nunca `service_role`.
-4. A API de autenticação Dev valida JWT, segundo fator AAL2 e papel atual. O proxy Admin só encaminha `GET /api/v1/admin/access` no ambiente Preview e não expõe credenciais de infraestrutura.
-5. A API Dev no modo QA administrativo bloqueia operações financeiras e gravações.
-6. Presentes e fotos recebem chaves vinculadas à identidade autenticada. Registros antigos sem dono só são importados após **confirmação explícita**; conflitos preservam a origem, e fotos antigas são migradas ao abrir um presente válido. Esse isolamento local **não é criptografia**: não protege contra acesso físico ao perfil do navegador, DevTools ou outro código executado na mesma origem.
+2. A mesma identidade `super_admin` pode entrar nos dois sites, porém cada um usa sessão própria e o painel técnico exige autorização adicional da API. Durante recuperação de senha, a sessão temporária continua restrita à redefinição e ao TOTP.
+3. O papel provém exclusivamente de `app_metadata.farol_role`, não de e-mail, nome, `user_metadata` ou preferência local.
+4. A interface Admin deve solicitar autenticação no seu próprio domínio e armazenamento de sessão, usando chave **publishable** do Supabase Dev, nunca `service_role`.
+5. A API de autenticação Dev valida JWT, segundo fator AAL2 e papel atual. O proxy Admin só encaminha `GET /api/v1/admin/access` no ambiente Preview e não expõe credenciais de infraestrutura.
+6. A API Dev no modo QA administrativo bloqueia operações financeiras e gravações.
+7. Presentes e fotos recebem chaves vinculadas à identidade autenticada. Registros antigos sem dono só são importados após **confirmação explícita**; conflitos preservam a origem, e fotos antigas são migradas ao abrir um presente válido. Esse isolamento local **não é criptografia**: não protege contra acesso físico ao perfil do navegador, DevTools ou outro código executado na mesma origem.
 
 ## Preparação para futuras alterações globais pelo Admin
 
@@ -46,7 +47,9 @@ Todas as verificações nesta versão são realizadas em **Supabase Dev/Preview*
 - [ ] Testes unitários e build de ambos em GitHub Actions aprovados
 - [ ] Acessar `/administracao` e `/presentes` por URL direta com conta comum e observar bloqueio
 - [ ] Fazer login e logout de conta `administrador`, confirmar que só Presentes aparece
+- [ ] Entrar com a mesma conta `super_admin` no Farol financeiro, validar MFA e visualizar somente seus próprios espaços
 - [ ] Fazer login de conta `super_admin` na URL `farol-admin`, confirmar MFA e API
+- [ ] Confirmar que sessão de recuperação por e-mail do Super Admin não libera dados financeiros
 - [ ] Tentar conta comum e conta `administrador` no site Admin e observar bloqueio
 - [ ] Testar ausência de vazamento entre duas contas no mesmo navegador e em navegadores separados
 - [ ] Verificar autenticação da Vercel sem contornar proteções
