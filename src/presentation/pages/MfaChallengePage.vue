@@ -4,6 +4,8 @@ import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { listVerifiedTotpFactors, verifyTotpCode } from '../../infrastructure/auth/totpMfa'
 import { useAuth } from '../composables/useAuth'
+import { supabase } from '../../infrastructure/auth/supabase'
+import { activateTrustAfterMfa } from '../../infrastructure/auth/trustedComputer'
 
 const router = useRouter()
 const { signOut } = useAuth()
@@ -38,6 +40,10 @@ async function submit() {
   errorText.value = ''
   try {
     await verifyTotpCode(factorId.value, code.value)
+    if (supabase) {
+      // Falha ao lembrar o dispositivo não altera o MFA já confirmado.
+      try { await activateTrustAfterMfa(supabase.auth) } catch { /* sessão apenas na aba */ }
+    }
     code.value = ''
     await router.replace('/')
   } catch (error) {
