@@ -8,6 +8,7 @@ describe('Super Admin: recuperação limitada a senha e 2FA', () => {
     expect(allowedSuperAdminRecoveryRoute('/redefinir-senha',false,false)).toBe(true)
     expect(allowedSuperAdminRecoveryRoute('/redefinir-senha',true,false)).toBe(true)
     expect(routerSource).toContain('if (!allowed) {')
+    expect(routerSource).toContain('isFarolSuperAdmin(data.user) && recoveringPassword.value')
     expect(routerSource).toContain('allowedSuperAdminRecoveryRoute(')
   })
   it('só admite o perfil após recuperação e TOTP verificado',()=>{
