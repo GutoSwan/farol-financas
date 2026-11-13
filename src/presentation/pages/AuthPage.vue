@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { supabase } from '../../infrastructure/auth/supabase'
 import { isFarolSuperAdmin } from '../../domain/auth/adminAccess'
+import { preparePasswordLogin, requestTrust } from '../../infrastructure/auth/trustedComputer'
 import UiIcon from '../components/UiIcon.vue'
 import BackNavigation from '../components/BackNavigation.vue'
 import { useTheme } from '../composables/useTheme'
@@ -38,6 +39,7 @@ const recoveryMfaCode = ref('')
 const recoveryMfaFactorId = ref('')
 const displayName = ref('')
 const showPassword = ref(false)
+const trustThisComputer = ref(false)
 const busy = ref(false)
 const message = ref('')
 const errorText = ref('')
@@ -59,6 +61,7 @@ watch(() => props.mode, () => {
   passwordResetDone.value = false
   recoveryEmailRateLimited.value = false
   showProfilePassword.value = false
+  trustThisComputer.value = false
   recoveryMfaCode.value = ''
   recoveryMfaFactorId.value = ''
   code.value = ''
@@ -164,7 +167,9 @@ async function submit(): Promise<void> {
   busy.value = true
   try {
     if (props.mode === 'login') {
+      preparePasswordLogin()
       await signIn(email.value, password.value)
+      requestTrust(user.value?.id ?? '', trustThisComputer.value)
       password.value = ''
       // Após autenticar, abrir a Visão geral. O perfil continua no menu lateral.
       await router.replace('/')
@@ -572,6 +577,13 @@ async function logout(): Promise<void> {
           <label v-if="mode === 'signup' || mode === 'reset'">Confirmar senha
             <input v-model="confirmPassword" :type="showPassword ? 'text' : 'password'" autocomplete="new-password"
               minlength="8" required :disabled="busy || !configured" placeholder="Repita sua senha" />
+          </label>
+          <label v-if="mode === 'login'" class="auth-trusted-computer">
+            <input v-model="trustThisComputer" type="checkbox" :disabled="busy" />
+            <span><strong>Confiar neste computador por até 30 dias</strong>
+              <small>Após confirmar o Authenticator, sua sessão poderá permanecer ativa ao reabrir o navegador.
+                Não marque em computadores compartilhados. Sair cancela a confiança.</small>
+            </span>
           </label>
           <button class="primary auth-full-button" type="submit"
             :disabled="busy || !configured || (mode === 'forgot' && recoveryEmailRateLimited)">
