@@ -27,7 +27,7 @@ import { isFarolAdmin, isFarolSuperAdmin } from '../domain/auth/adminAccess'
 import { routeDocumentTitle } from './documentTitle'
 import { allowedSuperAdminRecoveryRoute } from './superAdminRecovery'
 import { canReuseSidebarAuth, isFastSidebarPath } from './fastSidebarNavigation'
-import { trustedSessionExpired, clearTrust } from '../infrastructure/auth/trustedComputer'
+import { trustedSessionExpired } from '../infrastructure/auth/trustedComputer'
 import type { VerifiedSidebarAuth } from './fastSidebarNavigation'
 import { useAuth } from '../presentation/composables/useAuth'
 import AccountSecurityPage from '../presentation/pages/AccountSecurityPage.vue'
@@ -105,8 +105,9 @@ router.beforeEach(async (to, from) => {
   }
   // Prazo de 30 dias expira mesmo se o token Supabase ainda existir.
   if (trustedSessionExpired()) {
-    clearTrust()
-    try { await supabase.auth.signOut({ scope: 'local' }) } catch { /* acesso negado */ }
+    // Em falha de rede, conservar o registro expirado para bloquear novas rotas.
+    try { await supabase.auth.signOut({ scope: 'local' }) }
+    catch { setVerifiedLocalUser(null) }
     return { path: '/entrar', replace: true }
   }
 
