@@ -10,6 +10,8 @@ describe('Proxy protegido do Farol Preview', () => {
     expect(proxy).toContain("res.statusCode = 405")
     expect(proxy).toContain("const SIMPLE_PATHS = new Set(")
     expect(proxy).toContain("SPACE_PATH.test(target.pathname)")
+    expect(proxy).toContain("READINESS_PATH.test(target.pathname)")
+    expect(proxy).toContain("READINESS_PATH.test(target.pathname) ? READINESS_BACKEND_PREVIEW : BACKEND_PREVIEW")
     expect(proxy).toContain("['...path', 'workspaceId', 'kind']")
   })
 
