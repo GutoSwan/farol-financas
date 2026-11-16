@@ -3,9 +3,10 @@ import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
 import { supabase } from '../../infrastructure/auth/supabase'
 import { localLegacyAccess } from '../../infrastructure/persistence/legacyAccess'
 import { subscribeFinancialUiReset } from '../composables/financialUiSession'
-import { getOnlineIdentity, listOnlineWorkspaces } from '../../infrastructure/api/onlineWorkspaces'
+import { createOnlineWorkspace, getOnlineIdentity, listOnlineWorkspaces } from '../../infrastructure/api/onlineWorkspaces'
 import type { OnlineWorkspace } from '../../infrastructure/api/onlineWorkspaces'
 import { inspectOnlineLegacyReadiness } from '../../infrastructure/api/legacyReadiness'
+import { connectReviewedFinancialWorkspace } from '../../infrastructure/api/legacyConnection'
 import { apiConfigured } from '../../infrastructure/api/apiEndpoint'
 import { buildLocalFinancialBackup } from '../../application/use-cases/exportFinancialBackup'
 import type { FinancialBackup } from '../../infrastructure/backup/encryptedFinancialBackup'
@@ -26,6 +27,9 @@ const destinationId=ref('')
 const inspection=ref<DestinationInspection|null>(null)
 const loading=ref(true)
 const checking=ref(false)
+const creating=ref(false)
+const sending=ref(false)
+const backupConfirmed=ref(false)
 const errorText=ref('')
 const reviewMessage=ref('')
 const cloudUnavailable=ref(false)
@@ -43,6 +47,13 @@ const destinationIssues=computed(()=> selectedLocal.value?
   reviewMigrationDestination(selectedLocal.value,snapshot.value?.workspaces??[],
     selectedDestination.value,remoteSpaces.value,inspection.value):[])
 const allIssues=computed(()=>[...(summary.value?.issues??[]),...destinationIssues.value])
+const nameMatches = (a:string,b:string):boolean =>
+  a.trim().normalize('NFC').toLocaleLowerCase('pt-BR')===b.trim().normalize('NFC').toLocaleLowerCase('pt-BR')
+const destinationExists=computed(()=> !!selectedLocal.value && remoteSpaces.value.some(
+  space=>nameMatches(space.name,selectedLocal.value!.workspace.name)))
+const canTransfer=computed(()=>!checking.value&&!creating.value&&!sending.value&&!cloudUnavailable.value &&
+  backupConfirmed.value && !!selectedDestination.value && !!summary.value?.total &&
+  inspection.value?.exact===true && allIssues.value.length===0)
 const sourceTotal=computed(()=>selectedLocal.value?.transactions.reduce((sum,t)=>sum+
   (t.kind==='income'?t.amountCents:-t.amountCents),0)??0)
 const sections=computed<ReviewCategory[]>(()=>{
@@ -101,6 +112,9 @@ function clearSensitive(): void {
   cloudUnavailable.value=false
   loading.value=false
   checking.value=false
+  creating.value=false
+  sending.value=false
+  backupConfirmed.value=false
 }
 function expired():void {
   clearSensitive()
@@ -120,6 +134,7 @@ async function confirmedOwner(expected?:string):Promise<string> {
 function sourceChanged():void {
   inspection.value=null
   reviewMessage.value=''
+  backupConfirmed.value=false
 }
 function destinationChanged():void {
   generation++
@@ -215,6 +230,97 @@ async function inspectDestination():Promise<void>{
       'Não foi possível conferir o espaço da nuvem.'
   }finally{if(seq===generation)checking.value=false}
 }
+/** A nuvem recebe um espaço vazio; o nome deve corresponder exatamente ao espaço local. */
+async function createDestination():Promise<void>{
+  const source=selectedLocal.value
+  if(creating.value||checking.value||sending.value||!source||!ownerId.value||
+     cloudUnavailable.value||destinationExists.value)return
+  if(!window.confirm('Criar na nuvem um espaço vazio chamado "'+source.workspace.name+'"? Nenhum lançamento local será enviado agora.'))return
+  const seq=++generation
+  creating.value=true
+  errorText.value=''
+  reviewMessage.value=''
+  try{
+    const owner=await confirmedOwner(ownerId.value)
+    if(await fingerprintFinancialBackup(buildLocalFinancialBackup())!==originalFingerprint.value){
+      throw new Error('Os registros locais mudaram. Atualize a revisão antes de criar o destino.')
+    }
+    const created=await createOnlineWorkspace(source.workspace.name)
+    if(created.role!=='OWNER'||!nameMatches(created.name,source.workspace.name)){
+      throw new Error('O espaço criado não corresponde à origem. Confira a lista online.')
+    }
+    if(await confirmedOwner(owner)!==owner)throw new Error('A sessão mudou. Atualize a página.')
+    if(seq!==generation)return
+    remoteSpaces.value=[...remoteSpaces.value,created]
+    destinationId.value=created.id
+    sourceChanged()
+    reviewMessage.value='Espaço online vazio criado. Compare os registros antes de qualquer transferência.'
+  }catch(cause){
+    if(seq===generation)errorText.value=cause instanceof Error?cause.message:'Não foi possível criar o espaço.'
+  }finally{if(seq===generation)creating.value=false}
+}
+
+/**
+ * Só transfere depois de uma contagem exata NOVA do banco, backup confirmado,
+ * revalidação da identidade e confirmação explícita do destino.
+ */
+async function transferReviewed():Promise<void>{
+  const source=selectedLocal.value
+  const dest=selectedDestination.value
+  if(!canTransfer.value||!source||!dest||!ownerId.value)return
+  if(!window.confirm('Enviar '+summary.value!.total+' registro(s) de "'+source.workspace.name+
+     '" para "'+dest.name+'" na nuvem? O backup local será preservado.'))return
+  const seq=++generation
+  sending.value=true
+  errorText.value=''
+  reviewMessage.value=''
+  try{
+    const owner=await confirmedOwner(ownerId.value)
+    if(await fingerprintFinancialBackup(buildLocalFinancialBackup())!==originalFingerprint.value){
+      throw new Error('Os registros locais mudaram. Faça uma nova revisão.')
+    }
+    const ready=await inspectOnlineLegacyReadiness(dest,owner)
+    const latest:DestinationInspection={
+      workspaceId:dest.id,incomplete:false,exact:true,
+      counts:{
+        transactions:ready.counts.transactions,
+        'recurring-bills':ready.counts.recurringBills,
+        'fixed-expenses':ready.counts.fixedExpenses,
+        budgets:ready.counts.budgetProjects,
+      },
+      extraCounts:{
+        monthlyEntries:ready.counts.monthlyEntries,
+        fixedPayments:ready.counts.fixedPayments,
+        budgetItems:ready.counts.budgetItems,
+        budgetQuotes:ready.counts.budgetQuotes,
+        legacyMappings:ready.counts.legacyMappings,
+      },
+    }
+    const issues=[...summarizeMigrationSource(source).issues,
+      ...reviewMigrationDestination(source,snapshot.value?.workspaces??[],
+        dest,remoteSpaces.value,latest)]
+    if(issues.length)throw new Error('A nuvem mudou ou surgiu um impedimento. Refaça a conferência.')
+    if(await confirmedOwner(owner)!==owner||
+       await fingerprintFinancialBackup(buildLocalFinancialBackup())!==originalFingerprint.value){
+      throw new Error('Os registros ou a conta mudaram. Faça uma nova revisão.')
+    }
+    const outcome=await connectReviewedFinancialWorkspace(source,dest,owner)
+    if(seq!==generation)return
+    inspection.value=null
+    backupConfirmed.value=false
+    reviewMessage.value=outcome.created+' registro(s) enviados e '+outcome.reused+
+      ' já existentes confirmados. Seus dados locais foram preservados. '+
+      'Confira a aba Dados na nuvem antes de continuar.'
+  }catch(cause){
+    if(seq===generation){
+      inspection.value=null
+      backupConfirmed.value=false
+      errorText.value=(cause instanceof Error?cause.message:'Transferência não confirmada.')+
+        ' Consulte o destino novamente antes de repetir.'
+    }
+  }finally{if(seq===generation)sending.value=false}
+}
+
 onMounted(()=>{
   unsubscribe=subscribeFinancialUiReset(expired)
   window.addEventListener('storage',expired)
@@ -230,7 +336,7 @@ onBeforeUnmount(()=>{
 <template>
   <div class="heading">
     <div>
-      <p class="eyebrow">FAROL FINANÇAS · MIGRAÇÃO SEGURA</p>
+      <p class="eyebrow">FAROL FINANÇAS · SINCRONIZAÇÃO SEGURA</p>
       <h1>Revisar antes de transferir</h1>
       <p>Confira a origem, escolha o destino e veja os impedimentos antes de enviar dados à nuvem.</p>
     </div>
@@ -238,8 +344,8 @@ onBeforeUnmount(()=>{
   </div>
 
   <div class="migration-banner" role="status">
-    <strong>Modo de revisão · somente leitura</strong>
-    <span>A transferência ainda está desativada. Esta tela não altera seus registros locais nem os dados na nuvem.</span>
+    <strong>Conferência obrigatória antes da primeira sincronização</strong>
+    <span>Os dados só são enviados após revisar um destino vazio, confirmar o backup e autorizar explicitamente. A API pode manter as gravações desativadas até a conclusão dos testes.</span>
   </div>
 
   <div v-if="loading" class="panel" role="status">Verificando login e dados financeiros...</div>
@@ -255,7 +361,7 @@ onBeforeUnmount(()=>{
           <div><h2>De onde vêm os dados?</h2><p>Registros salvos neste navegador</p></div>
         </div>
         <label class="migration-label" for="migration-local">Espaço financeiro local</label>
-        <select id="migration-local" v-model="localId" :disabled="checking" @change="sourceChanged">
+        <select id="migration-local" v-model="localId" :disabled="checking || creating || sending" @change="sourceChanged">
           <option v-for="entry in snapshot.workspaces" :key="entry.workspace.id"
             :value="entry.workspace.id">{{ entry.workspace.name }}</option>
         </select>
@@ -272,7 +378,7 @@ onBeforeUnmount(()=>{
           <div><h2>Para onde irão?</h2><p>Espaço existente no Supabase</p></div>
         </div>
         <label class="migration-label" for="migration-remote">Espaço online de destino</label>
-        <select id="migration-remote" v-model="destinationId" :disabled="checking"
+        <select id="migration-remote" v-model="destinationId" :disabled="checking || creating || sending"
           @change="destinationChanged">
           <option value="">Escolha um espaço</option>
           <option v-for="space in remoteSpaces" :key="space.id" :value="space.id">
@@ -286,12 +392,16 @@ onBeforeUnmount(()=>{
           Esta conta não tem espaços online disponíveis. Não é possível transferir dados ainda.
         </p>
         <div class="migration-actions">
-          <button type="button" class="secondary-action" :disabled="checking || !selectedDestination ||
+          <button type="button" class="secondary-action" :disabled="checking || creating || sending || !selectedDestination ||
             selectedDestination.role!=='OWNER'" @click="inspectDestination">
             {{ checking?'Conferindo registros...':'Comparar com a nuvem' }}
           </button>
-          <button type="button" class="migration-refresh" :disabled="checking" @click="loadReview">
+          <button type="button" class="migration-refresh" :disabled="checking || creating || sending" @click="loadReview">
             Atualizar revisão
+          </button>
+          <button v-if="selectedLocal && !cloudUnavailable && !destinationExists" type="button"
+            class="secondary-action" :disabled="creating || checking || sending" @click="createDestination">
+            {{ creating ? 'Criando espaço...' : 'Criar destino vazio: ' + selectedLocal.workspace.name }}
           </button>
         </div>
       </section>
@@ -348,15 +458,21 @@ onBeforeUnmount(()=>{
         <ul><li v-for="(issue,index) in allIssues" :key="index">{{ issue }}</li></ul>
       </div>
       <p v-else class="migration-good">
-        Nenhum impedimento detectado nesta conferência. A migração ainda exige testes adicionais
-        e confirmação de um backup antes de poder ser liberada.
+        Nenhum impedimento detectado nesta conferência. Confirme seu backup e autorize o envio somente
+        quando o servidor estiver habilitado para uma transferência segura.
       </p>
       <div class="migration-footer">
-        <div><strong>Próxima etapa: autorizar a transferência</strong>
-          <small>O envio só será liberado após testes completos e confirmação explícita do usuário.</small>
+        <div>
+          <strong>Backup e confirmação da transferência</strong>
+          <small>Antes de enviar, baixe e guarde um <RouterLink to="/backup-financeiro">backup financeiro criptografado</RouterLink>.
+            Seus dados originais continuarão neste navegador.</small>
+          <label class="migration-confirm">
+            <input v-model="backupConfirmed" type="checkbox" :disabled="checking || creating || sending" />
+            Já salvei meu backup e conferi a origem e o destino.
+          </label>
         </div>
-        <button type="button" class="primary" disabled title="Transferência ainda não liberada">
-          Transferir para a nuvem · em breve
+        <button type="button" class="primary" :disabled="!canTransfer" @click="transferReviewed">
+          {{ sending ? 'Transferindo com segurança...' : 'Transferir registros revisados' }}
         </button>
       </div>
     </section>
@@ -403,6 +519,8 @@ onBeforeUnmount(()=>{
 .migration-footer strong{font-size:13px;color:var(--farol-text,#1d293d)}
 .migration-footer small{max-width:420px;font-size:11px;line-height:1.5;color:var(--farol-muted,#68798d)}
 .migration-footer .primary{background:var(--farol-wine,#8e4058)}
+.migration-confirm{display:flex;align-items:center;gap:9px;margin-top:9px;font-size:12px;line-height:1.6;cursor:pointer}
+.migration-confirm input{width:17px;height:17px;accent-color:var(--farol-wine,#8e4058)}
 @media(max-width:850px){.migration-pair{grid-template-columns:1fr}}
 @media(max-width:530px){.migration-metrics{grid-template-columns:1fr}.migration-detail-row{align-items:start;flex-direction:column}.migration-category-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style>

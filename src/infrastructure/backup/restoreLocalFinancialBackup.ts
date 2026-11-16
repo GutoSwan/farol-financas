@@ -1,7 +1,7 @@
 import type { FinancialBackup, FinancialBackupSummary } from './encryptedFinancialBackup'
 import { summarizeFinancialBackup } from './encryptedFinancialBackup'
 import { buildLocalFinancialBackup } from '../../application/use-cases/exportFinancialBackup'
-import { DEFAULT_WORKSPACE, DEFAULT_WORKSPACE_ID } from '../../domain/entities/FinancialWorkspace'
+import { DEFAULT_WORKSPACE, DEFAULT_WORKSPACE_ID, VALORA3D_WORKSPACE_ID } from '../../domain/entities/FinancialWorkspace'
 import { ACTIVE_KEY, WORKSPACES_KEY } from '../persistence/BrowserWorkspaceRepository'
 import { billsStorageKey } from '../persistence/BrowserBillRepository'
 import { transactionStorageKey } from '../persistence/BrowserTransactionRepository'
@@ -106,7 +106,10 @@ export function validateRestorableFinancialBackup(snapshot: FinancialBackup): Fi
 function emptyTarget(): void {
   const current = buildLocalFinancialBackup()
   const summary = summarizeFinancialBackup(current)
-  if (summary.spaces !== 1 || current.activeWorkspaceId !== DEFAULT_WORKSPACE_ID ||
+  if (summary.spaces !== 2 ||
+      current.workspaces.some(part => part.workspace.id !== DEFAULT_WORKSPACE_ID &&
+        part.workspace.id !== VALORA3D_WORKSPACE_ID) ||
+      current.activeWorkspaceId !== DEFAULT_WORKSPACE_ID ||
       summary.bills || summary.monthlyEntries || summary.fixedExpenses ||
       summary.transactions || summary.budgetProjects || summary.budgetItems ||
       summary.budgetQuotes) {
@@ -149,7 +152,8 @@ export function restoreLocalFinancialBackup(
     values.set(budgetStorageKey(workspaceId), JSON.stringify(part.budgets))
   }
   values.set(WORKSPACES_KEY, JSON.stringify(
-    snapshot.workspaces.filter(part => part.workspace.id !== DEFAULT_WORKSPACE_ID)
+    snapshot.workspaces.filter(part => part.workspace.id !== DEFAULT_WORKSPACE_ID &&
+      part.workspace.id !== VALORA3D_WORKSPACE_ID)
       .map(part => part.workspace),
   ))
   values.set(ACTIVE_KEY, snapshot.activeWorkspaceId)
@@ -180,8 +184,18 @@ export function restoreLocalFinancialBackup(
       if (localStorage.getItem(key) !== value) throw new Error('Falha ao conferir gravação.')
     }
     const restored = buildLocalFinancialBackup()
-    if (restored.activeWorkspaceId !== snapshot.activeWorkspaceId ||
-        JSON.stringify(restored.workspaces) !== JSON.stringify(snapshot.workspaces)) {
+    const restoredById = new Map(restored.workspaces.map(part => [part.workspace.id, part]))
+    const originalIds = new Set(snapshot.workspaces.map(part => part.workspace.id))
+    // Backups antigos podem não conter Valora3D. O espaço fixo novo entra vazio
+    // sem alterar o conteúdo dos espaços que estavam no backup original.
+    const onlyNewValora = restored.workspaces.filter(part => !originalIds.has(part.workspace.id))
+      .every(part => part.workspace.id === VALORA3D_WORKSPACE_ID &&
+        !part.bills.length && !part.monthlyEntries.length && !part.fixedExpenses.length &&
+        !part.transactions.length && !part.budgets.projects.length &&
+        !part.budgets.items.length && !part.budgets.quotes.length)
+    if (restored.activeWorkspaceId !== snapshot.activeWorkspaceId || !onlyNewValora ||
+        !snapshot.workspaces.every(part =>
+          JSON.stringify(restoredById.get(part.workspace.id)) === JSON.stringify(part))) {
       throw new Error('Os registros gravados não correspondem ao backup.')
     }
   } catch {

@@ -1,4 +1,4 @@
-import { DEFAULT_WORKSPACE, DEFAULT_WORKSPACE_ID } from '../../domain/entities/FinancialWorkspace'
+import { DEFAULT_WORKSPACE, DEFAULT_WORKSPACE_ID, VALORA3D_WORKSPACE, VALORA3D_WORKSPACE_ID } from '../../domain/entities/FinancialWorkspace'
 import type { FinancialWorkspace } from '../../domain/entities/FinancialWorkspace'
 import type { WorkspaceRepository } from '../../domain/repositories/WorkspaceRepository'
 import { billsStorageKey } from './BrowserBillRepository'
@@ -7,6 +7,8 @@ import { budgetStorageKey } from './BrowserBudgetRepository'
 
 export const WORKSPACES_KEY = 'farol-financas:workspaces:v1'
 export const ACTIVE_KEY = 'farol-financas:active-workspace:v1'
+
+const isValoraName = (name: string): boolean => name.trim().replace(/\s+/g, '').toLocaleLowerCase('pt-BR') === 'valora3d'
 
 function validateWorkspace(value: unknown): value is FinancialWorkspace {
   if (!value || typeof value !== 'object') return false
@@ -24,10 +26,13 @@ export class BrowserWorkspaceRepository implements WorkspaceRepository {
   list(): FinancialWorkspace[] {
     try {
       const value = localStorage.getItem(WORKSPACES_KEY)
-      if (!value) return [DEFAULT_WORKSPACE]
-      const parsed: unknown = JSON.parse(value)
+      const parsed: unknown = value ? JSON.parse(value) : []
       if (!Array.isArray(parsed) || !parsed.every(validateWorkspace)) throw new Error('invalid')
-      return [DEFAULT_WORKSPACE, ...parsed.filter((item) => item.id !== DEFAULT_WORKSPACE_ID)]
+      // Se Valora3D já foi criada anteriormente, conservar seu ID e os dados ligados a ele.
+      const saved = parsed.filter((item) => item.id !== DEFAULT_WORKSPACE_ID)
+      const existing = saved.find((item) => item.id === VALORA3D_WORKSPACE_ID || isValoraName(item.name))
+      const valora = existing ?? VALORA3D_WORKSPACE
+      return [DEFAULT_WORKSPACE, valora, ...saved.filter((item) => item.id !== valora.id)]
     } catch {
       throw new Error('Não foi possível ler os espaços salvos. Seus dados não foram apagados.')
     }
@@ -43,12 +48,13 @@ export class BrowserWorkspaceRepository implements WorkspaceRepository {
     const name = rawName.trim()
     if (name.length < 2 || name.length > 60) throw new Error('Digite um nome entre 2 e 60 caracteres.')
     const existing = this.list()
-    if (existing.some((item) => item.name.toLocaleLowerCase('pt-BR') === name.toLocaleLowerCase('pt-BR'))) {
+    if (existing.some((item) => item.name.toLocaleLowerCase('pt-BR') === name.toLocaleLowerCase('pt-BR')) ||
+      (isValoraName(name) && existing.some((item) => isValoraName(item.name)))) {
       throw new Error('Já existe um espaço com este nome.')
     }
     const item: FinancialWorkspace = { id: crypto.randomUUID(), name, createdAt: new Date().toISOString() }
     try {
-      localStorage.setItem(WORKSPACES_KEY, JSON.stringify([...existing.filter((entry) => entry.id !== DEFAULT_WORKSPACE_ID), item]))
+      localStorage.setItem(WORKSPACES_KEY, JSON.stringify([...existing.filter((entry) => entry.id !== DEFAULT_WORKSPACE_ID && entry.id !== VALORA3D_WORKSPACE_ID), item]))
       return item
     } catch {
       throw new Error('Não foi possível salvar o novo espaço neste navegador.')
@@ -65,10 +71,13 @@ export class BrowserWorkspaceRepository implements WorkspaceRepository {
   }
 
   delete(id: string): void {
-    if (id === DEFAULT_WORKSPACE_ID) throw new Error('O espaço inicial está protegido para preservar os registros originais.')
     const existing = this.list()
+    if (id === DEFAULT_WORKSPACE_ID || id === VALORA3D_WORKSPACE_ID ||
+      existing.some((item) => item.id === id && isValoraName(item.name))) {
+      throw new Error('Os espaços Gustavo e Ana e Valora3D estão protegidos para preservar os registros.')
+    }
     if (!existing.some((item) => item.id === id)) throw new Error('Espaço não encontrado.')
-    const rest = existing.filter((item) => item.id !== DEFAULT_WORKSPACE_ID && item.id !== id)
+    const rest = existing.filter((item) => item.id !== DEFAULT_WORKSPACE_ID && item.id !== VALORA3D_WORKSPACE_ID && item.id !== id)
     const previous = this.getActiveId()
 
     // localStorage não oferece transação entre chaves. Antes de remover

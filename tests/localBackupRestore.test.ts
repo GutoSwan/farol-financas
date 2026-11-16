@@ -65,10 +65,24 @@ describe('Restaurar backup criptografado em navegador vazio',()=>{
     const verified=await decryptVerifiedFinancialBackup(encrypted,passphrase,owner)
     expect(mayRestoreIntoCurrentBrowser(owner)).toBe(true)
     const result=restoreLocalFinancialBackup(verified,owner)
-    expect(result.spaces).toBe(2)
+    expect(result.spaces).toBe(3)
     expect(result.transactions).toBe(1)
     expect(buildLocalFinancialBackup().workspaces).toEqual(snapshot.workspaces)
     expect(store.get('farol-financas:legacy-local-owner:v1')).toBe(originalMarker)
+  })
+  it('restaura backup antigo sem Valora3D e mantém a nova área vazia',()=>{
+    const snapshot=sourceSnapshot()
+    const oldBackup={...snapshot,workspaces:snapshot.workspaces.filter(part=>part.workspace.name!=='Valora3D')}
+    resetToEmptyBrowser()
+    expect(mayRestoreIntoCurrentBrowser(owner)).toBe(true)
+    expect(restoreLocalFinancialBackup(oldBackup,owner).spaces).toBe(2)
+    const current=buildLocalFinancialBackup()
+    expect(current.workspaces).toHaveLength(3)
+    const valora=current.workspaces.find(part=>part.workspace.name==='Valora3D')!
+    expect(valora.transactions).toEqual([])
+    expect(valora.bills).toEqual([])
+    expect(current.workspaces.filter(part=>part.workspace.name!=='Valora3D'))
+      .toEqual(oldBackup.workspaces)
   })
   it('bloqueia a restauração se já existirem registros, sem tocar em nada',()=>{
     const source=sourceSnapshot()
@@ -89,14 +103,14 @@ describe('Restaurar backup criptografado em navegador vazio',()=>{
     resetToEmptyBrowser()
     store.set('pref-usuario','não tocar')
     const before=new Map(store)
-    failWrite=transactionStorageKey(snapshot.workspaces[1].workspace.id)
+    failWrite=transactionStorageKey(snapshot.workspaces.find(part=>part.workspace.name==='Férias da família')!.workspace.id)
     expect(()=>restoreLocalFinancialBackup(snapshot,owner)).toThrow(/voltou ao estado anterior/)
     expect(store).toEqual(before)
   })
   it('não sobrescreve chaves órfãs de espaço que não aparece mais na lista',()=>{
     const snapshot=sourceSnapshot()
     resetToEmptyBrowser()
-    store.set(transactionStorageKey(snapshot.workspaces[1].workspace.id),'informação antiga')
+    store.set(transactionStorageKey(snapshot.workspaces.find(part=>part.workspace.name==='Férias da família')!.workspace.id),'informação antiga')
     const before=new Map(store)
     expect(()=>restoreLocalFinancialBackup(snapshot,owner)).toThrow(/nenhum dado foi restaurado/)
     expect(store).toEqual(before)
@@ -115,12 +129,12 @@ describe('Restaurar backup criptografado em navegador vazio',()=>{
     const snapshot=sourceSnapshot()
     resetToEmptyBrowser()
     const bad=structuredClone(snapshot)
-    bad.workspaces[1].transactions[0].amountCents=-50
+    bad.workspaces.find(part=>part.workspace.name==='Férias da família')!.transactions[0].amountCents=-50
     expect(()=>validateRestorableFinancialBackup(bad)).toThrow(/lançamentos inválidos/)
     const badRef=structuredClone(snapshot)
-    badRef.workspaces[1].budgets.items.push({id:'item1',projectId:'notfound',title:'teste',
+    badRef.workspaces.find(part=>part.workspace.name==='Férias da família')!.budgets.items.push({id:'item1',projectId:'notfound',title:'teste',
       plannedCents:null,createdAt:'2026-11-12T00:00:00Z'})
     expect(()=>restoreLocalFinancialBackup(badRef,owner)).toThrow(/itens de orçamento inválidos/)
-    expect(buildLocalFinancialBackup().workspaces).toHaveLength(1)
+    expect(buildLocalFinancialBackup().workspaces).toHaveLength(2)
   })
 })

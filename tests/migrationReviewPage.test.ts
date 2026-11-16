@@ -74,14 +74,16 @@ describe('Prévia da revisão de migração',()=>{
     const missing:DestinationInspection={...empty,exact:true}
     expect(reviewMigrationDestination(source,[source],remote,[remote],missing).join()).toContain('incompleta')
   })
-  it('não expõe uma ação de envio e mantém acesso protegido pela rota',()=>{
+  it('só prepara o envio após revisão exata, backup e autorização do servidor',()=>{
     const page=readFileSync(new URL('../src/presentation/pages/MigrationReviewPage.vue',import.meta.url),'utf8')
     const route=readFileSync(new URL('../src/router/index.ts',import.meta.url),'utf8')
     const backend=readFileSync(new URL('../backend/src/app.ts',import.meta.url),'utf8')
-    expect(page).toContain('Transferir para a nuvem · em breve')
-    expect(page).toContain('disabled title="Transferência ainda não liberada"')
-    expect(page).not.toContain('legacy-connect')
-    expect(page).not.toContain("method:'POST'")
+    expect(page).toContain('Transferir registros revisados')
+    expect(page).toContain(':disabled="!canTransfer"')
+    expect(page).toContain('backupConfirmed')
+    expect(page).toContain('connectReviewedFinancialWorkspace')
+    expect(page).toContain('await inspectOnlineLegacyReadiness(dest,owner)')
+    expect(page).toContain('Criar destino vazio')
     expect(page).toContain('confirmedOwner')
     expect(page).toContain('originalFingerprint')
     expect(page).toContain('cloudUnavailable')

@@ -34,7 +34,7 @@ describe('Exclusão de espaço financeiro', () => {
     spaces.delete(friend.id)
 
     expect(spaces.getActiveId()).toBe(DEFAULT_WORKSPACE_ID)
-    expect(spaces.list()).toHaveLength(1)
+    expect(spaces.list()).toHaveLength(2)
     expect(bills.listBills()).toHaveLength(0)
     expect(fixed.list()).toHaveLength(0)
     expect(expenses.list()).toHaveLength(0)
@@ -44,7 +44,7 @@ describe('Exclusão de espaço financeiro', () => {
   it('não permite apagar o espaço inicial', () => {
     const repo = new BrowserWorkspaceRepository()
     expect(() => repo.delete(DEFAULT_WORKSPACE_ID)).toThrow()
-    expect(repo.list()).toHaveLength(1)
+    expect(repo.list()).toHaveLength(2)
   })
 
   it('não permite apagar um espaço inexistente', () => {

@@ -43,7 +43,7 @@ export async function readOnlineFinance(workspace: OnlineWorkspace, kind: Online
     throw new Error('Não foi possível acessar a API online. Verifique a conexão e o CORS.')
   }
   if (response.status === 401) throw new Error('A sessão foi recusada pela API.')
-  if (response.status === 403) throw new Error('O servidor exige autenticação em duas etapas.')
+  if (response.status === 403) throw new Error('Acesso negado a este espaço ou recurso indisponível.')
   if (response.status === 404) throw new Error('Espaço não encontrado ou sem permissão.')
   if (!response.ok) throw new Error('Consulta online indisponível.')
   const json: unknown = await response.json().catch(() => null)

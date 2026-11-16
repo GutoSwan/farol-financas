@@ -73,7 +73,7 @@ describe('Exclusão de espaço: segurança contra falhas parciais de armazenamen
   it('remove todos os módulos somente após execução concluída com sucesso',()=>{
     const {spaces,friend}=setup()
     spaces.delete(friend.id)
-    expect(spaces.list()).toHaveLength(1)
+    expect(spaces.list()).toHaveLength(2)
     expect(new BrowserBillRepository(friend.id).listBills()).toHaveLength(0)
     expect(new BrowserFixedExpenseRepository(friend.id).list()).toHaveLength(0)
     expect(new BrowserTransactionRepository(friend.id).list()).toHaveLength(0)

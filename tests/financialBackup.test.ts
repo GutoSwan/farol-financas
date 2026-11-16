@@ -3,7 +3,7 @@ import { buildLocalFinancialBackup } from '../src/application/use-cases/exportFi
 import { BrowserWorkspaceRepository } from '../src/infrastructure/persistence/BrowserWorkspaceRepository'
 import { BrowserBillRepository } from '../src/infrastructure/persistence/BrowserBillRepository'
 import { BrowserGiftRepository } from '../src/infrastructure/persistence/BrowserGiftRepository'
-import { DEFAULT_WORKSPACE_ID } from '../src/domain/entities/FinancialWorkspace'
+import { DEFAULT_WORKSPACE_ID, VALORA3D_WORKSPACE_ID } from '../src/domain/entities/FinancialWorkspace'
 
 const data = new Map<string, string>()
 beforeEach(() => {
@@ -31,7 +31,7 @@ describe('Backup financeiro local antes da migração', () => {
     const result = buildLocalFinancialBackup()
     expect(result.format).toBe('farol-financas-local-backup')
     expect(result.version).toBe(1)
-    expect(result.workspaces.map(x => x.workspace.id)).toEqual([DEFAULT_WORKSPACE_ID, second.id])
+    expect(result.workspaces.map(x => x.workspace.id)).toEqual([DEFAULT_WORKSPACE_ID, VALORA3D_WORKSPACE_ID, second.id])
     expect(result.workspaces.find(x => x.workspace.id === second.id)?.bills[0].name).toBe('Internet')
     expect(data).toEqual(previousData)
   })
