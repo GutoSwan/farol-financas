@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { execFileSync } from 'node:child_process'
 import proxy from '../api/v1/[...path].js?raw'
 import itemRoute from '../api/v1/workspaces/[workspaceId]/transactions/[transactionId].js?raw'
+import fixedWriteRoute from '../api/v1/qa-transaction-write.js?raw'
 import apiEndpoint from '../src/infrastructure/api/apiEndpoint.ts?raw'
 import frontendVercel from '../vercel.json?raw'
 
@@ -13,6 +14,19 @@ describe('Proxy protegido do Farol Preview', () => {
     expect(itemRoute).toContain("../../../[...path].js")
     expect(() => execFileSync(process.execPath, ['--check', new URL('../api/v1/workspaces/[workspaceId]/transactions/[transactionId].js', import.meta.url).pathname])).not.toThrow()
   })
+  it('publica endpoint fixo sem aceitar URL ou método de destino arbitrários', () => {
+    expect(fixedWriteRoute).toContain("import proxy from './[...path].js'")
+    expect(fixedWriteRoute).toContain("req.method !== 'POST'")
+    expect(fixedWriteRoute).toContain("body.action === 'update' ? 'PATCH' : 'DELETE'")
+    expect(fixedWriteRoute).toContain("UUID.test(body.workspaceId")
+    expect(fixedWriteRoute).toContain("UUID.test(body.transactionId")
+    expect(fixedWriteRoute).toContain("transactionId")
+    expect(fixedWriteRoute).not.toContain('eval(')
+    expect(() => execFileSync(process.execPath, [
+      '--check', new URL('../api/v1/qa-transaction-write.js', import.meta.url).pathname,
+    ])).not.toThrow()
+  })
+
   it('aceita GET e libera apenas mutações de lançamentos de teste com flag privada', () => {
     expect(proxy).toContain("process.env.VERCEL_ENV !== 'preview'")
     expect(proxy).toContain("req.method !== 'GET'")
