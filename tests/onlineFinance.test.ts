@@ -46,6 +46,37 @@ describe('Cliente financeiro online: isolamento e proteção de leitura', () => 
     expect(options.headers.Authorization).toBe('Bearer test-token')
     expect(JSON.stringify(options)).not.toContain('Content-Type')
   })
+  it('exibe histórico de valores das contas mensais limitado à conta autorizada', async () => {
+    const entryId = '55555555-5555-4555-8555-555555555555'
+    const billId = '66666666-6666-4666-8666-666666666666'
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true, status: 200,
+      json: async () => ({ data: [{
+        id: billId, workspaceId: space.id, name: 'Água (QA)', dueDay: 10,
+        version: 1, active: true,
+        entries: [{ id: entryId, billId, yearMonth: '2026-11', amountCents: 1234, status: 'PENDING' }],
+      }] }),
+    }))
+    const result = await readOnlineFinance(space, 'recurring-bills', identityId)
+    expect(result[0].monthlyEntries).toEqual([
+      { id: entryId, yearMonth: '2026-11', amountCents: 1234, status: 'PENDING' },
+    ])
+  })
+  it('rejeita histórico mensal de outro cadastro, mesmo no espaço correto', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true, status: 200,
+      json: async () => ({ data: [{
+        id: '66666666-6666-4666-8666-666666666666', workspaceId: space.id,
+        name: 'Luz', dueDay: 10,
+        entries: [{
+          id: '55555555-5555-4555-8555-555555555555', billId: otherSpace,
+          yearMonth: '2026-11', amountCents: 1234, status: 'PAID',
+        }],
+      }] }),
+    }))
+    await expect(readOnlineFinance(space, 'recurring-bills', identityId))
+      .rejects.toThrow('Histórico mensal inconsistente')
+  })
   it('preserva versão válida para evitar edição com dados obsoletos no futuro', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true, status: 200,
