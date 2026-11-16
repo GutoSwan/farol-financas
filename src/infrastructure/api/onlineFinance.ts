@@ -3,12 +3,19 @@ import { apiEndpoint } from './apiEndpoint'
 import type { OnlineWorkspace } from './onlineWorkspaces'
 
 export type OnlineFinanceKind = 'transactions' | 'recurring-bills' | 'fixed-expenses' | 'budgets'
+export interface OnlineMonthlyBillEntry {
+  id: string
+  yearMonth: string
+  amountCents: number
+  status: 'PENDING' | 'PAID'
+}
 export interface OnlineFinanceRecord {
   id: string
   workspaceId: string
   label: string
   amountCents?: number
   dueDay?: number
+  monthlyEntries?: OnlineMonthlyBillEntry[]
   category?: string
   kind?: 'EXPENSE' | 'INCOME'
   occurredOn?: string
@@ -92,6 +99,27 @@ export async function readOnlineFinance(workspace: OnlineWorkspace, kind: Online
         throw new Error('Vencimento inválido.')
       }
       record.dueDay = row.dueDay
+    }
+    if (kind === 'recurring-bills') {
+      // Histórico vem exclusivamente da relação da conta já autorizada.
+      if (!Array.isArray(row.entries) || row.entries.length > 24) {
+        throw new Error('Histórico mensal inesperado.')
+      }
+      record.monthlyEntries = row.entries.map(item => {
+        if (!item || typeof item !== 'object' || Array.isArray(item)) {
+          throw new Error('Parcela mensal inválida.')
+        }
+        const entry = item as Record<string, unknown>
+        if (typeof entry.id !== 'string' || !uuidPattern.test(entry.id) ||
+            entry.billId !== row.id || typeof entry.yearMonth !== 'string' ||
+            !/^\\d{4}-(0[1-9]|1[0-2])$/.test(entry.yearMonth) ||
+            typeof entry.amountCents !== 'number' || !Number.isSafeInteger(entry.amountCents) ||
+            entry.amountCents < 0 || !['PENDING', 'PAID'].includes(String(entry.status))) {
+          throw new Error('Histórico mensal inconsistente com a conta selecionada.')
+        }
+        return { id: entry.id, yearMonth: entry.yearMonth,
+          amountCents: entry.amountCents, status: entry.status as 'PENDING' | 'PAID' }
+      })
     }
     return record
   })
