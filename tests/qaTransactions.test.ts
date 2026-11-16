@@ -84,7 +84,11 @@ describe('Gravação na nuvem QA: somente espaços fictícios', () => {
     vi.stubGlobal('fetch', fetchMock)
     await expect(updateQaTransaction(space, id, record, input)).rejects.toThrow('Outra conta alterou')
     expect(fetchMock.mock.calls[0][1].headers['If-Match']).toBe('"1"')
-    expect(fetchMock.mock.calls[0][0]).toContain('/transactions/' + recordId)
+    expect(fetchMock.mock.calls[0][0]).toBe('https://example.test/api/v1/qa-transaction-write')
+    expect(fetchMock.mock.calls[0][1].method).toBe('POST')
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
+      action: 'update', workspaceId: space.id, transactionId: recordId, input,
+    })
   })
 
   it('exclui com versão e valida resposta 204', async () => {
@@ -92,7 +96,29 @@ describe('Gravação na nuvem QA: somente espaços fictícios', () => {
     const fetchMock = vi.fn().mockResolvedValue({ status: 204, ok: true })
     vi.stubGlobal('fetch', fetchMock)
     await expect(deleteQaTransaction(space, id, { id: recordId, version: 2 })).resolves.toBe(null)
-    expect(fetchMock.mock.calls[0][1].method).toBe('DELETE')
+    expect(fetchMock.mock.calls[0][1].method).toBe('POST')
+    expect(fetchMock.mock.calls[0][0]).toBe('https://example.test/api/v1/qa-transaction-write')
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
+      action: 'delete', workspaceId: space.id, transactionId: recordId,
+    })
     expect(fetchMock.mock.calls[0][1].headers['If-Match']).toBe('"2"')
   })
+  it('identifica 404 antes de chegar ao backend e preserva o registro', async () => {
+    const { updateQaTransaction } = await actions()
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      status: 404, ok: false, headers: { get: () => null },
+    }))
+    await expect(updateQaTransaction(space, id, { id: recordId, version: 1 }, input))
+      .rejects.toThrow('rota de edição ou exclusão não existe')
+  })
+
+  it('distingue um 403 retornado pelo backend de bloqueio na borda', async () => {
+    const { deleteQaTransaction } = await actions()
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      status: 403, ok: false, headers: { get: (key: string) => key === 'X-Farol-QA-Backend' ? 'reached' : null },
+    }))
+    await expect(deleteQaTransaction(space, id, { id: recordId, version: 1 }))
+      .rejects.toThrow('API de testes recusou')
+  })
+
 })
