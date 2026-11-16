@@ -47,8 +47,10 @@ export function validateLegacyMappingSource(input: LegacyMappingSource): void {
       !SHA.test(input.sourceWorkspaceKey) || !SHA.test(input.contentFingerprint)) {
     throw new Error('Identificadores de importação inválidos.')
   }
-  if (input.entityType === 'fixed-payment' || input.needsPaymentDateReview) {
-    throw new Error('Pagamento legado sem data de quitação: importação exige revisão manual.')
+  // A origem declara explicitamente a ausência de data; o serviço grava paidAt=NULL.
+  // Esse sinal não concede autorização: OWNER é revalidado na transação.
+  if ((input.entityType === 'fixed-payment') !== (input.needsPaymentDateReview === true)) {
+    throw new Error('Pagamento legado sem data exata precisa ser preservado como desconhecido.')
   }
   if (input.entityType === 'workspace' && input.sourceWorkspaceKey !== input.sourceKey) {
     throw new Error('A identidade do espaço local está inconsistente.')
@@ -106,8 +108,10 @@ async function ensureTargetInWorkspace(
       target = await tx.fixedExpense.findFirst({ where: { id: recordId, workspaceId }, select: { id: true } })
       break
     case 'fixed-payment':
-      // Este caso está bloqueado na validação até existir uma data de quitação verificável.
-      throw new Error('Pagamento legado não pode ser importado automaticamente.')
+      target = await tx.fixedExpensePayment.findFirst({
+        where: { id: recordId, fixedExpense: { workspaceId } }, select: { id: true },
+      })
+      break
     case 'transaction':
       target = await tx.transaction.findFirst({ where: { id: recordId, workspaceId }, select: { id: true } })
       break

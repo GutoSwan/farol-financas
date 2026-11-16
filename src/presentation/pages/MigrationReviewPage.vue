@@ -30,6 +30,7 @@ const checking=ref(false)
 const creating=ref(false)
 const sending=ref(false)
 const backupConfirmed=ref(false)
+const paidHistoryConfirmed=ref(false)
 const errorText=ref('')
 const reviewMessage=ref('')
 const cloudUnavailable=ref(false)
@@ -52,7 +53,9 @@ const nameMatches = (a:string,b:string):boolean =>
 const destinationExists=computed(()=> !!selectedLocal.value && remoteSpaces.value.some(
   space=>nameMatches(space.name,selectedLocal.value!.workspace.name)))
 const canTransfer=computed(()=>!checking.value&&!creating.value&&!sending.value&&!cloudUnavailable.value &&
-  backupConfirmed.value && !!selectedDestination.value && !!summary.value?.total &&
+  backupConfirmed.value &&
+  (summary.value?.paidWithoutDate===0 || paidHistoryConfirmed.value) &&
+  !!selectedDestination.value && !!summary.value?.total &&
   inspection.value?.exact===true && allIssues.value.length===0)
 const sourceTotal=computed(()=>selectedLocal.value?.transactions.reduce((sum,t)=>sum+
   (t.kind==='income'?t.amountCents:-t.amountCents),0)??0)
@@ -75,6 +78,9 @@ const sections=computed<ReviewCategory[]>(()=>{
       id:f.id,title:f.name,secondary:'Vence dia '+f.dueDay,
       amount:-f.amountCents,
     }))},
+    {label:'Meses pagos sem data exata',records:local.fixedExpenses.flatMap(f=>
+      f.paidMonths.map(month=>({id:f.id+':'+month,title:f.name,
+        secondary:'Competência '+month+' · Pago; data exata não registrada'})))},
     {label:'Projetos de orçamento',records:local.budgets.projects.map(p=>({
       id:p.id,title:p.title,secondary:p.category+' · '+p.status,amount:p.targetCents,
     }))},
@@ -115,6 +121,7 @@ function clearSensitive(): void {
   creating.value=false
   sending.value=false
   backupConfirmed.value=false
+  paidHistoryConfirmed.value=false
 }
 function expired():void {
   clearSensitive()
@@ -135,6 +142,7 @@ function sourceChanged():void {
   inspection.value=null
   reviewMessage.value=''
   backupConfirmed.value=false
+  paidHistoryConfirmed.value=false
 }
 function destinationChanged():void {
   generation++
@@ -304,10 +312,11 @@ async function transferReviewed():Promise<void>{
        await fingerprintFinancialBackup(buildLocalFinancialBackup())!==originalFingerprint.value){
       throw new Error('Os registros ou a conta mudaram. Faça uma nova revisão.')
     }
-    const outcome=await connectReviewedFinancialWorkspace(source,dest,owner)
+    const outcome=await connectReviewedFinancialWorkspace(source,dest,owner,paidHistoryConfirmed.value)
     if(seq!==generation)return
     inspection.value=null
     backupConfirmed.value=false
+    paidHistoryConfirmed.value=false
     reviewMessage.value=outcome.created+' registro(s) enviados e '+outcome.reused+
       ' já existentes confirmados. Seus dados locais foram preservados. '+
       'Confira a aba Dados na nuvem antes de continuar.'
@@ -315,6 +324,7 @@ async function transferReviewed():Promise<void>{
     if(seq===generation){
       inspection.value=null
       backupConfirmed.value=false
+      paidHistoryConfirmed.value=false
       errorText.value=(cause instanceof Error?cause.message:'Transferência não confirmada.')+
         ' Consulte o destino novamente antes de repetir.'
     }
@@ -469,6 +479,11 @@ onBeforeUnmount(()=>{
           <label class="migration-confirm">
             <input v-model="backupConfirmed" type="checkbox" :disabled="checking || creating || sending" />
             Já salvei meu backup e conferi a origem e o destino.
+          </label>
+          <label v-if="summary?.paidWithoutDate" class="migration-confirm">
+            <input v-model="paidHistoryConfirmed" type="checkbox" :disabled="checking || creating || sending" />
+            Confirmo que {{ summary.paidWithoutDate }} mês(es) de gastos fixos estão pagos,
+            mas a data exata não é conhecida e deve continuar desconhecida na nuvem.
           </label>
         </div>
         <button type="button" class="primary" :disabled="!canTransfer" @click="transferReviewed">

@@ -38,6 +38,8 @@ function mockDb(role: 'OWNER' | 'EDITOR' | null = 'OWNER') {
           existingTargets.has(where.id) ? {id:where.id} : null },
         transaction: { findFirst: async ({where}: {where:{id:string;workspaceId:string}}) =>
           where.workspaceId === workspace && existingTargets.has(where.id) ? {id:where.id} : null },
+        fixedExpensePayment: { findFirst: async ({where}: {where:{id:string;fixedExpense:{workspaceId:string}}}) =>
+          where.fixedExpense.workspaceId === workspace && existingTargets.has(where.id) ? {id:where.id} : null },
         legacyImportMapping: {
           findUnique: async ({where}: {where:{ownerUserId_sourceKey:{ownerUserId:string;sourceKey:string}}}) =>
             rows.find(r => r.ownerUserId === where.ownerUserId_sourceKey.ownerUserId &&
@@ -123,9 +125,20 @@ describe('Mapeamento de identidades legadas com transação e unicidade',()=>{
       .rejects.toThrow('não existe')
     expect(db.rows).toHaveLength(1)
   })
-  it('não inventa data de quitação dos pagamentos fixos',()=>{
-    expect(()=>validateLegacyMappingSource({...input,entityType:'fixed-payment',sourceKey:'c'.repeat(64)}))
-      .toThrow('data de quitação')
+  it('exige indicação explícita de timestamp desconhecido para pagamento fixo',()=>{
+    const fixed={...input,entityType:'fixed-payment' as const,sourceKey:'c'.repeat(64)}
+    expect(()=>validateLegacyMappingSource(fixed)).toThrow('data exata')
+    expect(()=>validateLegacyMappingSource({...fixed,needsPaymentDateReview:true})).not.toThrow()
+    expect(()=>validateLegacyMappingSource({...input,needsPaymentDateReview:true})).toThrow('data exata')
+  })
+  it('confere que um pagamento mapeado pertence ao espaço autenticado',async()=>{
+    const db=mockDb()
+    await db.service.importOnce(input,db.create)
+    const paid:LegacyMappingSource={...input,entityType:'fixed-payment',sourceKey:'c'.repeat(64),
+      needsPaymentDateReview:true}
+    expect(await db.service.importOnce(paid,async()=>remoteRow)).toMatchObject({status:'created'})
+    expect(await db.service.importOnce(paid,async()=>{throw Error('não criar novamente')}))
+      .toMatchObject({status:'reused'})
   })
   it('migration SQL possui unicidade, RLS e bloqueio da Data API',()=>{
     const sql=readFileSync(new URL('../prisma/migrations/20261112172500_legacy_import_mapping/migration.sql',import.meta.url),'utf8')

@@ -64,7 +64,7 @@ function sameName(a:string,b:string):boolean {
  *
  * Não mistura com registros remotos preexistentes na PRIMEIRA conexão.
  * Conecta contas, históricos, gastos fixos e orçamentos com referências.
- * Pagamentos fixos antigos sem data continuam BLOQUEADOS.
+ * Pagamentos fixos antigos preservam o mês pago com paidAt=NULL (data desconhecida).
  * Nenhuma rota chama esta classe sem flag explícita no servidor.
  */
 export class PrismaLegacyTransactionConnectionService implements LegacyConnectionService {
@@ -76,8 +76,8 @@ export class PrismaLegacyTransactionConnectionService implements LegacyConnectio
       throw new LegacyConnectionValidationError()
     }
     const data = parsed.data
-    // Dados com pais ausentes, IDs repetidos ou meses pagos sem data
-    // já foram recusados pelo schema antes de abrir transação no banco.
+    // Dados com pais ausentes, IDs repetidos e competências pagas inválidas
+    // são recusados pelo schema antes de abrir transação no banco.
     const legacyMapping = new PrismaLegacyImportMappingService(this.prisma)
     const spaceKey = sourceKey(ownerUserId,data.workspace.id,'workspace',data.workspace.id)
     return this.prisma.$transaction(async tx => {
@@ -167,6 +167,24 @@ export class PrismaLegacyTransactionConnectionService implements LegacyConnectio
           return saved.id
         })
         register(mapping.status)
+        // Preservar o histórico pago sem inventar quando ocorreu a quitação.
+        // Uma linha = um mês pago; paidAt:null significa data desconhecida.
+        for(const paidMonth of fixed.paidMonths){
+          const payment=await legacyMapping.importWithinTransaction(tx,{
+            ownerUserId,workspaceId:targetWorkspaceId,entityType:'fixed-payment',
+            sourceWorkspaceKey:spaceKey,
+            sourceKey:sourceKey(ownerUserId,data.workspace.id,'fixed-payment',
+              JSON.stringify([fixed.id,paidMonth])),
+            contentFingerprint:fingerprint({fixedExpenseId:fixed.id,yearMonth:paidMonth}),
+            needsPaymentDateReview:true,
+          },async()=>{
+            const saved=await tx.fixedExpensePayment.create({data:{
+              fixedExpenseId:mapping.destinationRecordId,yearMonth:paidMonth,paidAt:null,
+            },select:{id:true}})
+            return saved.id
+          })
+          register(payment.status)
+        }
       }
       const statuses={
         planning:'PLANNING',quoting:'QUOTING',approved:'APPROVED',
@@ -256,7 +274,8 @@ export class PrismaLegacyTransactionConnectionService implements LegacyConnectio
         register(result.status)
       }
       const total=data.transactions.length+data.bills.length+data.monthlyEntries.length+
-        data.fixedExpenses.length+data.budgets.projects.length+
+        data.fixedExpenses.length+data.fixedExpenses.reduce((sum,f)=>sum+f.paidMonths.length,0)+
+        data.budgets.projects.length+
         data.budgets.items.length+data.budgets.quotes.length
       return {status:'completed',workspaceMapping:root.status,created,reused,total}
     },{isolationLevel:'Serializable',maxWait:5000,timeout:20000})

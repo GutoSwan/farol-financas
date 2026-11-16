@@ -65,6 +65,8 @@ export const legacyFinancialBatchSchema=z.object({
   monthlyEntries:z.array(monthlyEntry).max(25).default([]),
   fixedExpenses:z.array(fixed).max(25).default([]),
   budgets:budgets.default(emptyBudgets),
+  // Confirmação explícita exigida só quando o legado não conhece a data exata.
+  confirmUnknownFixedPaymentDates:z.boolean().optional(),
 }).strict().superRefine((batch,ctx)=>{
   const checkUnique=(records:readonly {id:string}[],label:string)=>{
     if(new Set(records.map(r=>r.id)).size!==records.length){
@@ -87,10 +89,20 @@ export const legacyFinancialBatchSchema=z.object({
     }
     monthKey.add(k)
   }
+  const paidCount=batch.fixedExpenses.reduce((sum,fixed)=>sum+fixed.paidMonths.length,0)
+  if(paidCount>25)ctx.addIssue({code:'custom',message:'Histórico pago excede o limite do lote'})
+  if(paidCount>0 && batch.confirmUnknownFixedPaymentDates!==true){
+    ctx.addIssue({code:'custom',message:'É necessário confirmar a preservação dos meses pagos sem data exata'})
+  }
   for(const row of batch.fixedExpenses){
-    if(row.paidMonths.length)ctx.addIssue({
-      code:'custom',message:'Gasto fixo possui meses pagos sem data de quitação conhecida',
-    })
+    const months=new Set<string>()
+    for(const month of row.paidMonths){
+      if(months.has(month) || month<row.startMonth ||
+         (row.endBeforeMonth!==null && month>=row.endBeforeMonth)){
+        ctx.addIssue({code:'custom',message:'Gasto fixo com competência paga repetida ou fora da vigência'})
+      }
+      months.add(month)
+    }
   }
   const projectIds=new Set(batch.budgets.projects.map(p=>p.id))
   const itemParent=new Map(batch.budgets.items.map(i=>[i.id,i.projectId]))

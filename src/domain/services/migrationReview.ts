@@ -41,6 +41,8 @@ export function summarizeMigrationSource(source: LocalReviewSpace): ReviewSummar
     {label:'Contas mensais',count:bills.length},
     {label:'Históricos mensais',count:monthlyEntries.length},
     {label:'Gastos fixos',count:fixedExpenses.length},
+    {label:'Meses pagos de gastos fixos (data desconhecida)',count:fixedExpenses.reduce(
+      (sum,fixed)=>sum+fixed.paidMonths.length,0)},
     {label:'Projetos de orçamento',count:budgets.projects.length},
     {label:'Itens de orçamento',count:budgets.items.length},
     {label:'Cotações',count:budgets.quotes.length},
@@ -50,8 +52,17 @@ export function summarizeMigrationSource(source: LocalReviewSpace): ReviewSummar
     issues.push('Há mais de 25 registros em uma categoria. Precisamos preparar a importação em lotes.')
   }
   const paidWithoutDate=fixedExpenses.reduce((sum,expense)=>sum+expense.paidMonths.length,0)
-  if(paidWithoutDate>0) {
-    issues.push(paidWithoutDate+' pagamento(s) de gasto fixo sem data original de quitação precisam de revisão.')
+  if(paidWithoutDate>25) {
+    issues.push('Há mais de 25 competências pagas de gastos fixos. É necessário dividir a importação em lotes.')
+  }
+  for(const fixed of fixedExpenses){
+    const uniqueMonths=new Set(fixed.paidMonths)
+    if(uniqueMonths.size!==fixed.paidMonths.length ||
+       fixed.paidMonths.some(month=>month<fixed.startMonth ||
+         (fixed.endBeforeMonth!==null && month>=fixed.endBeforeMonth))){
+      issues.push('Há mês pago repetido ou fora da vigência em um gasto fixo.')
+      break
+    }
   }
   const unique=(rows:readonly {id:string}[],label:string)=>{
     if(new Set(rows.map(row=>row.id)).size!==rows.length){

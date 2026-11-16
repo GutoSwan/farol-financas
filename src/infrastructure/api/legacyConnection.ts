@@ -20,6 +20,7 @@ export async function connectReviewedFinancialWorkspace(
   source: LocalReviewSpace,
   destination: OnlineWorkspace,
   expectedUserId: string,
+  unknownPaidDatesConfirmed = false,
 ): Promise<LegacyConnectionSummary> {
   if (!supabase || !uuid.test(destination.id) || destination.role !== 'OWNER') {
     throw new Error('É necessário um espaço online de sua propriedade.')
@@ -36,8 +37,12 @@ export async function connectReviewedFinancialWorkspace(
   if (error || !data.session || data.session.user.id !== expectedUserId) {
     throw new Error('Sessão expirada. Entre novamente antes da transferência.')
   }
+  // O usuário precisa reconhecer explicitamente que não temos a data original.
+  if (source.fixedExpenses.some(f=>f.paidMonths.length>0) && !unknownPaidDatesConfirmed) {
+    throw new Error('Confirme os meses pagos sem data exata antes de transferir.')
+  }
   // Enviar somente este espaço. Nunca enviar o backup inteiro, presentes ou tokens.
-  const payload = JSON.stringify(source)
+  const payload = JSON.stringify({...source,confirmUnknownFixedPaymentDates:unknownPaidDatesConfirmed})
   if (new TextEncoder().encode(payload).length > 90_000) {
     throw new Error('Os registros excedem o tamanho do lote. Nenhum dado foi enviado.')
   }

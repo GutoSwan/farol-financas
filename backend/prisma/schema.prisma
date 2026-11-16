@@ -109,7 +109,9 @@ model FixedExpensePayment {
   id             String        @id @default(uuid()) @db.Uuid
   fixedExpenseId String        @db.Uuid
   yearMonth      String        @db.VarChar(7)
-  paidAt         DateTime      @default(now())
+  // NULL = pagamento antigo confirmado, mas sem data exata conhecida.
+  // Pagamentos novos continuam usando a data atual por padrão.
+  paidAt         DateTime?     @default(now())
   fixedExpense   FixedExpense  @relation(fields: [fixedExpenseId], references: [id], onDelete: Cascade)
   @@unique([fixedExpenseId, yearMonth])
 }

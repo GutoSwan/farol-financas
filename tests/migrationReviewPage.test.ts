@@ -21,13 +21,20 @@ describe('Prévia da revisão de migração',()=>{
     expect(summarizeMigrationSource(data).total).toBe(2)
     expect(summarizeMigrationSource(data).issues).toEqual([])
   })
-  it('marca pagamento fixo sem data como impedimento',()=>{
+  it('conta mês pago com data desconhecida sem tratá-lo como erro',()=>{
     const data=structuredClone(source)
     data.fixedExpenses.push({id:'f1',name:'Internet',amountCents:10000,dueDay:5,startMonth:'2026-11',
       endBeforeMonth:null,paidMonths:['2026-11'],createdAt:'2026-11-12'})
     const result=summarizeMigrationSource(data)
     expect(result.paidWithoutDate).toBe(1)
-    expect(result.issues.join()).toContain('sem data original')
+    expect(result.total).toBe(2)
+    expect(result.issues).toEqual([])
+  })
+  it('não deixa passar meses pagos duplicados ou fora da vigência',()=>{
+    const data=structuredClone(source)
+    data.fixedExpenses.push({id:'f1',name:'Internet',amountCents:10000,dueDay:5,startMonth:'2026-11',
+      endBeforeMonth:'2027-01',paidMonths:['2026-11','2026-11','2027-01'],createdAt:'2026-11-12'})
+    expect(summarizeMigrationSource(data).issues.join()).toContain('mês pago repetido')
   })
   it('detecta histórico referindo conta ausente e referência orçamentária inválida',()=>{
     const data=structuredClone(source)
@@ -81,6 +88,8 @@ describe('Prévia da revisão de migração',()=>{
     expect(page).toContain('Transferir registros revisados')
     expect(page).toContain(':disabled="!canTransfer"')
     expect(page).toContain('backupConfirmed')
+    expect(page).toContain('paidHistoryConfirmed')
+    expect(page).toContain('data exata não é conhecida')
     expect(page).toContain('connectReviewedFinancialWorkspace')
     expect(page).toContain('await inspectOnlineLegacyReadiness(dest,owner)')
     expect(page).toContain('Criar destino vazio')

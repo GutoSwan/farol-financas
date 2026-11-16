@@ -172,7 +172,8 @@ export function analyzeLegacyMigration(
       })
       const seenPaid = new Set<string>()
       for (const paid of expense.paidMonths) {
-        if (!month(paid) || seenPaid.has(paid)) report({
+        if (!month(paid) || seenPaid.has(paid) || paid < expense.startMonth ||
+            (expense.endBeforeMonth !== null && paid >= expense.endBeforeMonth)) report({
           severity: 'blocker', code: 'INVALID_FIXED_PAYMENT', location: at + ' / Gastos fixos',
           message: 'Um mês de pagamento está inválido ou repetido.',
         })
@@ -180,7 +181,7 @@ export function analyzeLegacyMigration(
       }
       if (expense.paidMonths.length) report({ severity: 'warning', code: 'FIXED_PAYMENT_DATES_UNKNOWN',
         location: at + ' / Gastos fixos',
-        message: 'O navegador registra apenas meses pagos, mas a nuvem exige data de pagamento; não será inventada automaticamente.',
+        message: 'Os meses pagos serão preservados com data de quitação desconhecida, após confirmação explícita.',
       })
     }
 

@@ -26,7 +26,7 @@ const full={
     createdAt:when,budgetProjectId:'proj-1',budgetItemId:'item-1'}],
 }
 type Row=Record<string,any>
-const kinds=['recurringBill','monthlyBillEntry','fixedExpense','budgetProject','budgetItem','budgetQuote','transaction'] as const
+const kinds=['recurringBill','monthlyBillEntry','fixedExpense','fixedExpensePayment','budgetProject','budgetItem','budgetQuote','transaction'] as const
 function fixture(errorOn?:string){
   const records:Record<string,Row[]>={}
   for(const kind of kinds)records[kind]=[]
@@ -45,6 +45,10 @@ function fixture(errorOn?:string){
         if(where.bill?.workspaceId){
           const parent=records.recurringBill.find(b=>b.id===x.billId)
           return parent?.workspaceId===where.bill.workspaceId
+        }
+        if(where.fixedExpense?.workspaceId){
+          const parent=records.fixedExpense.find(f=>f.id===x.fixedExpenseId)
+          return parent?.workspaceId===where.fixedExpense.workspaceId
         }
         if(where.project?.workspaceId){
           const parent=records.budgetProject.find(p=>p.id===x.projectId)
@@ -99,7 +103,8 @@ describe('Conexão de contas, históricos e orçamentos na mesma transação',()
     const first=await f.service.connect(owner,space,full)
     expect(first).toMatchObject({created:7,reused:0,total:7,workspaceMapping:'created'})
     expect(f.mappings).toHaveLength(8)
-    for(const kind of kinds)expect(f.records[kind]).toHaveLength(1)
+    for(const kind of kinds.filter(k=>k!=='fixedExpensePayment'))expect(f.records[kind]).toHaveLength(1)
+    expect(f.records.fixedExpensePayment).toHaveLength(0)
     expect(f.records.monthlyBillEntry[0].billId).toBe(f.records.recurringBill[0].id)
     expect(f.records.budgetItem[0].projectId).toBe(f.records.budgetProject[0].id)
     expect(f.records.budgetQuote[0].itemId).toBe(f.records.budgetItem[0].id)
@@ -107,7 +112,8 @@ describe('Conexão de contas, históricos e orçamentos na mesma transação',()
     expect(f.records.transaction[0].budgetItemId).toBe(f.records.budgetItem[0].id)
     const second=await f.service.connect(owner,space,full)
     expect(second).toMatchObject({created:0,reused:7,total:7,workspaceMapping:'reused'})
-    for(const kind of kinds)expect(f.records[kind]).toHaveLength(1)
+    for(const kind of kinds.filter(k=>k!=='fixedExpensePayment'))expect(f.records[kind]).toHaveLength(1)
+    expect(f.records.fixedExpensePayment).toHaveLength(0)
     expect(f.mappings).toHaveLength(8)
   })
   it('reverte todo o lote se uma cotação falhar depois de criar contas e projetos',async()=>{
@@ -128,12 +134,37 @@ describe('Conexão de contas, históricos e orçamentos na mesma transação',()
       .rejects.toThrow('inválido')
     expect(f.mappings).toHaveLength(0)
   })
-  it('recusa pagamentos fixos com meses pagos sem data real',async()=>{
+  it('preserva competências pagas sem inventar timestamp, exige confirmação e não duplica replay',async()=>{
     const f=fixture()
-    await expect(f.service.connect(owner,space,{...full,
-      fixedExpenses:[{...full.fixedExpenses[0],paidMonths:['2026-10']}]}))
+    const reviewed={...full,confirmUnknownFixedPaymentDates:true,
+      fixedExpenses:[{...full.fixedExpenses[0],paidMonths:['2026-10','2026-11']}]}
+    await expect(f.service.connect(owner,space,{...reviewed,confirmUnknownFixedPaymentDates:false}))
       .rejects.toThrow('inválido')
+    const first=await f.service.connect(owner,space,reviewed)
+    expect(first).toMatchObject({created:9,reused:0,total:9})
+    expect(f.records.fixedExpensePayment.map(x=>x.yearMonth)).toEqual(['2026-10','2026-11'])
+    expect(f.records.fixedExpensePayment.every(x=>x.paidAt===null)).toBe(true)
+    expect(f.records.fixedExpensePayment.every(x=>x.fixedExpenseId===f.records.fixedExpense[0].id)).toBe(true)
+    const second=await f.service.connect(owner,space,reviewed)
+    expect(second).toMatchObject({created:0,reused:9,total:9})
+    expect(f.records.fixedExpensePayment).toHaveLength(2)
+    expect(f.mappings).toHaveLength(10)
+  })
+  it('bloqueia meses pagos duplicados ou fora da vigência e faz rollback do lote',async()=>{
+    const base={...full,confirmUnknownFixedPaymentDates:true}
+    const f=fixture()
+    for(const paidMonths of [['2026-10','2026-10'],['2026-08'],['2026-10','2026-13']]){
+      await expect(f.service.connect(owner,space,{...base,
+        fixedExpenses:[{...full.fixedExpenses[0],paidMonths}]})).rejects.toThrow('inválido')
+    }
     expect(f.mappings).toHaveLength(0)
+    const fail=fixture('fixedExpensePayment')
+    await expect(fail.service.connect(owner,space,{...base,
+      fixedExpenses:[{...full.fixedExpenses[0],paidMonths:['2026-10']}]}))
+      .rejects.toThrow('Injected database failure')
+    expect(fail.records.fixedExpense).toHaveLength(0)
+    expect(fail.records.fixedExpensePayment).toHaveLength(0)
+    expect(fail.mappings).toHaveLength(0)
   })
   it('recusa item de orçamento sem projeto e cotação sem item',async()=>{
     const f=fixture()
