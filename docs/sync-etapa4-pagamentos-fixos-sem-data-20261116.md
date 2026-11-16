@@ -35,10 +35,23 @@ data de quitação inventada ao histórico.
   também retornou HTTP 200 nas duas rotas; `/dados-online` abriu HTTP 200.
   Build do frontend: 231 testes aprovados. A proteção da Vercel permaneceu ativa.
 - **Preview para QA:** https://farol-financas-git-feat-valora3d-preparo-sincron-817c2c-farol13.vercel.app/dados-online
-- **Ainda pendente:** autenticar-se na Preview com ambas as contas, validar
-  GETs dos dois espaços nos aparelhos e conferir atualização entre sessões.
-  O frontend financeiro principal ainda utiliza dados locais; portanto o
-  teste de conectividade NÃO comprova sincronização automática.
+- **Leitura validada pelo usuário (16/11):** as duas contas visualizaram
+  R$ 12,34 na Casa compartilhada e R$ 56,78 na Valora3D compartilhada.
+  O frontend principal continua local; essa leitura não migra dados reais.
+- **Escrita de lançamentos QA (16/11):** preparada somente na branch Preview.
+  Role técnica independente `farol_preview_sync_transactions_rw` com
+  `SELECT, INSERT, UPDATE, DELETE` estritamente em `Transaction`,
+  limitada via RLS aos dois espaços fictícios nomeados acima. A role
+  principal `farol_preview_sync_ro` permanece somente leitura.
+  O backend bloqueia demais módulos, espaços e rotas de escrita no Preview.
+  A ponte de mesmo domínio aceita apenas POST/PATCH/DELETE de lançamentos
+  com flag privada, autenticação Supabase, autorização OWNER/EDITOR no backend
+  e versão `If-Match` para PATCH/DELETE. Nunca aceita migração automática.
+  A tela `/dados-online` oferece criação, edição, exclusão e consulta
+  periódica (15 s) apenas aos espaços de QA sob flag da branch.
+- **Pendente:** teste ponta a ponta com duas sessões reais de gravação,
+  conflito simultâneo, recarregamento e logout. Não foi transferido
+  nenhum registro financeiro pessoal nem ativada escrita em Production.
 - O token de automação da Vercel é exclusivo de transporte entre as funções
   protegidas; não substitui o JWT Supabase nem a verificação de permissão,
   não aparece no cliente e deve ser revogado ao encerrar o QA.
@@ -48,8 +61,8 @@ data de quitação inventada ao histórico.
    `CURRENT_TIMESTAMP` preservado e 0 pagamentos existentes na tabela.
 2. Executar teste de importação real em PostgreSQL de QA com rollback,
    repetição, interrupção e duas contas autenticadas (ainda pendente).
-3. **Vínculos QA preparados:** os espaços compartilhados têm dois membros, mas
-   a leitura via duas sessões autenticadas e a sincronização no app estão pendentes.
+3. **Vínculos QA preparados e leitura compartilhada validada** pelo usuário.
+   Gravação e atualização entre sessões ainda dependem de QA manual.
 4. Resolver migração de dados superiores ao limite de 25 por categoria e
    reconciliação de mudanças concorrentes.
 5. Somente com backup, revisão de origem/destino e autorização explícita
@@ -57,3 +70,12 @@ data de quitação inventada ao histórico.
 
 **A rota `legacy-connect` continua DESLIGADA**, `allowLegacyConnectionWrites:false`.
 Preview e produção não receberam registros financeiros por esta preparação.
+
+## Retorno de segurança
+- Flags e credenciais de escrita são exclusivas da branch QA na Vercel Preview.
+- Ao encerrar o teste, retirar `FAROL_PREVIEW_SYNC_QA_TRANSACTION_WRITES`,
+  `FAROL_QA_TRANSACTION_WRITES_ENABLED` e
+  `VITE_FAROL_QA_TRANSACTION_WRITES_ENABLED`, revogar a role de escrita Dev
+  e preservar os registros de QA para conferência até autorização de limpeza.
+- Confundir este protótipo com sincronização do Farol principal é um erro:
+  as telas de lançamentos reais continuam lendo dados locais, sem mesclagem.
