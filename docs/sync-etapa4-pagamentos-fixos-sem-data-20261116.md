@@ -19,14 +19,25 @@ data de quitação inventada ao histórico.
   original é desconhecida. O backend também exige essa confirmação no lote.
 - O backup local não é apagado e nunca é substituído pela transferência.
 
+## QA de compartilhamento no Supabase Dev (16/11/2026)
+- Criados os espaços **QA - Casa compartilhada (Dev)** e **QA - Valora3D compartilhada (Dev)**;
+  cada um tem duas contas de teste distintas, com papéis OWNER e EDITOR.
+- Inserido **um lançamento fictício por espaço** (R$ 12,34 na Casa e
+  R$ 56,78 na Valora3D). Não são registros reais de Gustavo ou Ana.
+- Verificação SQL confirmou dois membros e um lançamento por espaço.
+- Os quatro espaços QA anteriores continuam com um membro cada.
+- **Ainda pendente:** autenticar-se na Preview com ambas as contas,
+  validar GETs da API em ambos os celulares e conferir atualização entre sessões.
+- O frontend financeiro principal ainda utiliza dados locais; por isso esta
+  conferência da tabela e dos vínculos NÃO demonstra sincronização automática.
+
 ## Segurança e próximos passos
 1. **Concluído em Dev:** esquema confirmado com `paidAt` anulável, default
    `CURRENT_TIMESTAMP` preservado e 0 pagamentos existentes na tabela.
 2. Executar teste de importação real em PostgreSQL de QA com rollback,
    repetição, interrupção e duas contas autenticadas (ainda pendente).
-3. Validar colaboração: os quatro espaços QA existentes no Dev têm um membro
-   cada; **ainda não existe prova de sincronização entre dois logins no mesmo
-   espaço**. Testar compartilhamento familiar e Valora3D sem cruzar dados.
+3. **Vínculos QA preparados:** os espaços compartilhados têm dois membros, mas
+   a leitura via duas sessões autenticadas e a sincronização no app estão pendentes.
 4. Resolver migração de dados superiores ao limite de 25 por categoria e
    reconciliação de mudanças concorrentes.
 5. Somente com backup, revisão de origem/destino e autorização explícita
