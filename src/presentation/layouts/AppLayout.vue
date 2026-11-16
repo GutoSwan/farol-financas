@@ -97,6 +97,11 @@ const links = [
   { to: '/relatorios', label: 'Relatórios', icon: 'chart' as const },
 ]
 
+// O espaço comercial não renderiza conteúdos pessoais mesmo com um link direto.
+watch([isValoraWorkspace, () => route.path], ([valora, path]) => {
+  if (valora && path === '/presentes') void router.replace('/')
+}, { immediate: true })
+
 watch(() => route.fullPath, () => {
   closeMobileMenu(true)
   profileMenuOpen.value = false
@@ -144,9 +149,9 @@ async function logoutFromSidebar(): Promise<void> {
           class="side-nav-link" :class="{ active: route.path === link.to }"
           @click="closeMobileMenu(true)">
           <UiIcon :name="link.icon" :size="17" />
-          <span>{{ link.label }}</span>
+          <span>{{ link.to === '/cartoes' && isValoraWorkspace ? 'Maquininha' : link.label }}</span>
         </RouterLink>
-        <RouterLink to="/presentes" class="side-nav-link"
+        <RouterLink v-if="!isValoraWorkspace" to="/presentes" class="side-nav-link"
           :class="{ active: route.path === '/presentes' }"
           @click="openGiftRoute(); closeMobileMenu(true)">
           <UiIcon name="gift" :size="17" /><span>Presentes</span>
@@ -200,13 +205,12 @@ async function logoutFromSidebar(): Promise<void> {
           aria-controls="farol-sidebar" :aria-expanded="mobileMenuOpen" @click="openMobileMenu">
           <span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span>
         </button>
-        <div v-if="isValoraWorkspace" class="valora-topbar-brand" aria-label="Valora3D, financeiro da loja">
+        <div v-if="isValoraWorkspace" class="valora-topbar-brand" aria-label="Espaço Valora3D">
           <strong class="valora-wordmark">Valora<span>3D</span></strong>
-          <small>FINANCEIRO DA LOJA</small>
         </div>
         <b v-else>Farol Finanças</b>
         <div class="topbar-actions">
-          <span class="page-context">{{ route.meta.title ?? 'Visão geral' }}</span>
+          <span class="page-context">{{ route.path === '/cartoes' && isValoraWorkspace ? 'Maquininha' : route.meta.title ?? 'Visão geral' }}</span>
           <button class="theme-toggle" type="button"
             :aria-label="isDark ? 'Ativar modo claro' : 'Ativar modo escuro'"
             :title="isDark ? 'Ativar modo claro' : 'Ativar modo escuro'"
@@ -222,15 +226,10 @@ async function logoutFromSidebar(): Promise<void> {
         <div><strong>Abrindo Presentes...</strong><small>Conferindo seu acesso com segurança.</small></div>
       </div>
       <main class="content" :key="activeWorkspaceId">
-        <div v-if="isValoraWorkspace" class="valora-space-banner" role="note">
-          <div class="valora-banner-emblem" aria-hidden="true">V<span>3D</span></div>
-          <div class="valora-banner-copy">
-            <strong>Valora3D</strong>
-            <p>O financeiro da nossa loja, separado das despesas da casa.</p>
-          </div>
-          <span class="valora-banner-tag">ESPAÇO DA LOJA</span>
-        </div>
-        <RouterView />
+        <p v-if="isValoraWorkspace && route.path === '/presentes'" class="notice">
+          Presentes é uma área pessoal de Gustavo e Ana. Selecione esse espaço para acessar.
+        </p>
+        <RouterView v-else />
       </main>
     </div>
   </div>

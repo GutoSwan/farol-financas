@@ -9,7 +9,7 @@ import ReportsPage from '../presentation/pages/ReportsPage.vue'
 import GiftsPage from '../presentation/pages/GiftsPage.vue'
 import MonthlyExpensesPage from '../presentation/pages/MonthlyExpensesPage.vue'
 import BudgetsPage from '../presentation/pages/BudgetsPage.vue'
-import ComingSoonPage from '../presentation/pages/ComingSoonPage.vue'
+import CardsWorkspacePage from '../presentation/pages/CardsWorkspacePage.vue'
 import CalendarPage from '../presentation/pages/CalendarPage.vue'
 import LegacyDataAccessPage from '../presentation/pages/LegacyDataAccessPage.vue'
 import LegacyBackupPage from '../presentation/pages/LegacyBackupPage.vue'
@@ -32,7 +32,7 @@ const router = createRouter({
       { path: 'contas-mensais', component: BillsPage, meta: { title: 'Contas mensais' } },
       { path: 'gastos-fixos', component: FixedExpensesPage, meta: { title: 'Gastos fixos' } },
       { path: 'lancamentos', component: TransactionsPage, meta: { title: 'Lançamentos' } },
-      { path: 'cartoes', component: ComingSoonPage, props: { title: 'Cartões de crédito' } },
+      { path: 'cartoes', component: CardsWorkspacePage, meta: { title: 'Cartões de crédito' } },
       { path: 'orcamentos', component: BudgetsPage, meta: { title: 'Orçamentos' } },
       { path: 'relatorios', component: ReportsPage, meta: { title: 'Relatórios' } },
       { path: 'presentes', component: GiftsPage, meta: { title: 'Presentes' } },

@@ -1,19 +1,19 @@
 /* A identidade da Valora3D aparece somente no espaço financeiro da loja.
    Nunca altera login, finanças domésticas ou o painel de dados na nuvem. */
 .shell--valora .valora-brand,
-.shell--valora .valora-wordmark,
-.shell--valora .valora-banner-copy strong {
-  font-family: "Snell Roundhand", "Brush Script MT", "Segoe Script", "URW Chancery L", cursive;
-  font-style: italic;
-  font-weight: 700;
-  letter-spacing: .01em;
+.shell--valora .valora-wordmark {
+  /* Até recebermos a fonte oficial, usar uma família geométrica arredondada.
+     A marca nunca é dividida em duas linhas. */
+  font-family: "Arial Rounded MT Bold", "Trebuchet MS", Arial, sans-serif;
+  font-style: normal;
+  font-weight: 900;
+  letter-spacing: -.045em;
+  white-space: nowrap;
 }
 .shell--valora .valora-brand {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: flex-start;
-  font-size: 29px;
-  line-height: 1.08;
+  display: block;
+  font-size: 27px;
+  line-height: 1.12;
   text-decoration: none;
 }
 .shell--valora .valora-brand span,
@@ -31,52 +31,6 @@
   min-width: 0;
 }
 .shell--valora .valora-wordmark { font-size: 27px; line-height: 1; white-space: nowrap; }
-.shell--valora .valora-topbar-brand small {
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: .13em;
-}
-.shell--valora .valora-space-banner {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  position: relative;
-  overflow: hidden;
-  margin-bottom: 23px;
-  padding: 18px 22px;
-  border-radius: 17px;
-  background: radial-gradient(circle at 94% 0%, rgba(255,224,54,.30), transparent 31%),
-    linear-gradient(120deg, #361153, #6327a0 72%, #8533c0);
-  box-shadow: 0 12px 29px rgba(74,29,108,.14);
-  color: #fff;
-}
-.shell--valora .valora-banner-emblem {
-  width: 51px;
-  height: 51px;
-  flex-shrink: 0;
-  display: grid;
-  place-items: center;
-  border-radius: 13px;
-  background: #ffe03b;
-  color: #361153;
-  font-size: 23px;
-  font-weight: 900;
-  letter-spacing: -.08em;
-}
-.shell--valora .valora-banner-emblem span { font-size: 11px; letter-spacing: -.05em; }
-.shell--valora .valora-banner-copy { flex: 1; min-width: 0; }
-.shell--valora .valora-banner-copy strong { display: block; font-size: 29px; line-height: 1; }
-.shell--valora .valora-banner-copy p { margin: 7px 0 0; font-size: 12px; color: #f5eafc; }
-.shell--valora .valora-banner-tag {
-  font-size: 9px;
-  font-weight: 900;
-  letter-spacing: .11em;
-  border-radius: 100px;
-  padding: 9px 12px;
-  background: #ffe03b;
-  color: #3a145b;
-  white-space: nowrap;
-}
 .shell--valora .primary,
 .shell--valora .workspace-add,
 .shell--valora button.primary { background: #f7d332; color: #39144f; border-color: #d5aa11; }
@@ -114,7 +68,6 @@
 }
 :root[data-theme="light"] .shell--valora .topbar { background: #fffaf0; border-bottom-color: #edddba; }
 :root[data-theme="light"] .shell--valora .valora-wordmark { color: #572378; }
-:root[data-theme="light"] .shell--valora .valora-topbar-brand small { color: #846498; }
 :root[data-theme="light"] .shell--valora .stat,
 :root[data-theme="light"] .shell--valora .panel { background: #fff; border-color: #e9dcef; }
 :root[data-theme="light"] .shell--valora .theme-toggle { color: #612888; border-color: #decde9; }
@@ -140,7 +93,6 @@
 :root[data-theme="dark"] .shell--valora .sidebar .side-nav-link:hover,
 :root[data-theme="dark"] .shell--valora .sidebar .side-nav-link.active { background: #4a276b; color: #fff6ff; }
 :root[data-theme="dark"] .shell--valora .topbar { background: #241332; border-bottom-color: #4f305f; }
-:root[data-theme="dark"] .shell--valora .valora-topbar-brand small { color: #c9a3e3; }
 :root[data-theme="dark"] .shell--valora .stat,
 :root[data-theme="dark"] .shell--valora .panel { background: #281936; border-color: #523567; }
 :root[data-theme="dark"] .shell--valora .stat strong,
@@ -154,14 +106,169 @@
   background: #341b4a; color: #f9e9ff; border-color: #76518c;
 }
 @media (max-width: 700px) {
-  .shell--valora .valora-space-banner { padding: 14px; gap: 12px; flex-wrap: wrap; }
-  .shell--valora .valora-banner-emblem { width: 44px; height: 44px; font-size: 21px; }
-  .shell--valora .valora-banner-tag { margin-left: 56px; }
-  .shell--valora .valora-topbar-brand small { display: none; }
   .shell--valora .valora-wordmark { font-size: 23px; }
   .shell--valora .valora-brand { font-size: 26px; }
 }
 @media (max-width: 410px) {
-  .shell--valora .valora-banner-tag { display: none; }
-  .shell--valora .valora-banner-copy p { font-size: 11px; }
+}
+
+/* Paleta completa por espaço. As variáveis das telas de contas, lançamentos,
+   relatórios, formulários e gráficos herdam estas cores automaticamente. */
+:root[data-theme="light"] .shell--valora {
+  --farol-card: #f3eafd;
+  --farol-card-muted: #eadcf8;
+  --farol-border: #ccb5e3;
+  --farol-wine: #7736a5;
+  --farol-wine-soft: #e7d0f6;
+  --farol-positive: #187957;
+  --farol-positive-soft: #d9f3e8;
+  --farol-text: #402055;
+  --farol-muted: #705984;
+  --valora-field: #fffaff;
+  --valora-focus: #f4cb35;
+}
+:root[data-theme="dark"] .shell--valora {
+  --farol-card: #2a1939;
+  --farol-card-muted: #241331;
+  --farol-border: #69477e;
+  --farol-wine: #ffda49;
+  --farol-wine-soft: #503262;
+  --farol-positive: #91e2b7;
+  --farol-positive-soft: #214938;
+  --farol-text: #f5e9ff;
+  --farol-muted: #d2b9e1;
+  --valora-field: #321e46;
+  --valora-focus: #ffe36a;
+}
+:root[data-theme="light"] .shell--valora .panel,
+:root[data-theme="light"] .shell--valora .stat,
+:root[data-theme="dark"] .shell--valora .panel,
+:root[data-theme="dark"] .shell--valora .stat {
+  background: var(--farol-card);
+  border-color: var(--farol-border);
+}
+:root[data-theme="light"] .shell--valora .stat strong,
+:root[data-theme="dark"] .shell--valora .stat strong,
+:root[data-theme="light"] .shell--valora .panel h2,
+:root[data-theme="dark"] .shell--valora .panel h2,
+:root[data-theme="light"] .shell--valora .heading h1,
+:root[data-theme="dark"] .shell--valora .heading h1,
+.shell--valora .account-row strong,
+.shell--valora .fixed-expense-row strong {
+  color: var(--farol-text);
+}
+:root[data-theme="dark"] .shell--valora .heading h1 { color: #ffe585; }
+.shell--valora .heading p:not(.eyebrow),
+.shell--valora .panel-title p,
+.shell--valora .stat span,
+.shell--valora .stat small,
+.shell--valora .muted,
+.shell--valora .archived-note {
+  color: var(--farol-muted);
+}
+.shell--valora .form label,
+.shell--valora .transaction-form label,
+.shell--valora .edit-account-form label,
+.shell--valora .heading label,
+.shell--valora .panel label {
+  color: var(--farol-text);
+  font-weight: 700;
+}
+:root[data-theme="light"] .shell--valora input:not([type="checkbox"]):not([type="radio"]),
+:root[data-theme="light"] .shell--valora textarea,
+:root[data-theme="light"] .shell--valora select,
+:root[data-theme="dark"] .shell--valora input:not([type="checkbox"]):not([type="radio"]),
+:root[data-theme="dark"] .shell--valora textarea,
+:root[data-theme="dark"] .shell--valora select {
+  background: var(--valora-field);
+  border-color: var(--farol-border);
+  color: var(--farol-text);
+}
+.shell--valora input::placeholder,
+.shell--valora textarea::placeholder { color: var(--farol-muted); opacity: .85; }
+.shell--valora input:focus-visible,
+.shell--valora textarea:focus-visible,
+.shell--valora select:focus-visible,
+.shell--valora button:focus-visible,
+.shell--valora a:focus-visible {
+  outline: 3px solid var(--valora-focus);
+  outline-offset: 2px;
+}
+.shell--valora input[type="checkbox"],
+.shell--valora input[type="radio"] { accent-color: #8c35b8; }
+:root[data-theme="light"] .shell--valora .primary,
+:root[data-theme="light"] .shell--valora .dark,
+:root[data-theme="dark"] .shell--valora .primary,
+:root[data-theme="dark"] .shell--valora .dark,
+:root[data-theme="dark"] .shell--valora button.primary {
+  background: #ffe044;
+  color: #34114b;
+  border-color: #edc02b;
+}
+:root[data-theme="light"] .shell--valora .secondary-action,
+:root[data-theme="dark"] .shell--valora .secondary-action {
+  background: var(--farol-wine-soft);
+  color: var(--farol-text);
+  border: 1px solid var(--farol-border);
+}
+.shell--valora .panel th,
+.shell--valora th { background: var(--farol-card-muted); color: var(--farol-muted); }
+.shell--valora .panel td,
+.shell--valora td { border-bottom-color: var(--farol-border); color: var(--farol-text); }
+.shell--valora .bill-list button,
+.shell--valora .account-row,
+.shell--valora .edit-account-form,
+.shell--valora .fixed-expense-row,
+.shell--valora .comparison {
+  background: var(--farol-card-muted);
+  border-color: var(--farol-border);
+  color: var(--farol-text);
+}
+.shell--valora .bill-list button small,
+.shell--valora .fixed-expense-row span,
+.shell--valora .fixed-expense-row small { color: var(--farol-muted); }
+.shell--valora .bill-list button.selected,
+.shell--valora .account-row.selected {
+  background: var(--farol-wine-soft);
+  border-color: #bc86df;
+}
+.shell--valora .dashboard-primary-total {
+  background: var(--farol-wine-soft);
+  border-color: var(--farol-border);
+}
+.shell--valora .dashboard-primary-total span,
+.shell--valora .dashboard-primary-total strong,
+.shell--valora .dashboard-primary-total small { color: var(--farol-text); }
+.shell--valora .report-timeline-track { background: var(--farol-card-muted); }
+.shell--valora .report-recurring { background: #8241b4 !important; }
+.shell--valora .report-fixed { background: #e6b930 !important; }
+.shell--valora .report-oneoff { background: #bc82e9 !important; }
+.shell--valora .legend-fixed { background: #e6b930; }
+.shell--valora .report-timeline-item > strong,
+.shell--valora .report-timeline-item > small { color: var(--farol-muted); }
+.shell--valora .notice { background: var(--farol-wine-soft); color: var(--farol-text); border-color: var(--farol-border); }
+
+/* Maquininha: etapa visual, sem inventar recebimentos ou exigir credenciais. */
+.shell--valora .machine-status {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 16px 18px;
+  border: 1px solid var(--farol-border);
+  border-radius: 13px;
+  background: var(--farol-wine-soft);
+}
+.shell--valora .machine-status-indicator {
+  display: inline-block; width: 11px; height: 11px; flex: 0 0 11px;
+  background: #e2af22; border-radius: 50%; margin-top: 4px;
+}
+.shell--valora .machine-status strong { color: var(--farol-text); }
+.shell--valora .machine-status p { color: var(--farol-muted); font-size: 13px; margin: 5px 0 0; }
+.shell--valora .machine-meta { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 14px; margin: 20px 0; }
+.shell--valora .machine-meta .panel { padding: 18px; }
+.shell--valora .machine-meta .panel small { display: block; font-size: 12px; color: var(--farol-muted); margin-bottom: 9px; }
+.shell--valora .machine-meta .panel strong { color: var(--farol-text); font-size: 16px; }
+.shell--valora .machine-empty { padding: 40px 15px; text-align: center; color: var(--farol-muted); }
+@media (max-width: 620px) {
+  .shell--valora .machine-meta { grid-template-columns: 1fr; }
 }
