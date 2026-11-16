@@ -14,4 +14,14 @@ describe('Vercel Fastify dynamic financial routes', () => {
     const source = readFileSync('api/v1/workspaces/[workspaceId]/[kind].ts', 'utf8')
     expect(source).toContain("export { default } from '../../../../src/native-handler.js'")
   })
+
+  it('exposes transaction item mutations to Fastify on Vercel', () => {
+    const source = readFileSync('api/v1/workspaces/[workspaceId]/transactions/[transactionId].ts', 'utf8')
+    expect(source).toContain("export { default } from '../../../../../src/native-handler.js'")
+
+    const app = readFileSync('src/presentation/app.ts', 'utf8')
+    expect(app).toContain("'/api/v1/workspaces/:workspaceId/transactions/:transactionId'")
+    expect(app).toContain("app.patch<")
+    expect(app).toContain("app.delete<")
+  })
 })
