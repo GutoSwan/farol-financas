@@ -276,6 +276,39 @@ function corsOrigin(): string | undefined {
   }
 }
 
+// Diagnóstico restrito aos logs da Preview. Retorna somente códigos fixos,
+ // sem URL, nome de usuário, senha ou outros detalhes da conexão.
+function qaWriterGuardIssue(): string {
+  const env = process.env
+  if (env.VERCEL_ENV !== 'preview') return 'not-preview'
+  if (env.FAROL_PREVIEW_SYNC_QA_TRANSACTION_WRITES !== 'true') return 'flag-disabled'
+  if (env.FAROL_PREVIEW_SYNC_QA_READONLY !== 'true' ||
+      env.FAROL_PREVIEW_ADMIN_QA_READONLY !== 'true') return 'readonly-mode-missing'
+  if (env.FAROL_FINANCIAL_WRITES_ENABLED === 'true' ||
+      env.FAROL_INVOICE_UPLOADS_ENABLED === 'true') return 'real-financial-write-enabled'
+  if (!isVerifiedDevPreviewEnvironment(env)) return 'dev-environment-invalid'
+  try {
+    const writer = new URL(env.FAROL_QA_TRANSACTION_DATABASE_URL ?? '')
+    const reader = new URL(env.DATABASE_URL ?? '')
+    if (!['postgresql:', 'postgres:'].includes(writer.protocol)) return 'writer-protocol'
+    if (writer.hostname !== reader.hostname ||
+        !writer.hostname.endsWith('.pooler.supabase.com')) return 'writer-host'
+    if (writer.port !== '6543' || writer.pathname !== '/postgres') return 'writer-pooler'
+    if (writer.hash || writer.searchParams.has('options')) return 'writer-query-or-hash'
+    if (decodeURIComponent(writer.username) !==
+        'farol_preview_sync_transactions_rw.tvirkrjkgdtybtcundon') return 'writer-role'
+    if (writer.password.length < 32) return 'writer-password-length'
+    if (reader.username === writer.username) return 'reader-writer-not-isolated'
+    return 'valid'
+  } catch { return 'writer-url-invalid' }
+}
+
+if (process.env.VERCEL_ENV === 'preview' &&
+    process.env.FAROL_PREVIEW_SYNC_QA_TRANSACTION_WRITES === 'true' &&
+    !isVerifiedQaTransactionWriteEnvironment(process.env)) {
+  console.warn('[farol-api] QA transaction writer blocked:', qaWriterGuardIssue())
+}
+
 // Register the security hook BEFORE buildApp registers HTTP routes.
 // Fastify hooks added after route creation do not protect earlier routes.
 const guardedFastify = Fastify({ logger: false, bodyLimit: 100_000 })
