@@ -4,11 +4,11 @@
 Preservar os meses já marcados como pagos no navegador, sem atribuir uma
 data de quitação inventada ao histórico.
 
-## Preparação implementada (somente código, sem transferência)
+## Preparação implementada (código e banco Dev, sem transferência)
 - Prisma: `FixedExpensePayment.paidAt` agora aceita `NULL` e mantém default
   de horário para pagamentos novos.
-- Migração SQL versionada: remove apenas `NOT NULL` da coluna. **Não foi aplicada
-  ao Supabase Dev nem produção nesta etapa.**
+- Migração SQL versionada: remove apenas `NOT NULL` da coluna. **Aplicada em
+  16/11/2026 somente ao Supabase Dev** (`tvirkrjkgdtybtcundon`); produção não alterada.
 - A transferência reconhece cada mês pago como linha independente, ligada
   ao gasto fixo correto e ao espaço autorizado, com `paidAt: null`.
 - O backend recalcula a chave idempotente por titular, espaço, gasto e mês;
@@ -20,12 +20,13 @@ data de quitação inventada ao histórico.
 - O backup local não é apagado e nunca é substituído pela transferência.
 
 ## Segurança e próximos passos
-1. Conferir o esquema e aplicar a migração **somente no Supabase Dev isolado**,
-   depois verificar que `paidAt` é anulável.
-2. Executar a transação em PostgreSQL descartável, incluindo rollback,
-   repetição, interrupção e duas contas QA.
-3. Provar que um usuário não acessa o espaço do outro; conferir quando Ana
-   deve compartilhar o mesmo espaço familiar e quando Valora3D fica separado.
+1. **Concluído em Dev:** esquema confirmado com `paidAt` anulável, default
+   `CURRENT_TIMESTAMP` preservado e 0 pagamentos existentes na tabela.
+2. Executar teste de importação real em PostgreSQL de QA com rollback,
+   repetição, interrupção e duas contas autenticadas (ainda pendente).
+3. Validar colaboração: os quatro espaços QA existentes no Dev têm um membro
+   cada; **ainda não existe prova de sincronização entre dois logins no mesmo
+   espaço**. Testar compartilhamento familiar e Valora3D sem cruzar dados.
 4. Resolver migração de dados superiores ao limite de 25 por categoria e
    reconciliação de mudanças concorrentes.
 5. Somente com backup, revisão de origem/destino e autorização explícita
