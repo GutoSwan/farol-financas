@@ -3,8 +3,8 @@ import { PrismaPg } from '@prisma/adapter-pg'
 import { Pool } from 'pg'
 import { previewPgOptions } from './pgVerifiedOptions.js'
 
-export function createPrismaClient(): PrismaClient {
-  const connectionString = process.env.DATABASE_URL
+export function createPrismaClient(connectionStringOverride?: string): PrismaClient {
+  const connectionString = connectionStringOverride ?? process.env.DATABASE_URL
   if (!connectionString || !/^postgres(?:ql)?:\/\//.test(connectionString)) {
     throw new Error('DATABASE_URL ausente ou inválida.')
   }

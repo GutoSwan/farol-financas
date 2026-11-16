@@ -8,9 +8,13 @@ describe('Proxy protegido do Farol Preview', () => {
   it('o arquivo da função passa na verificação real de sintaxe JavaScript', () => {
     expect(() => execFileSync(process.execPath, ['--check', new URL('../api/v1/[...path].js', import.meta.url).pathname])).not.toThrow()
   })
-  it('aceita somente operações GET no ambiente Preview', () => {
+  it('aceita GET e libera apenas mutações de lançamentos de teste com flag privada', () => {
     expect(proxy).toContain("process.env.VERCEL_ENV !== 'preview'")
     expect(proxy).toContain("req.method !== 'GET'")
+    expect(proxy).toContain('FAROL_QA_TRANSACTION_WRITES_ENABLED')
+    expect(proxy).toContain('QA_TRANSACTION_COLLECTION.test(route)')
+    expect(proxy).toContain('QA_TRANSACTION_ITEM.test(route)')
+    expect(proxy).toContain("headers['If-Match'] = version")
     expect(proxy).toContain("res.statusCode = 405")
     expect(proxy).toContain("const SIMPLE_PATHS = new Set(")
     expect(proxy).toContain("SPACE_PATH.test(route)")

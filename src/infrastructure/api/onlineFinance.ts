@@ -9,6 +9,9 @@ export interface OnlineFinanceRecord {
   label: string
   amountCents?: number
   dueDay?: number
+  category?: string
+  kind?: 'EXPENSE' | 'INCOME'
+  occurredOn?: string
   /** Versão recebida do banco; futura edição deve enviar If-Match: \"N\". */
   version?: number
 }
@@ -66,6 +69,16 @@ export async function readOnlineFinance(workspace: OnlineWorkspace, kind: Online
         throw new Error('Versão de registro inválida recebida da API.')
       }
       record.version = row.version
+    }
+    if (kind === 'transactions') {
+      if (typeof row.category !== 'string' || row.category.length < 1 || row.category.length > 40 ||
+          !['EXPENSE', 'INCOME'].includes(String(row.kind)) ||
+          typeof row.occurredOn !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(row.occurredOn)) {
+        throw new Error('Detalhes do lançamento inválidos recebidos da API.')
+      }
+      record.category = row.category
+      record.kind = row.kind as 'EXPENSE' | 'INCOME'
+      record.occurredOn = row.occurredOn
     }
     if (kind === 'transactions' || kind === 'fixed-expenses' || kind === 'budgets') {
       const amount = kind === 'budgets' ? row.targetCents : row.amountCents

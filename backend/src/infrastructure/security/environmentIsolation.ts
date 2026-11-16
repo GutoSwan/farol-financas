@@ -72,3 +72,34 @@ export function readonlyQaConfigIssue(env: NodeJS.ProcessEnv): string {
     return 'unexpected-guard-mismatch'
   } catch { return 'db-connection-url-invalid' }
 }
+
+/**
+ * ESCRITA DE TESTE: usa uma segunda credencial PostgreSQL com privilégios
+ * exclusivos na tabela Transaction, apenas em dois espaços fictícios de Dev.
+ * A conexão principal continua no papel somente leitura.
+ */
+export function isVerifiedQaTransactionWriteEnvironment(env: NodeJS.ProcessEnv): boolean {
+  if (env.VERCEL_ENV !== 'preview' ||
+      env.FAROL_PREVIEW_SYNC_QA_TRANSACTION_WRITES !== 'true' ||
+      env.FAROL_PREVIEW_SYNC_QA_READONLY !== 'true' ||
+      env.FAROL_PREVIEW_ADMIN_QA_READONLY !== 'true' ||
+      env.FAROL_FINANCIAL_WRITES_ENABLED === 'true' ||
+      env.FAROL_INVOICE_UPLOADS_ENABLED === 'true' ||
+      !isVerifiedDevPreviewEnvironment(env)) return false
+
+  try {
+    const writer = new URL(env.FAROL_QA_TRANSACTION_DATABASE_URL ?? '')
+    const reader = new URL(env.DATABASE_URL ?? '')
+    return ['postgresql:', 'postgres:'].includes(writer.protocol) &&
+      writer.hostname === reader.hostname &&
+      writer.hostname.endsWith('.pooler.supabase.com') &&
+      writer.port === '6543' && writer.pathname === '/postgres' &&
+      !writer.hash && !writer.searchParams.has('options') &&
+      decodeURIComponent(writer.username) ===
+        'farol_preview_sync_transactions_rw.tvirkrjkgdtybtcundon' &&
+      writer.password.length >= 32 &&
+      reader.username !== writer.username
+  } catch {
+    return false
+  }
+}

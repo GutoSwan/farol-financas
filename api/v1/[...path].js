@@ -1,11 +1,13 @@
 /**
- * Ponte somente leitura entre o frontend Preview e o backend Preview.
+ * Ponte QA entre o frontend Preview e o backend Preview.
  * Vercel controla o OIDC entre deployments; o backend verifica o JWT Supabase,
  * sessão ativa e a participação do usuário em cada espaço financeiro.
- * Nenhuma rota de escrita ou configuração enviada pelo navegador é aceita.
+ * Gravação só para lançamento fictício com flag privada, rota exata e JWT.
  */
 const UUID = '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}'
 const SPACE_PATH = new RegExp('^/api/v1/workspaces/' + UUID + '(?:/(?:transactions|recurring-bills|fixed-expenses|budgets))?$')
+const QA_TRANSACTION_COLLECTION = new RegExp('^/api/v1/workspaces/' + UUID + '/transactions$')
+const QA_TRANSACTION_ITEM = new RegExp('^/api/v1/workspaces/' + UUID + '/transactions/' + UUID + '$')
 const READINESS_PATH = new RegExp('^/api/v1/workspaces/' + UUID + '/legacy-readiness$')
 const SIMPLE_PATHS = new Set(['/api/v1/health', '/api/v1/ready', '/api/v1/me', '/api/v1/workspaces'])
 
@@ -29,11 +31,6 @@ export default async function handler(req, res) {
     res.statusCode = 404
     return res.end(JSON.stringify({ error: 'Recurso indisponível.' }))
   }
-  if (req.method !== 'GET') {
-    res.setHeader('Allow', 'GET')
-    res.statusCode = 405
-    return res.end(JSON.stringify({ error: 'Método não permitido no Preview.' }))
-  }
   const upstreamOrigin = backendOrigin()
   if (!upstreamOrigin) {
     res.statusCode = 503
@@ -48,10 +45,19 @@ export default async function handler(req, res) {
   }
   for (const internal of ['...path', 'workspaceId', 'kind']) url.searchParams.delete(internal)
   const route = url.pathname
+  const isQaMutation = process.env.FAROL_QA_TRANSACTION_WRITES_ENABLED === 'true' &&
+    ((req.method === 'POST' && QA_TRANSACTION_COLLECTION.test(route)) ||
+      (['PATCH', 'DELETE'].includes(req.method) && QA_TRANSACTION_ITEM.test(route)))
+  if (req.method !== 'GET' && !isQaMutation) {
+    res.setHeader('Allow', 'GET')
+    res.statusCode = 405
+    return res.end(JSON.stringify({ error: 'Método não permitido no Preview.' }))
+  }
   const isFinancial = SPACE_PATH.test(route)
   const allowed = SIMPLE_PATHS.has(route) || isFinancial || READINESS_PATH.test(route)
   const params = [...url.searchParams.keys()]
-  if (!allowed || params.some(key => key !== 'limit') ||
+  if ((!allowed && !isQaMutation) || (isQaMutation && params.length > 0) ||
+      params.some(key => key !== 'limit') ||
       url.searchParams.getAll('limit').length > 1 ||
       (params.length && !isFinancial) ||
       (url.searchParams.has('limit') && !/^(?:[1-9]|[1-4][0-9]|50)$/.test(url.searchParams.get('limit') ?? ''))) {
@@ -71,6 +77,33 @@ export default async function handler(req, res) {
   const bypass = process.env.FAROL_QA_BACKEND_BYPASS_SECRET ?? ''
   const oidc = process.env.VERCEL_OIDC_TOKEN ?? ''
   const headers = {}
+  let mutationBody
+  if (isQaMutation) {
+    if (req.method === 'POST' || req.method === 'PATCH') {
+      if (!new RegExp('^application/json(?:;|$)', 'i').test(req.headers['content-type'] ?? '') ||
+          !req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+        res.statusCode = 400
+        return res.end(JSON.stringify({ error: 'Envie um objeto JSON.' }))
+      }
+      mutationBody = JSON.stringify(req.body)
+      if (mutationBody.length > 2000) {
+        res.statusCode = 413
+        return res.end(JSON.stringify({ error: 'Payload QA excede o limite.' }))
+      }
+      headers['Content-Type'] = 'application/json'
+    } else if (req.body && Object.keys(req.body).length > 0) {
+      res.statusCode = 400
+      return res.end(JSON.stringify({ error: 'DELETE não recebe conteúdo.' }))
+    }
+    if (req.method === 'PATCH' || req.method === 'DELETE') {
+      const version = req.headers['if-match']
+      if (typeof version !== 'string' || !/^"([1-9][0-9]{0,9})"$/.test(version)) {
+        res.statusCode = 428
+        return res.end(JSON.stringify({ error: 'Envie If-Match com a versão atual.' }))
+      }
+      headers['If-Match'] = version
+    }
+  }
   if (/^[A-Za-z0-9._-]{24,512}$/.test(bypass)) {
     headers['x-vercel-protection-bypass'] = bypass
   } else if (/^[A-Za-z0-9._-]{50,8000}$/.test(oidc)) {
@@ -82,12 +115,16 @@ export default async function handler(req, res) {
   try {
     if (typeof token === 'string') headers.Authorization = token
     const upstream = await fetch(upstreamOrigin + route + url.search, {
-      method: 'GET', headers, cache: 'no-store', redirect: 'manual',
+      method: req.method, headers, ...(mutationBody ? { body: mutationBody } : {}), cache: 'no-store', redirect: 'manual',
       signal: AbortSignal.timeout(12000),
     })
     if (upstream.status >= 300 && upstream.status < 400) {
       res.statusCode = 502
       return res.end(JSON.stringify({ error: 'O backend não está disponível.' }))
+    }
+    if (upstream.status === 204) {
+      res.statusCode = 204
+      return res.end()
     }
     if (!(upstream.headers.get('content-type') ?? '').includes('application/json')) {
       res.statusCode = 502

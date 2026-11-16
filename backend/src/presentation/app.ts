@@ -113,6 +113,9 @@ export interface AppDependencies {
   auth: AuthVerifier
   workspaceService: WorkspaceService
   transactionRepository?: TransactionRepository
+  /** Persistência secundária com grants mínimos apenas nos lançamentos QA. */
+  qaTransactionRepository?: TransactionRepository
+  allowQaTransactionWrites?: boolean
   financialCatalog?: FinancialCatalogRepository
   financialCatalogMutations?: FinancialCatalogMutations
   invoiceRepository?: InvoiceRepository
@@ -562,6 +565,21 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
     })
   }
 
+  // Apenas os DOIS espaços de teste compartilhados; nenhuma operação local,
+  // espaço pessoal ou Valora3D real pode atravessar o portão QA.
+  async function canWriteQaTransaction(userId: string, workspaceId: string): Promise<boolean> {
+    if (deps.allowQaTransactionWrites !== true) return false
+    const spaces = await deps.workspaceService.listForUser(userId)
+    return spaces.some(space => space.id === workspaceId &&
+      ['OWNER', 'EDITOR'].includes(space.role) &&
+      ['QA - Casa compartilhada (Dev)', 'QA - Valora3D compartilhada (Dev)'].includes(space.name))
+  }
+
+  function getWriteTransactionRepository(): TransactionRepository | undefined {
+    return deps.allowWorkspaceWrites === true
+      ? deps.transactionRepository : deps.qaTransactionRepository
+  }
+
   // Transações pertencem ao espaço autorizado, não ao usuário indicado no corpo.
   // A conexão Prisma pode ignorar RLS: nenhuma rota pode pular requireMember.
   app.get<{ Params: { workspaceId: string }; Querystring: { limit?: string } }>(
@@ -591,7 +609,7 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
       const workspaceId = z.string().uuid().safeParse(request.params.workspaceId)
       if (!workspaceId.success) return reply.code(404).send({ error: 'Espaço não encontrado.' })
       // Preview nunca grava dados financeiros reais, independentemente do token.
-      if (deps.allowWorkspaceWrites !== true) {
+      if (deps.allowWorkspaceWrites !== true && deps.allowQaTransactionWrites !== true) {
         return reply.code(403).send({ error: 'Gravação financeira desativada neste ambiente de testes.' })
       }
       const parsed = transactionInputSchema.safeParse(request.body)
@@ -602,8 +620,13 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
         if (!(error instanceof Error) || error.message !== 'Acesso negado ao espaço financeiro.') throw error
         return reply.code(404).send({ error: 'Espaço não encontrado.' })
       }
-      if (!deps.transactionRepository) return reply.code(503).send({ error: 'Módulo indisponível.' })
-      const saved = await deps.transactionRepository.createForWorkspace({
+      if (!getWriteTransactionRepository()) return reply.code(503).send({ error: 'Módulo indisponível.' })
+      const repository = getWriteTransactionRepository()
+      if (!repository) return reply.code(503).send({ error: 'Módulo indisponível.' })
+      if (deps.allowWorkspaceWrites !== true && !await canWriteQaTransaction(identity.userId, workspaceId.data)) {
+        return reply.code(404).send({ error: 'Espaço não encontrado.' })
+      }
+      const saved = await repository.createForWorkspace({
         workspaceId: workspaceId.data,
         ...parsed.data,
       })
@@ -620,7 +643,7 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
       const workspaceId = z.string().uuid().safeParse(request.params.workspaceId)
       const transactionId = z.string().uuid().safeParse(request.params.transactionId)
       if (!workspaceId.success || !transactionId.success) return reply.code(404).send({ error: 'Lançamento não encontrado.' })
-      if (deps.allowWorkspaceWrites !== true) {
+      if (deps.allowWorkspaceWrites !== true && deps.allowQaTransactionWrites !== true) {
         return reply.code(403).send({ error: 'Gravação financeira desativada neste ambiente de testes.' })
       }
       const parsed = transactionPatchSchema.safeParse(request.body)
@@ -631,12 +654,17 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
         if (!(error instanceof Error) || error.message !== 'Acesso negado ao espaço financeiro.') throw error
         return reply.code(404).send({ error: 'Lançamento não encontrado.' })
       }
-      if (!deps.transactionRepository) return reply.code(503).send({ error: 'Módulo indisponível.' })
+      if (!getWriteTransactionRepository()) return reply.code(503).send({ error: 'Módulo indisponível.' })
       const expected = parseExpectedVersion(request.headers['if-match'])
       if (expected.status === 'missing') return reply.code(428).send({ error: 'Envie If-Match com a versão atual do lançamento.' })
       if (expected.status === 'invalid') return reply.code(400).send({ error: 'Versão inválida.' })
       try {
-        const updated = await deps.transactionRepository.updateWithinWorkspace(
+        const repository = getWriteTransactionRepository()
+        if (!repository) return reply.code(503).send({ error: 'Módulo indisponível.' })
+        if (deps.allowWorkspaceWrites !== true && !await canWriteQaTransaction(identity.userId, workspaceId.data)) {
+          return reply.code(404).send({ error: 'Lançamento não encontrado.' })
+        }
+        const updated = await repository.updateWithinWorkspace(
           workspaceId.data, transactionId.data, parsed.data, expected.version,
         )
         if (!updated) return reply.code(404).send({ error: 'Lançamento não encontrado.' })
@@ -655,7 +683,7 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
       const workspaceId = z.string().uuid().safeParse(request.params.workspaceId)
       const transactionId = z.string().uuid().safeParse(request.params.transactionId)
       if (!workspaceId.success || !transactionId.success) return reply.code(404).send({ error: 'Lançamento não encontrado.' })
-      if (deps.allowWorkspaceWrites !== true) {
+      if (deps.allowWorkspaceWrites !== true && deps.allowQaTransactionWrites !== true) {
         return reply.code(403).send({ error: 'Gravação financeira desativada neste ambiente de testes.' })
       }
       try {
@@ -664,12 +692,17 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
         if (!(error instanceof Error) || error.message !== 'Acesso negado ao espaço financeiro.') throw error
         return reply.code(404).send({ error: 'Lançamento não encontrado.' })
       }
-      if (!deps.transactionRepository) return reply.code(503).send({ error: 'Módulo indisponível.' })
+      if (!getWriteTransactionRepository()) return reply.code(503).send({ error: 'Módulo indisponível.' })
       const expected = parseExpectedVersion(request.headers['if-match'])
       if (expected.status === 'missing') return reply.code(428).send({ error: 'Envie If-Match com a versão atual do lançamento.' })
       if (expected.status === 'invalid') return reply.code(400).send({ error: 'Versão inválida.' })
       try {
-        const deleted = await deps.transactionRepository.deleteWithinWorkspace(
+        const repository = getWriteTransactionRepository()
+        if (!repository) return reply.code(503).send({ error: 'Módulo indisponível.' })
+        if (deps.allowWorkspaceWrites !== true && !await canWriteQaTransaction(identity.userId, workspaceId.data)) {
+          return reply.code(404).send({ error: 'Lançamento não encontrado.' })
+        }
+        const deleted = await repository.deleteWithinWorkspace(
           workspaceId.data, transactionId.data, expected.version,
         )
         if (!deleted) return reply.code(404).send({ error: 'Lançamento não encontrado.' })

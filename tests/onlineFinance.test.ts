@@ -34,11 +34,11 @@ describe('Cliente financeiro online: isolamento e proteção de leitura', () => 
   it('faz GET com cookie apenas da mesma origem e Bearer Supabase, sem cache nem escrita', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true, status: 200,
-      json: async () => ({ data: [{ id: 't1', workspaceId: space.id, description: 'Teste', amountCents: 100 }] }),
+      json: async () => ({ data: [{ id: 't1', workspaceId: space.id, description: 'Teste', amountCents: 100, category: 'QA', kind: 'INCOME', occurredOn: '2026-11-16' }] }),
     })
     vi.stubGlobal('fetch', fetchMock)
     const result = await readOnlineFinance(space, 'transactions', identityId)
-    expect(result).toEqual([{ id: 't1', workspaceId: space.id, label: 'Teste', amountCents: 100 }])
+    expect(result).toEqual([{ id: 't1', workspaceId: space.id, label: 'Teste', amountCents: 100, category: 'QA', kind: 'INCOME', occurredOn: '2026-11-16' }])
     expect(fetchMock).toHaveBeenCalledOnce()
     const [url, options] = fetchMock.mock.calls[0]
     expect(url).toContain('/api/v1/workspaces/' + space.id + '/transactions?limit=50')
@@ -49,7 +49,7 @@ describe('Cliente financeiro online: isolamento e proteção de leitura', () => 
   it('preserva versão válida para evitar edição com dados obsoletos no futuro', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true, status: 200,
-      json: async () => ({ data: [{ id: 't1', workspaceId: space.id, description: 'QA', amountCents: 100, version: 2 }] }),
+      json: async () => ({ data: [{ id: 't1', workspaceId: space.id, description: 'QA', amountCents: 100, version: 2, category: 'QA', kind: 'INCOME', occurredOn: '2026-11-16' }] }),
     }))
     const result = await readOnlineFinance(space, 'transactions', identityId)
     expect(result[0].version).toBe(2)
@@ -57,7 +57,7 @@ describe('Cliente financeiro online: isolamento e proteção de leitura', () => 
   it('rejeita versão financeira inválida retornada pela API', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true, status: 200,
-      json: async () => ({ data: [{ id: 't1', workspaceId: space.id, description: 'QA', amountCents: 100, version: 0 }] }),
+      json: async () => ({ data: [{ id: 't1', workspaceId: space.id, description: 'QA', amountCents: 100, version: 0, category: 'QA', kind: 'INCOME', occurredOn: '2026-11-16' }] }),
     }))
     await expect(readOnlineFinance(space, 'transactions', identityId)).rejects.toThrow('Versão de registro inválida')
   })

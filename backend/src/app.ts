@@ -8,7 +8,7 @@ import type { TransactionRepository } from './domain/repositories/TransactionRep
 import type { FinancialCatalogRepository } from './domain/repositories/FinancialCatalogRepository.js'
 import type { FinancialCatalogMutations } from './domain/repositories/FinancialCatalogMutations.js'
 import type { InvoiceRepository } from './domain/repositories/InvoiceRepository.js'
-import { isVerifiedDevPreviewEnvironment, readonlyQaConfigIssue } from './infrastructure/security/environmentIsolation.js'
+import { isVerifiedDevPreviewEnvironment, isVerifiedQaTransactionWriteEnvironment, readonlyQaConfigIssue } from './infrastructure/security/environmentIsolation.js'
 import { DevAuthOnlyQaVerifier, isVerifiedAuthOnlyDevPreview } from './infrastructure/auth/DevAuthOnlyQaVerifier.js'
 import type { PrismaTransactionRepository } from './infrastructure/repositories/PrismaTransactionRepository.js'
 import type { LegacyConnectionService } from './application/use-cases/PrismaLegacyTransactionConnectionService.js'
@@ -88,6 +88,35 @@ const lazyTransactions: TransactionRepository = {
   },
   async deleteWithinWorkspace(workspaceId, transactionId, expectedVersion) {
     return (await getTransactionRepository()).deleteWithinWorkspace(workspaceId, transactionId, expectedVersion)
+  },
+}
+
+// Banco Dev de escrita limitado por RLS exclusivamente aos lançamentos de QA.
+// O leitor principal permanece com credencial somente leitura.
+let qaTransactionsPromise: Promise<PrismaTransactionRepository> | undefined
+let qaPrismaPromise: Promise<PrismaClient> | undefined
+async function getQaTransactionRepository(): Promise<PrismaTransactionRepository> {
+  if (!isVerifiedQaTransactionWriteEnvironment(process.env)) {
+    throw new Error('Credencial de gravação QA indisponível.')
+  }
+  if (!qaTransactionsPromise) {
+    qaTransactionsPromise = Promise.all([
+      (qaPrismaPromise ??= import('./infrastructure/database/prisma.js').then(({ createPrismaClient }) =>
+        createPrismaClient(process.env.FAROL_QA_TRANSACTION_DATABASE_URL))),
+      import('./infrastructure/repositories/PrismaTransactionRepository.js'),
+    ]).then(([prisma, { PrismaTransactionRepository }]) => new PrismaTransactionRepository(prisma))
+      .catch((error: unknown) => { qaTransactionsPromise = undefined; qaPrismaPromise = undefined; throw error })
+  }
+  return qaTransactionsPromise
+}
+const lazyQaTransactions: TransactionRepository = {
+  async listForWorkspace(workspaceId, limit) { return (await getQaTransactionRepository()).listForWorkspace(workspaceId, limit) },
+  async createForWorkspace(entry) { return (await getQaTransactionRepository()).createForWorkspace(entry) },
+  async updateWithinWorkspace(workspaceId, id, changes, expectedVersion) {
+    return (await getQaTransactionRepository()).updateWithinWorkspace(workspaceId, id, changes, expectedVersion)
+  },
+  async deleteWithinWorkspace(workspaceId, id, expectedVersion) {
+    return (await getQaTransactionRepository()).deleteWithinWorkspace(workspaceId, id, expectedVersion)
   },
 }
 
@@ -266,13 +295,20 @@ guardedFastify.addHook('onRequest', async (request, reply) => {
     return
   }
 
-  // A conta técnica Dev jamais recebe operações de escrita ou Admin.
+  // Exceção estrita: somente POST/PATCH/DELETE de lançamentos fictícios.
+  // A permissão de espaço e o papel são novamente verificados nas rotas.
+  const qaMutationPath = new RegExp('^/api/v1/workspaces/[0-9a-f-]{36}/transactions(?:/[0-9a-f-]{36})?$').test(path)
+  const qaMutationMethod =
+    (request.method === 'POST' && path.endsWith('/transactions')) ||
+    (['PATCH', 'DELETE'].includes(request.method) && !path.endsWith('/transactions'))
+  const permittedQaMutation = qaMutationPath && qaMutationMethod &&
+    isVerifiedQaTransactionWriteEnvironment(process.env)
   if (process.env.FAROL_PREVIEW_ADMIN_QA_READONLY === 'true' &&
       path.startsWith('/api/v1/')) {
     if (path.startsWith('/api/v1/admin/')) {
       return reply.code(404).send({ error: 'Recurso indisponível nesta Preview.' })
     }
-    if (!['GET', 'HEAD', 'OPTIONS'].includes(request.method)) {
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(request.method) && !permittedQaMutation) {
       return reply.code(403).send({ error: 'Preview financeira somente leitura.' })
     }
   }
@@ -287,6 +323,8 @@ const app = buildApp({
   auth,
   workspaceService: new WorkspaceService(lazyRepository),
   transactionRepository: lazyTransactions,
+  qaTransactionRepository: lazyQaTransactions,
+  allowQaTransactionWrites: isVerifiedQaTransactionWriteEnvironment(process.env),
   financialCatalog: lazyCatalog,
   financialCatalogMutations: lazyMutations,
   invoiceRepository: lazyInvoices,
@@ -345,6 +383,10 @@ const app = buildApp({
 app.addHook('onClose', async () => {
   if (prismaPromise) {
     const prisma = await prismaPromise.catch(() => null)
+    await prisma?.$disconnect()
+  }
+  if (qaPrismaPromise) {
+    const prisma = await qaPrismaPromise.catch(() => null)
     await prisma?.$disconnect()
   }
 })
