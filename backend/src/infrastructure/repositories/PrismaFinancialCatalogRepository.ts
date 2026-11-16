@@ -8,7 +8,15 @@ export class PrismaFinancialCatalogRepository implements FinancialCatalogReposit
   async listRecurringBills(workspaceId: string, limit: number) {
     return this.prisma.recurringBill.findMany({
       where: { workspaceId },
-      select: { id: true, workspaceId: true, name: true, dueDay: true, active: true, version: true },
+      select: {
+        id: true, workspaceId: true, name: true, dueDay: true, active: true, version: true,
+        // Limita o histórico por conta; nenhuma consulta independente à tabela filha.
+        entries: {
+          select: { id: true, billId: true, yearMonth: true, amountCents: true, status: true, paidAt: true },
+          orderBy: [{ yearMonth: 'desc' }, { id: 'desc' }],
+          take: 24,
+        },
+      },
       orderBy: [{ dueDay: 'asc' }, { id: 'asc' }],
       take: limit,
     })
