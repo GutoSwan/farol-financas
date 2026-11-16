@@ -138,6 +138,23 @@ describe('Contas mensais QA: guarda de espaço, sessão e versão', () => {
       expect(calls[1]).toContain(':2026-11:1234:PAID')
     } finally { await app.close() }
   })
+  it('aceita POST no catálogo QA e rejeita divergência entre URL e corpo', async () => {
+    const { app, calls } = fixture()
+    try {
+      const payload = { action: 'upsert-month', workspaceId: qaSpace, billId,
+        input: { yearMonth: '2026-11', amountCents: 2500, status: 'PAID' } }
+      const headers = { authorization: 'Bearer owner', 'if-match': '"2"' }
+      const ok = await app.inject({ method: 'POST', url: `/api/v1/workspaces/${qaSpace}/recurring-bills`, headers, payload })
+      expect(ok.statusCode).toBe(200)
+      expect(ok.json().data).toMatchObject(bill)
+      const mismatch = await app.inject({ method: 'POST', url: `/api/v1/workspaces/${otherSpace}/recurring-bills`, headers, payload })
+      expect(mismatch.statusCode).toBe(404)
+      const denied = await app.inject({ method: 'POST', url: `/api/v1/workspaces/${qaSpace}/recurring-bills`,
+        headers: { authorization: 'Bearer viewer', 'if-match': '"2"' }, payload })
+      expect(denied.statusCode).toBe(404)
+      expect(calls).toHaveLength(1)
+    } finally { await app.close() }
+  })
   it('responde conflito 409 ao tentar gravar versão obsoleta', async () => {
     const { app, request, calls } = fixture()
     try {

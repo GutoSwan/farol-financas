@@ -1,4 +1,4 @@
-import Fastify from 'fastify'
+import Fastify, { type FastifyRequest, type FastifyReply } from 'fastify'
 import { z } from 'zod'
 import type { AuthVerifier } from '../infrastructure/auth/SupabaseJwtVerifier.js'
 import { WorkspaceService } from '../application/use-cases/WorkspaceService.js'
@@ -506,6 +506,10 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
       if (!identity) return
       const space = z.string().uuid().safeParse(request.params.workspaceId)
       if (!space.success) return reply.code(404).send({ error: 'Registro não encontrado.' })
+      // Caminho de catálogo publicado: mesmo guarda de JWT, membro e UUID QA.
+      if (kind === 'recurring-bills' && deps.allowWorkspaceWrites !== true) {
+        return handleQaBillWrite(request, reply, space.data)
+      }
       if (deps.allowWorkspaceWrites !== true) return reply.code(403).send({ error: 'Gravação desativada neste Preview.' })
       const parsed = parseCatalogInput(kind, request.body, false)
       if (!parsed.success) return reply.code(400).send({ error: 'Dados inválidos.' })
@@ -601,7 +605,7 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
   // Rota POST fixa: a ponte Vercel nunca aceita verbos PATCH/DELETE vindos
   // diretamente do navegador. Todas as operações exigem JWT, papel de escrita,
   // escopo QA exato e If-Match antes de acessar o escritor PostgreSQL.
-  app.post('/api/v1/qa-bill-write', async (request, reply) => {
+  async function handleQaBillWrite(request: FastifyRequest, reply: FastifyReply, routedWorkspaceId?: string) {
     const identity = await authorized(request, reply)
     if (!identity) return
     if (deps.allowQaBillWrites !== true || !deps.qaBillRepository) {
@@ -610,6 +614,9 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
     const command = qaBillCommandSchema.safeParse(request.body)
     if (!command.success) return reply.code(400).send({ error: 'Comando de conta mensal inválido.' })
     const input = command.data
+    if (routedWorkspaceId && routedWorkspaceId !== input.workspaceId) {
+      return reply.code(404).send({ error: 'Espaço não encontrado.' })
+    }
     const validQaSpace =
       (input.workspaceId === '01c6765f-b873-420f-a5f2-68c54aa22500' ||
         input.workspaceId === '153045ae-c200-40f9-9d3a-5e20b5c55e54')
@@ -674,7 +681,8 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
       }
       throw error
     }
-  })
+  }
+  app.post('/api/v1/qa-bill-write', async (request, reply) => handleQaBillWrite(request, reply))
 
   // Transações pertencem ao espaço autorizado, não ao usuário indicado no corpo.
   // A conexão Prisma pode ignorar RLS: nenhuma rota pode pular requireMember.

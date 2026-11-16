@@ -366,8 +366,9 @@ guardedFastify.addHook('onRequest', async (request, reply) => {
   const qaMutationMethod =
     (request.method === 'POST' && path.endsWith('/transactions')) ||
     (['PATCH', 'DELETE'].includes(request.method) && !path.endsWith('/transactions'))
+  const qaBillMutationPath = /^\/api\/v1\/workspaces\/[0-9a-f-]{36}\/recurring-bills$/.test(path)
   const permittedQaMutation = (qaMutationPath && qaMutationMethod ||
-    (request.method === 'POST' && path === '/api/v1/qa-bill-write')) &&
+    (request.method === 'POST' && (path === '/api/v1/qa-bill-write' || qaBillMutationPath))) &&
     isVerifiedQaTransactionWriteEnvironment(process.env)
   if (process.env.FAROL_PREVIEW_ADMIN_QA_READONLY === 'true' &&
       path.startsWith('/api/v1/')) {

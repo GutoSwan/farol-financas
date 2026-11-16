@@ -33,6 +33,7 @@ describe('Proxy protegido do Farol Preview', () => {
     expect(proxy).toContain('FAROL_QA_TRANSACTION_WRITES_ENABLED')
     expect(proxy).toContain('QA_TRANSACTION_COLLECTION.test(route)')
     expect(proxy).toContain('QA_TRANSACTION_ITEM.test(route)')
+    expect(proxy).toContain('QA_BILL_COLLECTION.test(route)')
     expect(proxy).toContain("headers['If-Match'] = version")
     expect(proxy).toContain("res.statusCode = 405")
     expect(proxy).toContain("const SIMPLE_PATHS = new Set(")

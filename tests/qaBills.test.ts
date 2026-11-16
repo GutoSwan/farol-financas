@@ -60,13 +60,13 @@ describe('Contas mensais QA: cliente seguro de escrita', () => {
       .rejects.toThrow('sessão mudou')
     expect(mock).not.toHaveBeenCalled()
   })
-  it('cria por POST fixo com JWT, sessão restrita e sem If-Match', async () => {
+  it('cria por POST no catálogo QA com JWT, sessão restrita e sem If-Match', async () => {
     const mock = vi.fn().mockResolvedValue(mockReply(201))
     vi.stubGlobal('fetch', mock)
     const { createQaBill } = await actions()
     await createQaBill(space, userId, { name: 'QA', dueDay: 10, active: true })
     const [url, options] = mock.mock.calls[0]
-    expect(url).toBe('https://example.test/api/v1/qa-bill-write')
+    expect(url).toBe('https://example.test/api/v1/workspaces/' + space.id + '/recurring-bills')
     expect(options.method).toBe('POST')
     expect(options.credentials).toBe('same-origin')
     expect(options.headers.Authorization).toBe('Bearer test-token')

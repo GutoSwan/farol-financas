@@ -67,7 +67,7 @@ async function mutate(
 
   let response: Response
   try {
-    response = await fetch(apiEndpoint('/api/v1/qa-bill-write'), {
+    response = await fetch(apiEndpoint('/api/v1/workspaces/' + workspace.id + '/recurring-bills'), {
       method: 'POST', cache: 'no-store', credentials: 'same-origin', redirect: 'error',
       headers: {
         Authorization: 'Bearer ' + data.session.access_token,
