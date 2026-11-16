@@ -112,7 +112,7 @@ export async function readOnlineFinance(workspace: OnlineWorkspace, kind: Online
         const entry = item as Record<string, unknown>
         if (typeof entry.id !== 'string' || !uuidPattern.test(entry.id) ||
             entry.billId !== row.id || typeof entry.yearMonth !== 'string' ||
-            !/^\\d{4}-(0[1-9]|1[0-2])$/.test(entry.yearMonth) ||
+            !/^\d{4}-(0[1-9]|1[0-2])$/.test(entry.yearMonth) ||
             typeof entry.amountCents !== 'number' || !Number.isSafeInteger(entry.amountCents) ||
             entry.amountCents < 0 || !['PENDING', 'PAID'].includes(String(entry.status))) {
           throw new Error('Histórico mensal inconsistente com a conta selecionada.')
