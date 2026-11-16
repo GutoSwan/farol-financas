@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useAuth } from '../composables/useAuth'
 import { apiConfigured } from '../../infrastructure/api/apiEndpoint'
 import { getOnlineIdentity, listOnlineWorkspaces } from '../../infrastructure/api/onlineWorkspaces'
@@ -39,6 +39,7 @@ const qaDate = ref(new Date().toLocaleDateString('en-CA'))
 const qaEditing = ref<string | null>(null)
 const qaEditingVersion = ref<number | null>(null)
 const qaFeedback = ref('')
+const qaEditorSection = ref<HTMLElement | null>(null)
 function resetQa(): void {
   qaEditing.value = null
   qaEditingVersion.value = null
@@ -48,9 +49,12 @@ function resetQa(): void {
   qaKind.value = 'INCOME'
   qaDate.value = new Date().toLocaleDateString('en-CA')
 }
-function editQa(record: OnlineFinanceRecord): void {
+async function editQa(record: OnlineFinanceRecord): Promise<void> {
   if (typeof record.version !== 'number' || !record.category || !record.kind || !record.occurredOn ||
-      record.amountCents === undefined) return
+      record.amountCents === undefined) {
+    message.value = 'Não foi possível abrir este lançamento para edição. Consulte os dados novamente.'
+    return
+  }
   qaEditing.value = record.id
   qaEditingVersion.value = record.version
   qaDescription.value = record.label
@@ -59,6 +63,11 @@ function editQa(record: OnlineFinanceRecord): void {
   qaKind.value = record.kind
   qaDate.value = record.occurredOn
   qaFeedback.value = ''
+  message.value = ''
+  // A lista pode ser longa; leve o usuário ao formulário já preenchido.
+  await nextTick()
+  qaEditorSection.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  qaEditorSection.value?.querySelector<HTMLInputElement>('input')?.focus({ preventScroll: true })
 }
 async function saveQa(): Promise<void> {
   if (busy.value || !qaAvailable.value) return
@@ -115,7 +124,7 @@ async function removeQa(record: OnlineFinanceRecord): Promise<void> {
 let refreshTimer: ReturnType<typeof setInterval> | null = null
 onMounted(() => {
   refreshTimer = setInterval(() => {
-    if (qaAvailable.value && verified.value && !busy.value && document.visibilityState === 'visible') {
+    if (qaAvailable.value && verified.value && !busy.value && !qaEditing.value && document.visibilityState === 'visible') {
       void load()
     }
   }, 15000)
@@ -230,11 +239,12 @@ onBeforeUnmount(() => {
       </div>
     </template>
   </section>
-  <section v-if="qaAvailable" class="panel">
+  <section v-if="qaAvailable" ref="qaEditorSection" class="panel">
     <div class="panel-title">
       <div>
         <h2>{{ qaEditing ? 'Editar lançamento de teste' : 'Novo lançamento de teste' }}</h2>
-        <p>Somente Dev: os dois logins veem as alterações no mesmo espaço. Atualização automática a cada 15 segundos com a aba aberta.</p>
+        <p>Somente Dev: os dois logins veem as alterações no mesmo espaço. Atualização automática a cada 15 segundos fora da edição.</p>
+        <p v-if="qaEditing" role="status"><strong>Você está editando este lançamento. Valor carregado: {{ qaAmount }}</strong></p>
       </div>
     </div>
     <form class="form" @submit.prevent="saveQa">
