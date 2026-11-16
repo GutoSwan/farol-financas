@@ -1,12 +1,17 @@
 import { describe, expect, it } from 'vitest'
 import { execFileSync } from 'node:child_process'
 import proxy from '../api/v1/[...path].js?raw'
+import itemRoute from '../api/v1/workspaces/[workspaceId]/transactions/[transactionId].js?raw'
 import apiEndpoint from '../src/infrastructure/api/apiEndpoint.ts?raw'
 import frontendVercel from '../vercel.json?raw'
 
 describe('Proxy protegido do Farol Preview', () => {
   it('o arquivo da função passa na verificação real de sintaxe JavaScript', () => {
     expect(() => execFileSync(process.execPath, ['--check', new URL('../api/v1/[...path].js', import.meta.url).pathname])).not.toThrow()
+  })
+  it('publica também a função específica de edição/exclusão de um lançamento', () => {
+    expect(itemRoute).toContain("../../../[...path].js")
+    expect(() => execFileSync(process.execPath, ['--check', new URL('../api/v1/workspaces/[workspaceId]/transactions/[transactionId].js', import.meta.url).pathname])).not.toThrow()
   })
   it('aceita GET e libera apenas mutações de lançamentos de teste com flag privada', () => {
     expect(proxy).toContain("process.env.VERCEL_ENV !== 'preview'")
