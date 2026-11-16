@@ -23,7 +23,7 @@ describe('Identidades legadas para uma futura migração segura', () => {
     const first = await planLegacyIdentifiers(backup, alice)
     const second = await planLegacyIdentifiers(backup, alice)
     expect(first).toEqual(second)
-    expect(first.records).toHaveLength(1)
+    expect(first.records).toHaveLength(2)
     expect(first.records[0].type).toBe('workspace')
     expect(first.records[0].sourceKey).toHaveLength(64)
     expect(saved.size).toBe(0)

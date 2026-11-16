@@ -7,6 +7,7 @@ import { useTheme } from '../composables/useTheme'
 import { useWorkspaces } from '../composables/useWorkspaces'
 import { useAuth } from '../composables/useAuth'
 import { localLegacyAccess } from '../../infrastructure/persistence/legacyAccess'
+import { VALORA3D_WORKSPACE_ID } from '../../domain/entities/FinancialWorkspace'
 
 const route = useRoute()
 const router = useRouter()
@@ -21,7 +22,9 @@ function openGiftRoute(): void { loadingGiftRoute.value = true }
 const stopGiftProgress = router.afterEach(() => { loadingGiftRoute.value = false })
 const stopGiftError = router.onError(() => { loadingGiftRoute.value = false })
 const { isDark, toggleTheme } = useTheme()
-const { workspaces, activeWorkspaceId, error: workspaceError, selectWorkspace } = useWorkspaces()
+const { workspaces, currentWorkspace, activeWorkspaceId, error: workspaceError, selectWorkspace } = useWorkspaces()
+const isValoraWorkspace = computed(() => currentWorkspace.value?.id === VALORA3D_WORKSPACE_ID ||
+  currentWorkspace.value?.name.trim().replace(/\s+/g, '').toLocaleLowerCase('pt-BR') === 'valora3d')
 const mobileMenuOpen = ref(false)
 const mobileMenuButton = ref<HTMLButtonElement | null>(null)
 const mobileCloseButton = ref<HTMLButtonElement | null>(null)
@@ -121,18 +124,21 @@ async function logoutFromSidebar(): Promise<void> {
 </script>
 
 <template>
-  <div v-if="localAccessAllowed" class="shell">
+  <div v-if="localAccessAllowed" class="shell" :class="{ 'shell--valora': isValoraWorkspace }">
     <aside id="farol-sidebar" ref="sidebarRef" class="sidebar" :class="{ 'sidebar--open': mobileMenuOpen }"
       aria-label="Barra lateral do Farol" :role="mobileMenuOpen ? 'dialog' : undefined"
       :aria-modal="mobileMenuOpen ? 'true' : undefined"
       @keydown.esc.stop="closeSidebarMenus(); closeMobileMenu(true)" @keydown.tab="handleSidebarTab">
       <div class="sidebar-top">
       <div class="sidebar-mobile-heading">
-        <RouterLink to="/" class="brand" @click="closeMobileMenu(true)">◈ Farol <span>Finanças</span></RouterLink>
+        <RouterLink v-if="isValoraWorkspace" to="/" class="brand valora-brand" @click="closeMobileMenu(true)">
+          Valora<span>3D</span><small>CRIATIVIDADE QUE GANHA FORMA</small>
+        </RouterLink>
+        <RouterLink v-else to="/" class="brand" @click="closeMobileMenu(true)">◈ Farol <span>Finanças</span></RouterLink>
         <button ref="mobileCloseButton" type="button" class="sidebar-mobile-close" aria-label="Fechar menu"
           @click="closeSidebarMenus(); closeMobileMenu(true)"><span aria-hidden="true">×</span></button>
       </div>
-      <p class="section-label">SEU CONTROLE FINANCEIRO</p>
+      <p class="section-label">{{ isValoraWorkspace ? 'FINANÇAS · VALORA3D' : 'SEU CONTROLE FINANCEIRO' }}</p>
       <nav aria-label="Menu principal">
         <RouterLink v-for="link in links" :key="link.to" :to="link.to"
           class="side-nav-link" :class="{ active: route.path === link.to }"
@@ -194,7 +200,11 @@ async function logoutFromSidebar(): Promise<void> {
           aria-controls="farol-sidebar" :aria-expanded="mobileMenuOpen" @click="openMobileMenu">
           <span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span>
         </button>
-        <b>Farol Finanças</b>
+        <div v-if="isValoraWorkspace" class="valora-topbar-brand" aria-label="Valora3D, financeiro da loja">
+          <strong class="valora-wordmark">Valora<span>3D</span></strong>
+          <small>FINANCEIRO DA LOJA</small>
+        </div>
+        <b v-else>Farol Finanças</b>
         <div class="topbar-actions">
           <span class="page-context">{{ route.meta.title ?? 'Visão geral' }}</span>
           <button class="theme-toggle" type="button"
@@ -211,7 +221,17 @@ async function logoutFromSidebar(): Promise<void> {
         <span class="gift-route-spinner" aria-hidden="true"></span>
         <div><strong>Abrindo Presentes...</strong><small>Conferindo seu acesso com segurança.</small></div>
       </div>
-      <main class="content" :key="activeWorkspaceId"><RouterView /></main>
+      <main class="content" :key="activeWorkspaceId">
+        <div v-if="isValoraWorkspace" class="valora-space-banner" role="note">
+          <div class="valora-banner-emblem" aria-hidden="true">V<span>3D</span></div>
+          <div class="valora-banner-copy">
+            <strong>Valora3D</strong>
+            <p>O financeiro da nossa loja, separado das despesas da casa.</p>
+          </div>
+          <span class="valora-banner-tag">ESPAÇO DA LOJA</span>
+        </div>
+        <RouterView />
+      </main>
     </div>
   </div>
   <div v-else class="auth-screen"><section class="auth-card"><p class="auth-warning">Sessão alterada. Os dados locais foram ocultados.</p><RouterLink to="/vincular-dados-locais" class="primary auth-full-button">Verificar acesso</RouterLink></section></div>

@@ -1,0 +1,167 @@
+/* A identidade da Valora3D aparece somente no espaço financeiro da loja.
+   Nunca altera login, finanças domésticas ou o painel de dados na nuvem. */
+.shell--valora .valora-brand,
+.shell--valora .valora-wordmark,
+.shell--valora .valora-banner-copy strong {
+  font-family: "Snell Roundhand", "Brush Script MT", "Segoe Script", "URW Chancery L", cursive;
+  font-style: italic;
+  font-weight: 700;
+  letter-spacing: .01em;
+}
+.shell--valora .valora-brand {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  font-size: 29px;
+  line-height: 1.08;
+  text-decoration: none;
+}
+.shell--valora .valora-brand span,
+.shell--valora .valora-wordmark span { color: #e6ac00; }
+.shell--valora .valora-brand small {
+  display: block;
+  margin-top: 6px;
+  font: 700 8px/1.3 Inter, "Segoe UI", Arial, sans-serif;
+  letter-spacing: .15em;
+}
+.shell--valora .valora-topbar-brand {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  min-width: 0;
+}
+.shell--valora .valora-wordmark { font-size: 27px; line-height: 1; white-space: nowrap; }
+.shell--valora .valora-topbar-brand small {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .13em;
+}
+.shell--valora .valora-space-banner {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 23px;
+  padding: 18px 22px;
+  border-radius: 17px;
+  background: radial-gradient(circle at 94% 0%, rgba(255,224,54,.30), transparent 31%),
+    linear-gradient(120deg, #361153, #6327a0 72%, #8533c0);
+  box-shadow: 0 12px 29px rgba(74,29,108,.14);
+  color: #fff;
+}
+.shell--valora .valora-banner-emblem {
+  width: 51px;
+  height: 51px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 13px;
+  background: #ffe03b;
+  color: #361153;
+  font-size: 23px;
+  font-weight: 900;
+  letter-spacing: -.08em;
+}
+.shell--valora .valora-banner-emblem span { font-size: 11px; letter-spacing: -.05em; }
+.shell--valora .valora-banner-copy { flex: 1; min-width: 0; }
+.shell--valora .valora-banner-copy strong { display: block; font-size: 29px; line-height: 1; }
+.shell--valora .valora-banner-copy p { margin: 7px 0 0; font-size: 12px; color: #f5eafc; }
+.shell--valora .valora-banner-tag {
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .11em;
+  border-radius: 100px;
+  padding: 9px 12px;
+  background: #ffe03b;
+  color: #3a145b;
+  white-space: nowrap;
+}
+.shell--valora .primary,
+.shell--valora .workspace-add,
+.shell--valora button.primary { background: #f7d332; color: #39144f; border-color: #d5aa11; }
+.shell--valora .primary:hover,
+.shell--valora .workspace-add:hover { background: #ffe561; }
+.shell--valora .primary:focus-visible,
+.shell--valora .workspace-select:focus-visible,
+.shell--valora .theme-toggle:focus-visible {
+  outline: 3px solid #e4ac00;
+  outline-offset: 3px;
+}
+.shell--valora .heading .eyebrow { color: #873fc0; }
+.shell--valora .stat { border-top: 3px solid #b77bdf; }
+.shell--valora .stat strong { color: #4a1f72; }
+.shell--valora .side-nav-link.active { border-left: 3px solid #efc41c; }
+
+:root[data-theme="light"] .shell--valora .main { background: #fcfaff; color: #39274b; }
+:root[data-theme="light"] .shell--valora .sidebar {
+  background: #f3ebfb;
+  color: #4b2a64;
+  border-right: 1px solid #ddcbea;
+}
+:root[data-theme="light"] .shell--valora .sidebar .brand,
+:root[data-theme="light"] .shell--valora .sidebar .brand span { color: #542175; }
+:root[data-theme="light"] .shell--valora .sidebar .brand span { color: #b08200; }
+:root[data-theme="light"] .shell--valora .sidebar .brand small,
+:root[data-theme="light"] .shell--valora .sidebar .section-label,
+:root[data-theme="light"] .shell--valora .sidebar-workspace-label { color: #74588a; }
+:root[data-theme="light"] .shell--valora .sidebar .side-nav-link { color: #4f3465; }
+:root[data-theme="light"] .shell--valora .sidebar .side-nav-link svg { color: #823ca6; }
+:root[data-theme="light"] .shell--valora .sidebar .side-nav-link:hover { background: #e7d6f4; color: #4b1d74; }
+:root[data-theme="light"] .shell--valora .sidebar .side-nav-link.active {
+  background: #e4d0f7;
+  color: #461c6c;
+}
+:root[data-theme="light"] .shell--valora .topbar { background: #fffaf0; border-bottom-color: #edddba; }
+:root[data-theme="light"] .shell--valora .valora-wordmark { color: #572378; }
+:root[data-theme="light"] .shell--valora .valora-topbar-brand small { color: #846498; }
+:root[data-theme="light"] .shell--valora .stat,
+:root[data-theme="light"] .shell--valora .panel { background: #fff; border-color: #e9dcef; }
+:root[data-theme="light"] .shell--valora .theme-toggle { color: #612888; border-color: #decde9; }
+:root[data-theme="light"] .shell--valora .sidebar-workspace .workspace-select {
+  background: #fff; color: #4d246e; border-color: #c8acd9;
+}
+
+:root[data-theme="dark"] .shell--valora .main { background: #150d20; color: #f3eaf9; }
+:root[data-theme="dark"] .shell--valora .sidebar {
+  background: #200f31;
+  color: #eadcf4;
+  border-right: 1px solid #56306d;
+}
+:root[data-theme="dark"] .shell--valora .sidebar .brand,
+:root[data-theme="dark"] .shell--valora .valora-wordmark { color: #fbecff; }
+:root[data-theme="dark"] .shell--valora .sidebar .brand span,
+:root[data-theme="dark"] .shell--valora .valora-wordmark span { color: #ffe04a; }
+:root[data-theme="dark"] .shell--valora .sidebar .brand small,
+:root[data-theme="dark"] .shell--valora .sidebar .section-label,
+:root[data-theme="dark"] .shell--valora .sidebar-workspace-label { color: #cba9dd; }
+:root[data-theme="dark"] .shell--valora .sidebar .side-nav-link { color: #e6d2f3; }
+:root[data-theme="dark"] .shell--valora .sidebar .side-nav-link svg { color: #ddb4f3; }
+:root[data-theme="dark"] .shell--valora .sidebar .side-nav-link:hover,
+:root[data-theme="dark"] .shell--valora .sidebar .side-nav-link.active { background: #4a276b; color: #fff6ff; }
+:root[data-theme="dark"] .shell--valora .topbar { background: #241332; border-bottom-color: #4f305f; }
+:root[data-theme="dark"] .shell--valora .valora-topbar-brand small { color: #c9a3e3; }
+:root[data-theme="dark"] .shell--valora .stat,
+:root[data-theme="dark"] .shell--valora .panel { background: #281936; border-color: #523567; }
+:root[data-theme="dark"] .shell--valora .stat strong,
+:root[data-theme="dark"] .shell--valora .panel h2,
+:root[data-theme="dark"] .shell--valora .heading h1 { color: #fff1bd; }
+:root[data-theme="dark"] .shell--valora .heading .eyebrow { color: #ffdc59; }
+:root[data-theme="dark"] .shell--valora .stat span,
+:root[data-theme="dark"] .shell--valora .stat small { color: #c5b0d2; }
+:root[data-theme="dark"] .shell--valora .theme-toggle { background: #351c49; color: #ffe266; border-color: #76518c; }
+:root[data-theme="dark"] .shell--valora .sidebar-workspace .workspace-select {
+  background: #341b4a; color: #f9e9ff; border-color: #76518c;
+}
+@media (max-width: 700px) {
+  .shell--valora .valora-space-banner { padding: 14px; gap: 12px; flex-wrap: wrap; }
+  .shell--valora .valora-banner-emblem { width: 44px; height: 44px; font-size: 21px; }
+  .shell--valora .valora-banner-tag { margin-left: 56px; }
+  .shell--valora .valora-topbar-brand small { display: none; }
+  .shell--valora .valora-wordmark { font-size: 23px; }
+  .shell--valora .valora-brand { font-size: 26px; }
+}
+@media (max-width: 410px) {
+  .shell--valora .valora-banner-tag { display: none; }
+  .shell--valora .valora-banner-copy p { font-size: 11px; }
+}
