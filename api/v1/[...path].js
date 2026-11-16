@@ -66,14 +66,20 @@ export default async function handler(req, res) {
     return res.end(JSON.stringify({ error: 'Autenticação necessária.' }))
   }
 
-  // Token de identidade da Vercel: nunca receber segredo de bypass do cliente.
-  const oidc = process.env.VERCEL_OIDC_TOKEN || req.headers['x-vercel-oidc-token']
-  if (typeof oidc !== 'string' || !/^[A-Za-z0-9._-]{50,8000}$/.test(oidc)) {
+  // Credencial privada da Vercel, injetada somente na Function da branch QA.
+  // Nunca utilizar cabeçalhos do navegador como autenticação entre projetos.
+  const bypass = process.env.FAROL_QA_BACKEND_BYPASS_SECRET ?? ''
+  const oidc = process.env.VERCEL_OIDC_TOKEN ?? ''
+  const headers = {}
+  if (/^[A-Za-z0-9._-]{24,512}$/.test(bypass)) {
+    headers['x-vercel-protection-bypass'] = bypass
+  } else if (/^[A-Za-z0-9._-]{50,8000}$/.test(oidc)) {
+    headers['x-vercel-trusted-oidc-idp-token'] = oidc
+  } else {
     res.statusCode = 503
     return res.end(JSON.stringify({ error: 'Identidade da infraestrutura indisponível.' }))
   }
   try {
-    const headers = { 'x-vercel-trusted-oidc-idp-token': oidc }
     if (typeof token === 'string') headers.Authorization = token
     const upstream = await fetch(upstreamOrigin + route + url.search, {
       method: 'GET', headers, cache: 'no-store', redirect: 'manual',
