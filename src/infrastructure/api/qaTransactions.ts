@@ -84,7 +84,18 @@ async function mutateQaTransaction(
     throw new Error('Falha de conexão: nenhuma gravação foi confirmada. Consulte novamente antes de repetir.')
   }
   if (response.status === 401) throw new Error('Sessão recusada pela API.')
-  if (response.status === 403 || response.status === 404) throw new Error('Sem permissão de gravação neste espaço.')
+  if (response.status === 403 || response.status === 404) {
+    // Distingue falha de rota da API de negativa de permissão sem expor dados.
+    const reachedBackend = response.headers.get('X-Farol-QA-Backend') === 'reached'
+    if (response.status === 403) {
+      throw new Error(reachedBackend
+        ? 'A API de testes recusou a edição (403).'
+        : 'O acesso foi bloqueado antes de chegar à API de testes (403).')
+    }
+    throw new Error(reachedBackend
+      ? 'A API de testes não encontrou o lançamento (404).'
+      : 'A rota de edição ou exclusão não existe nesta Preview (404).')
+  }
   if (response.status === 409) throw new Error('Outra conta alterou este lançamento. Atualize a consulta antes de editar.')
   if (response.status === 428) throw new Error('Versão obrigatória. Atualize a consulta.')
   if (method === 'DELETE' && response.status === 204) return null
