@@ -123,14 +123,14 @@ describe('Controle de versões obrigatório em gravações financeiras', () => {
       } finally { await app.close() }
     })
 
-    it(mod.url + ': 2FA e permissão continuam sendo verificados ANTES da versão', async () => {
+    it(mod.url + ': permissão e If-Match continuam necessários com senha', async () => {
       const { app, state } = fixture()
       try {
-        const without2fa = await app.inject({ method: 'PATCH', url: mod.url,
+        const missingVersion = await app.inject({ method: 'PATCH', url: mod.url,
           headers: { authorization: 'Bearer owner:aal1' }, payload: mod.body })
         const intruder = await app.inject({ method: 'PATCH', url: mod.url,
           headers: { authorization: 'Bearer intruder:aal2' }, payload: mod.body })
-        expect(without2fa.statusCode).toBe(403)
+        expect(missingVersion.statusCode).toBe(428)
         expect(intruder.statusCode).toBe(404)
         expect(state.updated).toBe(0)
       } finally { await app.close() }

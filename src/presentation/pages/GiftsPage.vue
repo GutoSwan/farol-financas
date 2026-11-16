@@ -12,8 +12,8 @@ import { deleteGiftPhoto } from '../../infrastructure/persistence/GiftPhotoStora
 import { formatBRL, parseBRLToCents } from '../../domain/value-objects/Money'
 
 const router = useRouter()
-const { isAdmin, user } = useAuth()
-const repository = computed(() => isAdmin.value && user.value?.id
+const { user } = useAuth()
+const repository = computed(() => user.value?.id
   ? new BrowserGiftRepository(user.value.id) : null)
 const person = ref<GiftOwner | null>(null)
 const gifts = ref<Gift[]>([])
@@ -21,7 +21,7 @@ const feedback = ref('')
 const legacyAvailable = ref(false)
 
 function refreshLegacyAvailability(): void {
-  if (!isAdmin.value || !repository.value) { legacyAvailable.value = false; return }
+  if (!repository.value) { legacyAvailable.value = false; return }
   try {
     legacyAvailable.value = repository.value.hasLegacyGifts()
   } catch (cause) {
@@ -31,7 +31,7 @@ function refreshLegacyAvailability(): void {
 }
 
 function importLegacyGifts(): void {
-  if (!isAdmin.value || !repository.value || !legacyAvailable.value) return
+  if (!repository.value || !legacyAvailable.value) return
   if (!window.confirm('Estes presentes antigos foram criados sem vínculo com uma conta. Confirma que pertencem a você e deseja associá-los à sua conta atual?')) return
   try {
     const amount = repository.value.importLegacyGifts()
@@ -53,9 +53,9 @@ const priority = ref<GiftPriority>('high')
 const chooserFirst = ref<HTMLButtonElement | null>(null)
 const formFirst = ref<HTMLInputElement | null>(null)
 
-watch([isAdmin, () => user.value?.id], ([allowed, currentId], [, previousId]) => {
-  // Trocar entre contas privilegiadas também limpa os dados da tela anterior.
-  if (allowed && currentId && currentId === previousId) return
+watch(() => user.value?.id, (currentId, previousId) => {
+  // Trocar de conta limpa imediatamente os presentes carregados da pessoa anterior.
+  if (currentId && currentId === previousId) return
   person.value = null
   gifts.value = []
   formOpen.value = false
@@ -72,7 +72,7 @@ const counts = computed(() => ({
 }))
 
 function reload(): void {
-  if (!isAdmin.value || !person.value || !repository.value) return
+  if (!person.value || !repository.value) return
   try {
     gifts.value = repository.value.list(person.value)
     error.value = ''
@@ -83,7 +83,7 @@ function reload(): void {
 }
 
 function choosePerson(chosen: GiftOwner): void {
-  if (!isAdmin.value) return
+  if (!user.value) return
   person.value = chosen
   formOpen.value = false
   feedback.value = ''
@@ -106,7 +106,7 @@ function changePerson(): void {
 }
 
 function openForm(gift?: Gift): void {
-  if (!isAdmin.value) return
+  if (!user.value) return
   editId.value = gift?.id ?? null
   name.value = gift?.name ?? ''
   price.value = gift ? formatBRL(gift.priceCents) : ''
@@ -121,7 +121,7 @@ function openForm(gift?: Gift): void {
 function closeForm(): void { formOpen.value = false; formError.value = '' }
 
 function saveGift(): void {
-  if (!isAdmin.value || !person.value || !repository.value) return
+  if (!person.value || !repository.value) return
   formError.value = ''
   feedback.value = ''
   try {
@@ -141,7 +141,7 @@ function saveGift(): void {
 }
 
 async function removeGift(gift: Gift): Promise<void> {
-  if (!isAdmin.value || !person.value || !repository.value) return
+  if (!person.value || !repository.value) return
   if (!window.confirm('Excluir o presente "' + gift.name + '" da lista de ' + personLabel.value + '?')) return
   try {
     repository.value.remove(person.value, gift.id)
@@ -174,12 +174,12 @@ function trapDialogFocus(event: KeyboardEvent): void {
 
 onMounted(() => {
   refreshLegacyAvailability()
-  if (isAdmin.value) void nextTick(() => chooserFirst.value?.focus())
+  if (user.value) void nextTick(() => chooserFirst.value?.focus())
 })
 </script>
 
 <template>
-  <div v-if="isAdmin" class="gifts-page">
+  <div v-if="user" class="gifts-page">
     <div class="heading gifts-page-heading">
       <div>
         <p class="eyebrow">LISTA DE DESEJOS</p>

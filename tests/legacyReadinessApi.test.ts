@@ -55,9 +55,9 @@ describe('Prévia remota de migração sem enviar registros locais',()=>{
     })})
     await expect(inspectOnlineLegacyReadiness(dest,userId)).rejects.toThrow('incompletas')
   })
-  it('erro 403 de 2FA não vira lista vazia',async()=>{
+  it('erro 403 por falta de permissão não vira lista vazia',async()=>{
     vi.stubGlobal('fetch',vi.fn().mockResolvedValue({ok:false,status:403}))
-    await expect(inspectOnlineLegacyReadiness(dest,userId)).rejects.toThrow('Authenticator')
+    await expect(inspectOnlineLegacyReadiness(dest,userId)).rejects.toThrow('permissão')
   })
   it('não aceita resposta apontando outro workspace',async()=>{
     vi.stubGlobal('fetch',vi.fn().mockResolvedValue({ok:true,status:200,json:async()=>({

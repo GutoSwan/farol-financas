@@ -32,7 +32,7 @@ const pathCatalog = (kind: string) => path + '/' + kind
 /**
  * API real sobre Fastify.inject, com repositórios inteiramente falsos.
  * Nunca usa rede, banco de dados, tokens reais ou credenciais Supabase.
- * Captura chamadas para provar que não se lê nem grava nada se faltar MFA ou vínculo.
+ * Captura chamadas para provar que não se lê nem grava nada se faltar vínculo ou autenticação.
  */
 function fixture({ writes = true, invoiceReads = true, invoiceUploads = true }:
   { writes?: boolean; invoiceReads?: boolean; invoiceUploads?: boolean } = {}) {
@@ -146,7 +146,7 @@ describe('Regressão de segurança: autenticação e acesso entre usuários', ()
     expect(seen.list).not.toHaveBeenCalled()
   })
 
-  it('exige AAL2 para todos os dados financeiros, mas não para identificar a sessão', async () => {
+  it('permite acesso por senha apenas com autenticação e vínculo corretos', async () => {
     const { app, seen } = createApp()
     const headers = token('owner-aal1')
     const me = await app.inject({ method: 'GET', url: '/api/v1/me', headers })
@@ -154,15 +154,16 @@ describe('Regressão de segurança: autenticação e acesso entre usuários', ()
     expect(me.json().data.id).toBe(owner)
     for (const url of ['/api/v1/workspaces', path, path + '/transactions',
       ...catalogKinds.map(pathCatalog), path + '/invoices']) {
-      expect((await app.inject({ method: 'GET', url, headers })).statusCode).toBe(403)
+      expect((await app.inject({ method: 'GET', url, headers })).statusCode).toBe(200)
     }
-    expect(seen.list).not.toHaveBeenCalled()
-    expect(seen.membership).not.toHaveBeenCalled()
-    expect(seen.transactionsRead).not.toHaveBeenCalled()
-    expect(seen.invoicesRead).not.toHaveBeenCalled()
+    expect(seen.list).toHaveBeenCalled()
+    expect(seen.membership).toHaveBeenCalled()
+    expect(seen.transactionsRead).toHaveBeenCalled()
+    expect(seen.invoicesRead).toHaveBeenCalled()
+    await app.close()
   })
 
-  it('outro usuário autenticado não consegue ver nem enumerar os recursos financeiros', async () => {
+    it('outro usuário autenticado não consegue ver nem enumerar os recursos financeiros', async () => {
     const { app, seen } = createApp()
     const headers = token('outsider-aal2')
     expect((await app.inject({ method: 'GET', url: '/api/v1/workspaces', headers })).json().data).toEqual([])
@@ -208,7 +209,7 @@ describe('Regressão de segurança: autenticação e acesso entre usuários', ()
     expect(seen.transactionsCreate.mock.calls[0][0].workspaceId).toBe(space)
   })
 
-  it('não altera dados financeiros em preview mesmo com OWNER, AAL2 e entradas válidas', async () => {
+  it('não altera dados financeiros em preview mesmo com OWNER e entradas válidas', async () => {
     const { app, seen } = createApp({ writes: false })
     const headers = token('owner-aal2')
     const requests = [
@@ -231,25 +232,24 @@ describe('Regressão de segurança: autenticação e acesso entre usuários', ()
     expect(seen.catalogCreate).not.toHaveBeenCalled()
   })
 
-  it('não executa mutações de nenhum tipo sem AAL2, mesmo que a escrita esteja habilitada', async () => {
+  it('sessão por senha permite escrita apenas com vínculo, flags e pré-condições', async () => {
     const { app, seen } = createApp()
     const headers = token('owner-aal1')
-    for (const request of [
-      { method: 'POST' as const, url: path + '/transactions', payload: transactionInput },
-      { method: 'PATCH' as const, url: path + '/transactions/' + record, payload: { amountCents: 9000 } },
-      { method: 'DELETE' as const, url: path + '/transactions/' + record },
-      ...catalogKinds.map(kind => ({ method: 'POST' as const,
-        url: pathCatalog(kind), payload: validCatalogBodies[kind] })),
-    ]) {
-      expect((await app.inject({ ...request, headers })).statusCode).toBe(403)
-    }
-    expect(seen.transactionsCreate).not.toHaveBeenCalled()
+    const created = await app.inject({ method: 'POST', url: path + '/transactions',
+      payload: transactionInput, headers })
+    expect(created.statusCode).toBe(201)
+    expect(seen.transactionsCreate).toHaveBeenCalledOnce()
+    const update = await app.inject({ method: 'PATCH', url: path + '/transactions/' + record,
+      payload: { amountCents: 9000 }, headers })
+    expect(update.statusCode).toBe(428)
     expect(seen.transactionsUpdate).not.toHaveBeenCalled()
+    const deleted = await app.inject({ method: 'DELETE', url: path + '/transactions/' + record, headers })
+    expect(deleted.statusCode).toBe(428)
     expect(seen.transactionsDelete).not.toHaveBeenCalled()
-    expect(seen.catalogCreate).not.toHaveBeenCalled()
+    await app.close()
   })
 
-  it('PATCH/DELETE exigem If-Match e nunca chamam repositório sem precondição', async () => {
+    it('PATCH/DELETE exigem If-Match e nunca chamam repositório sem precondição', async () => {
     const { app, seen } = createApp()
     const headers = token('owner-aal2')
     for (const url of [path + '/transactions/' + record,

@@ -119,8 +119,6 @@ export interface AppDependencies {
   allowInvoiceUploads?: boolean
   allowInvoiceReads?: boolean
   checkDatabase(): Promise<boolean>
-  /** Lê papel Super Admin atual diretamente do auth.users, nunca do JWT ou navegador. */
-  checkSuperAdmin?: (userId: string, token?: string) => Promise<boolean>
   corsOrigin?: string
   /** Preview usa banco real por enquanto: impedir gravações HTTP no servidor. */
   allowWorkspaceWrites?: boolean
@@ -294,25 +292,9 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
     return { data: { id: identity.userId } }
   })
 
-  // Resposta mínima: sem lista de usuários, tokens, banco ou segredos.
-  // Protegida por assinatura JWT, sessão ativa, MFA AAL2 e papel consultado no DB.
-  app.get('/api/v1/admin/access', async (request, reply) => {
-    const identity = await authorized(request, reply)
-    if (!identity) return
-    if (identity.assuranceLevel !== 'aal2') return reply.code(403).send({ error: 'Confirme o segundo fator.' })
-    if (!deps.checkSuperAdmin || !await deps.checkSuperAdmin(identity.userId, typeof request.headers.authorization === 'string' && request.headers.authorization.startsWith('Bearer ')
-      ? request.headers.authorization.slice(7) : undefined)) {
-      return reply.code(403).send({ error: 'Acesso reservado ao Super Admin.' })
-    }
-    return { data: { superAdmin: true } }
-  })
-
   app.get('/api/v1/workspaces', async (request, reply) => {
     const identity = await authorized(request, reply)
     if (!identity) return
-    if (identity.assuranceLevel !== 'aal2') {
-      return reply.code(403).send({ error: 'Autenticação em duas etapas necessária para consultar dados financeiros.' })
-    }
     return { data: await deps.workspaceService.listForUser(identity.userId) }
   })
 
@@ -322,9 +304,6 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
   app.get<{ Params: { workspaceId: string } }>('/api/v1/workspaces/:workspaceId', async (request, reply) => {
     const identity = await authorized(request, reply)
     if (!identity) return
-    if (identity.assuranceLevel !== 'aal2') {
-      return reply.code(403).send({ error: 'Autenticação em duas etapas necessária para consultar dados financeiros.' })
-    }
     const parsed = z.string().uuid().safeParse(request.params.workspaceId)
     if (!parsed.success) {
       return reply.code(404).send({ error: 'Espaço não encontrado.' })
@@ -348,9 +327,6 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
     if (deps.allowInvoiceReads !== true) return reply.code(503).send({ error: 'Faturas indisponíveis.' })
     const identity = await authorized(request, reply)
     if (!identity) return
-    if (identity.assuranceLevel !== 'aal2') {
-      return reply.code(403).send({ error: 'Autenticação em duas etapas necessária.' })
-    }
     const space = z.string().uuid().safeParse(request.params.workspaceId)
     if (!space.success) return reply.code(404).send({ error: 'Espaço não encontrado.' })
     try {
@@ -368,9 +344,6 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
   }, async (request, reply) => {
     const identity = await authorized(request, reply)
     if (!identity) return
-    if (identity.assuranceLevel !== 'aal2') {
-      return reply.code(403).send({ error: 'Autenticação em duas etapas necessária.' })
-    }
     const space = z.string().uuid().safeParse(request.params.workspaceId)
     if (!space.success) return reply.code(404).send({ error: 'Espaço não encontrado.' })
     // Independente das outras telas, upload de faturas exige DUAS flags no servidor.
@@ -406,16 +379,13 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
 
   /**
    * Prévia exata da nuvem. Sem body financeiro e sem writes.
-   * Autenticado por JWT, AAL2, dono OWNER no serviço E no snapshot Prisma.
+   * Autenticado por JWT, dono OWNER no serviço E no snapshot Prisma.
    * Resposta contém apenas contagens, sem valores ou nomes de terceiros.
    */
   app.get<{ Params: { workspaceId: string } }>(
     '/api/v1/workspaces/:workspaceId/legacy-readiness', async (request, reply) => {
       const identity = await authorized(request, reply)
       if (!identity) return
-      if (identity.assuranceLevel !== 'aal2') {
-        return reply.code(403).send({ error: 'Confirme o Authenticator.' })
-      }
       const id = z.string().uuid().safeParse(request.params.workspaceId)
       if (!id.success) return reply.code(404).send({ error: 'Espaço não encontrado.' })
       try {
@@ -448,7 +418,6 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
     '/api/v1/workspaces/:workspaceId/legacy-connect', async (request,reply) => {
       const identity=await authorized(request,reply)
       if(!identity)return
-      if(identity.assuranceLevel!=='aal2')return reply.code(403).send({error:'Confirme o Authenticator.'})
       const id=z.string().uuid().safeParse(request.params.workspaceId)
       if(!id.success)return reply.code(404).send({error:'Espaço não encontrado.'})
       if(deps.allowWorkspaceWrites!==true || deps.allowLegacyConnectionWrites!==true) {
@@ -485,9 +454,6 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
       `/api/v1/workspaces/:workspaceId/${kind}`, async (request, reply) => {
         const identity = await authorized(request, reply)
         if (!identity) return
-        if (identity.assuranceLevel !== 'aal2') {
-          return reply.code(403).send({ error: 'Autenticação em duas etapas necessária para consultar dados financeiros.' })
-        }
         const parsed = z.string().uuid().safeParse(request.params.workspaceId)
         if (!parsed.success) return reply.code(404).send({ error: 'Espaço não encontrado.' })
         const limitResult = z.coerce.number().int().min(1).max(100).safeParse(request.query.limit ?? '50')
@@ -512,13 +478,12 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
     )
   }
 
-  // Não há mutações sem MFA, autorização OWNER/EDITOR e escopo de workspace.
+  // Não há mutações sem autorização OWNER/EDITOR e escopo de workspace.
   for (const kind of ['recurring-bills', 'fixed-expenses', 'budgets'] as const) {
     const base = `/api/v1/workspaces/:workspaceId/${kind}`
     app.post<{ Params: { workspaceId: string } }>(base, async (request, reply) => {
       const identity = await authorized(request, reply)
       if (!identity) return
-      if (identity.assuranceLevel !== 'aal2') return reply.code(403).send({ error: 'Autenticação em duas etapas necessária.' })
       const space = z.string().uuid().safeParse(request.params.workspaceId)
       if (!space.success) return reply.code(404).send({ error: 'Registro não encontrado.' })
       if (deps.allowWorkspaceWrites !== true) return reply.code(403).send({ error: 'Gravação desativada neste Preview.' })
@@ -540,7 +505,6 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
     app.patch<{ Params: { workspaceId: string; recordId: string } }>(base + '/:recordId', async (request, reply) => {
       const identity = await authorized(request, reply)
       if (!identity) return
-      if (identity.assuranceLevel !== 'aal2') return reply.code(403).send({ error: 'Autenticação em duas etapas necessária.' })
       const space = z.string().uuid().safeParse(request.params.workspaceId)
       const record = z.string().uuid().safeParse(request.params.recordId)
       if (!space.success || !record.success) return reply.code(404).send({ error: 'Registro não encontrado.' })
@@ -572,7 +536,6 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
     app.delete<{ Params: { workspaceId: string; recordId: string } }>(base + '/:recordId', async (request, reply) => {
       const identity = await authorized(request, reply)
       if (!identity) return
-      if (identity.assuranceLevel !== 'aal2') return reply.code(403).send({ error: 'Autenticação em duas etapas necessária.' })
       const space = z.string().uuid().safeParse(request.params.workspaceId)
       const record = z.string().uuid().safeParse(request.params.recordId)
       if (!space.success || !record.success) return reply.code(404).send({ error: 'Registro não encontrado.' })
@@ -605,9 +568,6 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
     '/api/v1/workspaces/:workspaceId/transactions', async (request, reply) => {
       const identity = await authorized(request, reply)
       if (!identity) return
-      if (identity.assuranceLevel !== 'aal2') {
-        return reply.code(403).send({ error: 'Autenticação em duas etapas necessária para consultar dados financeiros.' })
-      }
       const workspaceId = z.string().uuid().safeParse(request.params.workspaceId)
       if (!workspaceId.success) return reply.code(404).send({ error: 'Espaço não encontrado.' })
       const limitResult = z.coerce.number().int().min(1).max(100).safeParse(request.query.limit ?? '50')
@@ -628,9 +588,6 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
     '/api/v1/workspaces/:workspaceId/transactions', async (request, reply) => {
       const identity = await authorized(request, reply)
       if (!identity) return
-      if (identity.assuranceLevel !== 'aal2') {
-        return reply.code(403).send({ error: 'Autenticação em duas etapas necessária para alterar dados financeiros.' })
-      }
       const workspaceId = z.string().uuid().safeParse(request.params.workspaceId)
       if (!workspaceId.success) return reply.code(404).send({ error: 'Espaço não encontrado.' })
       // Preview nunca grava dados financeiros reais, independentemente do token.
@@ -655,14 +612,11 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
   )
 
 
-  // PATCH e DELETE exigem MFA e papel de escrita; nenhum ID do cliente autoriza acesso isoladamente.
+  // PATCH e DELETE exigem identidade e papel de escrita; nenhum ID do cliente autoriza acesso isoladamente.
   app.patch<{ Params: { workspaceId: string; transactionId: string } }>(
     '/api/v1/workspaces/:workspaceId/transactions/:transactionId', async (request, reply) => {
       const identity = await authorized(request, reply)
       if (!identity) return
-      if (identity.assuranceLevel !== 'aal2') {
-        return reply.code(403).send({ error: 'Autenticação em duas etapas necessária para alterar dados financeiros.' })
-      }
       const workspaceId = z.string().uuid().safeParse(request.params.workspaceId)
       const transactionId = z.string().uuid().safeParse(request.params.transactionId)
       if (!workspaceId.success || !transactionId.success) return reply.code(404).send({ error: 'Lançamento não encontrado.' })
@@ -698,9 +652,6 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
     '/api/v1/workspaces/:workspaceId/transactions/:transactionId', async (request, reply) => {
       const identity = await authorized(request, reply)
       if (!identity) return
-      if (identity.assuranceLevel !== 'aal2') {
-        return reply.code(403).send({ error: 'Autenticação em duas etapas necessária para alterar dados financeiros.' })
-      }
       const workspaceId = z.string().uuid().safeParse(request.params.workspaceId)
       const transactionId = z.string().uuid().safeParse(request.params.transactionId)
       if (!workspaceId.success || !transactionId.success) return reply.code(404).send({ error: 'Lançamento não encontrado.' })
@@ -733,9 +684,6 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
   app.post('/api/v1/workspaces', async (request, reply) => {
     const identity = await authorized(request, reply)
     if (!identity) return
-    if (identity.assuranceLevel !== 'aal2') {
-      return reply.code(403).send({ error: 'Autenticação em duas etapas necessária para alterar dados financeiros.' })
-    }
     if (deps.allowWorkspaceWrites !== true) {
       return reply.code(403).send({ error: 'Criação de espaços desativada neste ambiente de testes.' })
     }

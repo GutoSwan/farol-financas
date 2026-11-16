@@ -51,11 +51,11 @@ describe('GET de prontidão exata para migração, sem escrita',()=>{
       expect(requests).toHaveLength(0)
     }finally{await app.close()}
   })
-  it('exige AAL2 e não consulta o repositório com apenas senha',async()=>{
+  it('aceita senha válida do proprietário e devolve prontidão exata',async()=>{
     const {app,requests}=setup({aal:'aal1'})
     try {
       const r=await app.inject({method:'GET',url,headers:{authorization:'Bearer valid'}})
-      expect(r.statusCode).toBe(403);expect(requests).toEqual([])
+      expect(r.statusCode).toBe(200);expect(requests).toEqual([[alice,ws]])
     }finally{await app.close()}
   })
   it('sem OWNER e com segunda conta retorna 404 e não vaza contagens',async()=>{

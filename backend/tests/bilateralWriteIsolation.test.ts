@@ -7,7 +7,7 @@ import type { FinancialCatalogMutations } from '../src/domain/repositories/Finan
 
 /**
  * No real credentials, network or DB writes. A and B represent distinct
- * verified AAL2 identities. Their workspace UUIDs are intentionally known
+ * verified authenticated identities. Their workspace UUIDs are intentionally known
  * to the attacker. The mutation repository MUST NOT be called for foreign IDs.
  */
 const a = '11111111-1111-4111-8111-111111111111'
@@ -120,13 +120,13 @@ describe('Escrita isolada A ↔ B: criação, edição e exclusão em 4 módulos
     } finally { await app.close() }
   })
 
-  it('sem AAL2 não executa qualquer escrita mesmo como dono', async () => {
+  it('uma conta com senha não altera o espaço da outra', async () => {
     const { app, calls } = setup()
     try {
       for (const kind of kinds) {
         for (const method of ['POST','PATCH','DELETE'] as const) {
-          const response = await app.inject(request(method, wa, kind, 'a:aal1'))
-          expect(response.statusCode).toBe(403)
+          const response = await app.inject(request(method, wa, kind, 'b:aal1'))
+          expect(response.statusCode).toBe(404)
         }
       }
       expect(calls).toEqual([])

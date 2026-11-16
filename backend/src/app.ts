@@ -285,37 +285,6 @@ guardedFastify.addHook('onRequest', async (request, reply) => {
 
 const app = buildApp({
   auth,
-  async checkSuperAdmin(userId, token) {
-    // A Preview de migração é estritamente financeira e só de leitura.
-    // Não concede nem inspeciona acesso ao Farol Admin.
-    if (process.env.FAROL_PREVIEW_ADMIN_QA_READONLY === 'true') return false
-    if (authOnlyQa) {
-      if (!isVerifiedAuthOnlyDevPreview(process.env) || !qaVerifier) return false
-      return qaVerifier.checkSuperAdmin(userId, token)
-    }
-    // Nunca confiar apenas em app_metadata do JWT, que pode estar desatualizado.
-    // A consulta parametrizada lê o papel atual da conta, sem devolver informações pessoais.
-    const prisma = await getPrisma()
-    const rows = await prisma.$queryRaw<Array<{ allowed: boolean }>>`
-      SELECT EXISTS (
-        SELECT 1
-        FROM auth.users AS admin_account
-        WHERE admin_account.id = ${userId}::uuid
-          AND admin_account.raw_app_meta_data->>'farol_role' = 'super_admin'
-          AND admin_account.email_confirmed_at IS NOT NULL
-          AND admin_account.deleted_at IS NULL
-          AND admin_account.is_anonymous IS NOT TRUE
-          AND (admin_account.banned_until IS NULL OR admin_account.banned_until <= NOW())
-          AND EXISTS (
-            SELECT 1 FROM auth.mfa_factors AS verified_factor
-            WHERE verified_factor.user_id = admin_account.id
-              AND verified_factor.factor_type = 'totp'
-              AND verified_factor.status = 'verified'
-          )
-      ) AS allowed
-    `
-    return rows.length === 1 && rows[0].allowed === true
-  },
   workspaceService: new WorkspaceService(lazyRepository),
   transactionRepository: lazyTransactions,
   financialCatalog: lazyCatalog,

@@ -58,14 +58,14 @@ describe('Escritas financeiras: autorização de contas, gastos e orçamentos', 
          expect(calls).toHaveLength(0)
        } finally { await app.close() }
      })
-     it(kind + ' ' + method + ': nega VIEWER e AAL1', async () => {
+     it(kind + ' ' + method + ': nega VIEWER, aceita OWNER com senha', async () => {
        const { app, calls } = makeFixture()
        try {
-         for (const token of ['viewer', 'password']) {
-           const res = await app.inject({ method, url: path, headers: { authorization: 'Bearer ' + token }, ...(method !== 'DELETE' ? { payload: body } : {}) })
-           expect(res.statusCode).toBe(token === 'viewer' ? 404 : 403)
-         }
-         expect(calls).toHaveLength(0)
+         const viewer = await app.inject({ method, url: path, headers: { authorization: 'Bearer viewer', 'if-match': '"1"' }, ...(method !== 'DELETE' ? { payload: body } : {}) })
+         expect(viewer.statusCode).toBe(404)
+         const owner = await app.inject({ method, url: path, headers: { authorization: 'Bearer password', 'if-match': '"1"' }, ...(method !== 'DELETE' ? { payload: body } : {}) })
+         expect(owner.statusCode).toBe(method === 'POST' ? 201 : method === 'PATCH' ? 200 : 204)
+         expect(calls).toHaveLength(1)
        } finally { await app.close() }
      })
      it(kind + ' ' + method + ': Preview nega até OWNER', async () => {

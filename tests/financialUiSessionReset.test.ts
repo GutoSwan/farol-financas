@@ -36,8 +36,8 @@ describe('Privacidade do cache financeiro durante logout e troca de conta',()=>{
   })
   it('login normal descarta estado anterior de recuperação por e-mail',()=>{
     const auth=read('src/presentation/composables/useAuth.ts')
-    const fn=auth.slice(auth.indexOf('async function signIn('),auth.indexOf('async function signUp('))
+    const fn=auth.slice(auth.indexOf('async function signIn('),auth.indexOf('async function updateProfile('))
     expect(fn).toContain('recoveringPassword.value = false')
-    expect(fn).toContain('recoveryMfaVerified.value = false')
+    expect(fn).toContain('passwordJustChanged.value = false')
   })
 })

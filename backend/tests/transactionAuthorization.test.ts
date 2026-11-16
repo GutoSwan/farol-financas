@@ -84,15 +84,15 @@ describe('Transações: isolamento e permissão por operação', () => {
       expect(calls).toHaveLength(0)
     } finally { await app.close() }
   })
-  it('nega consulta com MFA incompleto', async () => {
+  it('permite consulta ao proprietário com senha', async () => {
     const { app, calls } = fixture()
     try {
       const response = await app.inject({ method: 'GET', url, headers: { authorization: 'Bearer alice:aal1' } })
-      expect(response.statusCode).toBe(403)
-      expect(calls).toHaveLength(0)
+      expect(response.statusCode).toBe(200)
+      expect(calls).toEqual(['list:' + spaceId])
     } finally { await app.close() }
   })
-  it('permite consulta a VIEWER associado ao espaço', async () => {
+    it('permite consulta a VIEWER associado ao espaço', async () => {
     const { app, calls } = fixture()
     try {
       const response = await app.inject({ method: 'GET', url, headers: { authorization: 'Bearer viewer:aal2' } })
@@ -126,7 +126,7 @@ describe('Transações: isolamento e permissão por operação', () => {
       expect(calls).toHaveLength(0)
     } finally { await app.close() }
   })
-  it('OWNER com AAL2 cria lançamento dentro do próprio espaço', async () => {
+  it('OWNER autenticado cria lançamento dentro do próprio espaço', async () => {
     const { app, calls } = fixture()
     try {
       const response = await app.inject({ method: 'POST', url, headers: { authorization: 'Bearer alice:aal2' }, payload })
@@ -181,18 +181,18 @@ describe('Transações: edição e exclusão protegidas', () => {
     } finally { await app.close() }
   })
 
-  it('sem AAL2 não edita ou exclui, mesmo sendo OWNER', async () => {
+  it('continua exigindo If-Match para edição e exclusão com senha', async () => {
     const { app, calls } = fixture()
     try {
       for (const method of ['PATCH', 'DELETE'] as const) {
         const res = await app.inject({ method, url: transactionUrl, headers: { authorization: 'Bearer alice:aal1' }, ...(method === 'PATCH' ? { payload: { description: 'Novo' } } : {}) })
-        expect(res.statusCode).toBe(403)
+        expect(res.statusCode).toBe(428)
       }
       expect(calls).toHaveLength(0)
     } finally { await app.close() }
   })
 
-  it('bloqueia toda mutação no Preview', async () => {
+    it('bloqueia toda mutação no Preview', async () => {
     const { app, calls } = fixture(false)
     try {
       const headers = { authorization: 'Bearer alice:aal2' }
@@ -214,7 +214,7 @@ describe('Transações: edição e exclusão protegidas', () => {
     } finally { await app.close() }
   })
 
-  it('OWNER com MFA pode editar e excluir somente registro do próprio espaço', async () => {
+  it('OWNER autenticado pode editar e excluir somente registro do próprio espaço', async () => {
     const { app, calls } = fixture()
     try {
       const headers = { authorization: 'Bearer alice:aal2', 'if-match': '"1"' }

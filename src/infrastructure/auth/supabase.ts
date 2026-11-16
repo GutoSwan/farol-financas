@@ -1,6 +1,5 @@
 import { mayInitializeAuth } from '../../domain/auth/qaPreviewIsolation'
 import { createClient } from '@supabase/supabase-js'
-import { browserSessionStorage } from './trustedComputer'
 import { recoveryAccessTokenFromFragment } from '../../domain/auth/recoveryCallback'
 
 const url = (import.meta.env.VITE_SUPABASE_URL ?? '').trim()
@@ -22,10 +21,9 @@ export function claimRecoveryCallbackSession(accessToken: string | null | undefi
   return true
 }
 
-/** Backend e dados financeiros continuam locais nesta etapa. */
+/** Sessão individual: persistida no dispositivo pessoal e revalidada no servidor. */
 export const supabase = authConfigured
   ? createClient(url, publishableKey, {
-      auth: { autoRefreshToken: true, persistSession: true, detectSessionInUrl: true,
-        storage: browserSessionStorage(url) },
+      auth: { autoRefreshToken: true, persistSession: true, detectSessionInUrl: true },
     })
   : null

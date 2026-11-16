@@ -48,7 +48,7 @@ function fixture(writes = false, uploads = false) {
   return { app, calls }
 }
 const auth = (token: string) => ({ authorization:'Bearer ' + token })
-describe('Faturas: isolamento pessoal, MFA e upload fechado por padrão', () => {
+describe('Faturas: isolamento pessoal, sessão autenticada e upload fechado por padrão', () => {
  it('sem flag de leitura responde indisponível antes de acessar repositório', async () => {
   const {app,calls}=fixture()
   // O contrato de produção estabelece allowInvoiceReads=false por padrão;
@@ -86,13 +86,13 @@ describe('Faturas: isolamento pessoal, MFA e upload fechado por padrão', () => 
     expect(calls).toHaveLength(0)
   } finally { await app.close() }
  })
- it('MFA obrigatório para consulta e envio', async () => {
+ it('dono com senha pode consultar e enviar fatura quando autorizado', async () => {
   const {app,calls}=fixture(true,true)
   try {
     const headers=auth('owner:aal1')
-    expect((await app.inject({method:'GET',url,headers})).statusCode).toBe(403)
-    expect((await app.inject({method:'POST',url,headers,payload:body})).statusCode).toBe(403)
-    expect(calls).toHaveLength(0)
+    expect((await app.inject({method:'GET',url,headers})).statusCode).toBe(200)
+    expect((await app.inject({method:'POST',url,headers,payload:body})).statusCode).toBe(202)
+    expect(calls).toHaveLength(2)
   } finally { await app.close() }
  })
  it('VIEWER pode listar apenas suas próprias faturas, nunca enviar', async () => {

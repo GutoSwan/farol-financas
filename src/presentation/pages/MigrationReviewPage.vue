@@ -112,10 +112,6 @@ async function confirmedOwner(expected?:string):Promise<string> {
   if(error||!data.user||(expected && data.user.id!==expected)){
     throw new Error('A sessão mudou. Entre novamente.')
   }
-  const {data:assurance,error:assuranceError}=await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
-  if(assuranceError||assurance?.currentLevel!=='aal2'){
-    throw new Error('Confirme o Authenticator antes de revisar dados financeiros.')
-  }
   if(localLegacyAccess(data.user.id)!=='allowed'){
     throw new Error('Os registros deste navegador não estão vinculados à sua conta.')
   }
@@ -140,7 +136,7 @@ async function loadReview():Promise<void>{
     const local=buildLocalFinancialBackup()
     const fingerprint=await fingerprintFinancialBackup(local)
     // A falta da API NÃO impede a conferência local de uma conta já
-    // autenticada com MFA AAL2, mas bloqueia qualquer afirmação sobre destino.
+    // autenticada e vinculada à conta, mas bloqueia qualquer afirmação sobre destino.
     let unavailable=!apiConfigured
     let remote:OnlineWorkspace[]=[]
     if(apiConfigured){
@@ -246,7 +242,7 @@ onBeforeUnmount(()=>{
     <span>A transferência ainda está desativada. Esta tela não altera seus registros locais nem os dados na nuvem.</span>
   </div>
 
-  <div v-if="loading" class="panel" role="status">Verificando login, Authenticator e dados financeiros...</div>
+  <div v-if="loading" class="panel" role="status">Verificando login e dados financeiros...</div>
   <div v-else-if="errorText && !snapshot" class="panel">
     <p class="error" role="alert">{{ errorText }}</p>
     <button type="button" class="secondary-action" @click="loadReview">Tentar novamente</button>

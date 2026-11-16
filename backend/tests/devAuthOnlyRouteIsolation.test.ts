@@ -26,13 +26,13 @@ function setup(overrides: Record<string,string | undefined>={}) {
 }
 
 describe('API Auth-only QA nunca inicializa ou libera os endpoints financeiros',()=>{
-  it('permite apenas health e o pedido de admin com autenticação; nenhum outro recurso',async()=>{
+  it('permite apenas health; bloqueia os demais recursos financeiros',async()=>{
     setup()
     const {default:app}=await import('../src/app.js')
     try {
       const cases = [
         {method:'GET' as const,url:'/api/v1/health',code:200},
-        {method:'GET' as const,url:'/api/v1/admin/access',code:401},
+        {method:'GET' as const,url:'/api/v1/admin/access',code:404},
         {method:'GET' as const,url:'/api/v1/me',code:403},
         {method:'GET' as const,url:'/api/v1/workspaces',code:403},
         {method:'GET' as const,url:'/api/v1/workspaces/id/transactions',code:403},

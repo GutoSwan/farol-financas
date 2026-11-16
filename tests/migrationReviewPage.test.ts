@@ -88,7 +88,7 @@ describe('Prévia da revisão de migração',()=>{
     expect(page).toContain('Registros locais disponíveis para conferência')
     expect(page).toContain('A API reconheceu uma conta diferente.')
     expect(route).toContain("path: 'revisar-migracao', component: MigrationReviewPage")
-    expect(route).toContain("title: 'Revisar migração', requiresLegacyData: true")
+    expect(route).toContain("title: 'Revisar dados antigos', requiresLegacyData: true")
     expect(backend).toContain('allowLegacyConnectionWrites: false')
   })
 })

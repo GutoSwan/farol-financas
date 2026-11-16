@@ -171,12 +171,11 @@ describe('Farol API v0.4', () => {
     expect(b.statusCode).toBe(400)
     await app.close()
   })
-  it('nega consulta e gravação financeira com sessão somente de senha (aal1)', async () => {
+  it('permite consultar com senha e mantém bloqueio de escritas em Preview', async () => {
     const { app, records } = fixtures()
     const headers = { authorization: 'Bearer password-only-test' }
     const list = await app.inject({ method: 'GET', url: '/api/v1/workspaces', headers })
-    expect(list.statusCode).toBe(403)
-    expect(list.json().error).toContain('duas etapas')
+    expect(list.statusCode).toBe(200)
     const created = await app.inject({
       method: 'POST', url: '/api/v1/workspaces', headers, payload: { name: 'Conta privada' },
     })

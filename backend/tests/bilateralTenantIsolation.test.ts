@@ -91,7 +91,7 @@ const auth = (token: string) => ({ authorization: 'Bearer ' + token })
 const endpoint = (spaceId: string, kind: Kind) =>
   `/api/v1/workspaces/${spaceId}/${kind}?limit=50`
 
-describe('Isolamento bilateral A/B por workspace e MFA', () => {
+describe('Isolamento bilateral A/B por workspace e sessão autenticada', () => {
   for (const kind of kinds) {
     it(`${kind}: A consegue ler somente A; B consegue ler somente B`, async () => {
       const { app, calls } = setup()
@@ -117,22 +117,18 @@ describe('Isolamento bilateral A/B por workspace e MFA', () => {
       } finally { await app.close() }
     })
 
-    it(`${kind}: AAL1, anônimo e token inválido nunca consultam valores`, async () => {
+    it(`${kind}: senha válida lê apenas o próprio espaço; inválido não acessa`, async () => {
       const { app, calls } = setup()
       try {
-        const cases = [
-          { token: 'a:aal1', expected: 403 },
-          { token: 'b:aal1', expected: 403 },
-          { token: 'token-falso', expected: 401 },
-        ]
-        for (const item of cases) {
-          const res = await app.inject({ method: 'GET', url: endpoint(wa, kind),
-            headers: auth(item.token) })
-          expect(res.statusCode).toBe(item.expected)
+        for (const item of [{ token: 'a:aal1', space: wa }, { token: 'b:aal1', space: wb }]) {
+          const own = await app.inject({ method: 'GET', url: endpoint(item.space, kind), headers: auth(item.token) })
+          expect(own.statusCode).toBe(200)
+          const foreign = await app.inject({ method: 'GET', url: endpoint(item.space === wa ? wb : wa, kind), headers: auth(item.token) })
+          expect(foreign.statusCode).toBe(404)
         }
-        const anon = await app.inject({ method: 'GET', url: endpoint(wb, kind) })
-        expect(anon.statusCode).toBe(401)
-        expect(calls).toHaveLength(0)
+        expect((await app.inject({ method: 'GET', url: endpoint(wa, kind), headers: auth('token-falso') })).statusCode).toBe(401)
+        expect((await app.inject({ method: 'GET', url: endpoint(wb, kind) })).statusCode).toBe(401)
+        expect(calls).toEqual([`${kind}:${wa}`, `${kind}:${wb}`])
       } finally { await app.close() }
     })
   }

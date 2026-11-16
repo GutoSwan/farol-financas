@@ -31,7 +31,7 @@ function asObject(v:unknown):Record<string,unknown>|null {
 /**
  * Confere tanto a identidade local quanto a resposta da API: um token de
  * outro usuário ou uma resposta parcial nunca é tratado como espaço vazio.
- * A API executa NOVA verificação de OWNER e AAL2 no servidor.
+ * A API executa NOVA verificação de OWNER e sessão ativa no servidor.
  */
 export async function inspectOnlineLegacyReadiness(
   workspace: OnlineWorkspace, expectedUserId:string,
@@ -59,7 +59,7 @@ export async function inspectOnlineLegacyReadiness(
     throw new Error('Não foi possível conferir o banco online. Verifique a conexão.')
   }
   if(response.status===401) throw new Error('Sessão recusada pelo servidor.')
-  if(response.status===403) throw new Error('Confirme o Authenticator para revisar o destino.')
+  if(response.status===403) throw new Error('Você não tem permissão para revisar esse destino.')
   if(response.status===404) throw new Error('Você não é proprietário deste espaço online.')
   if(!response.ok) throw new Error('A conferência exata está indisponível. Nenhuma transferência foi iniciada.')
   const envelope=asObject(await response.json().catch(()=>null))

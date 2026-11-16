@@ -14,10 +14,9 @@ describe('Presentes sem espera silenciosa e com acesso protegido', () => {
     expect(layout).toContain('role="status"')
     expect(styles).toContain('.gift-route-spinner')
   })
-  it('mantém autorização de administrador verificada remotamente, sem duas leituras desnecessárias', () => {
-    expect(router).toContain('validatedUser = authenticated ? data.user : null')
-    expect(router).toContain('if (!isFarolAdmin(validatedUser))')
-    expect(router).toContain("meta: { title: 'Presentes', requiresAdmin: true }")
+  it('exige conta remota e vínculo local, sem papel administrador', () => {
+    expect(router).toContain('await supabase.auth.getUser()')
+    expect(router).toContain("meta: { title: 'Presentes' }")
     expect(router).toContain("const access = localLegacyAccess(validatedUser.id)")
     const body=router.slice(router.indexOf('router.beforeEach(async'), router.indexOf('router.afterEach'))
     expect((body.match(/supabase\.auth\.getUser\(\)/g) ?? [])).toHaveLength(1)

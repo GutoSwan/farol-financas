@@ -41,11 +41,11 @@ describe('Rota protegida de conexão de lançamentos',()=>{
       expect(r.statusCode).toBe(401);expect(calls).toEqual([])
     }finally{await app.close()}
   })
-  it('com senha mas sem Authenticator não chama serviço',async()=>{
+  it('dono autenticado por senha pode conectar quando importação está autorizada',async()=>{
     const {app,calls}=setup(true,'aal1')
     try{
       const r=await app.inject({method:'POST',url:path,headers:{authorization:'Bearer valid'},payload})
-      expect(r.statusCode).toBe(403);expect(calls).toEqual([])
+      expect(r.statusCode).toBe(200);expect(calls).toEqual([alice+':'+space])
     }finally{await app.close()}
   })
   it('sem flag exclusiva de importação bloqueia até mesmo OWNER AAL2',async()=>{

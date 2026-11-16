@@ -50,11 +50,6 @@ async function confirmedOwner(): Promise<string> {
   if (!supabase) throw new Error('Autenticação não configurada.')
   const { data, error } = await supabase.auth.getUser()
   if (error || !data.user) throw new Error('Sessão inválida. Entre novamente.')
-  const { data: assurance, error: assuranceError } =
-    await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
-  if (assuranceError || assurance?.currentLevel !== 'aal2') {
-    throw new Error('Confirme seu segundo fator antes de acessar o backup.')
-  }
   if (localLegacyAccess(data.user.id) !== 'allowed') {
     throw new Error('Os registros deste navegador não estão vinculados à conta atual.')
   }
@@ -412,7 +407,7 @@ onBeforeUnmount(disposeDownload)
       </div>
     </div>
     <p class="auth-warning">
-      Antes de começar: utilize uma conta financeira com Authenticator confirmado e um navegador
+      Antes de começar: utilize sua conta financeira e um navegador
       já vinculado a essa conta, porém sem lançamentos, contas, espaços extras ou orçamentos.
       A restauração acontece somente neste aparelho, não na nuvem. Guarde o arquivo original.
     </p>

@@ -2,19 +2,15 @@ import { describe, expect, it } from 'vitest'
 import routerSource from '../src/router/index.ts?raw'
 import cloudLayout from '../src/presentation/layouts/CloudOnlyLayout.vue?raw'
 import legacyScreen from '../src/presentation/pages/LegacyDataAccessPage.vue?raw'
-import { requiredMfaRedirect } from '../src/router/mfaNavigation'
 
 describe('Consulta na nuvem não expõe registros de outros usuários do navegador', () => {
-  it('a rota /dados-online é independente de AppLayout e protegida com AAL2', () => {
+  it('a rota /dados-online é independente de AppLayout e exige usuário validado', () => {
     expect(routerSource).toContain("path: '/dados-online', component: CloudOnlyLayout")
     expect(routerSource).toContain('requiresFinancialData: true')
     expect(routerSource).not.toContain("path: 'dados-online', component: OnlineFinancePage")
-    expect(routerSource).toContain('Boolean(to.meta.requiresLegacyData || to.meta.requiresFinancialData)')
+    expect(routerSource).toContain('await supabase.auth.getUser()')
     expect(routerSource).toContain("access === 'different-user'")
     expect(routerSource).toContain("return { path: '/dados-online', replace: true }")
-    expect(requiredMfaRedirect('/dados-online', true, 'aal1', 'aal2', 1)).toBe('/verificar-2fa')
-    expect(requiredMfaRedirect('/dados-online', true, 'aal1', 'aal1', 0)).toBe('/configurar-2fa')
-    expect(requiredMfaRedirect('/dados-online', true, 'aal2', 'aal2', 1)).toBe(null)
   })
 
   it('o layout da nuvem não importa nem inicializa módulos financeiros locais', () => {

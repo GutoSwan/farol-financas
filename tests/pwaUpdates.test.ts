@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 const serviceWorker = readFileSync(new URL('../public/sw.js', import.meta.url), 'utf-8')
-const totpScreen = readFileSync(new URL('../src/presentation/components/TotpSettings.vue', import.meta.url), 'utf-8')
 
 describe('PWA: atualizações sem cache antigo e sem dados financeiros', () => {
   it('migra o cache da versão anterior e remove caches antigos', () => {
@@ -28,10 +27,3 @@ describe('PWA: atualizações sem cache antigo e sem dados financeiros', () => {
   })
 })
 
-describe('Inscrição TOTP: estado só é descartado após confirmação', () => {
-  it('mantém o QR na tela se o servidor não cancelar o fator', () => {
-    expect(totpScreen).toContain('await discardUnverifiedTotpFactor(id)')
-    expect(totpScreen.indexOf('await discardUnverifiedTotpFactor(id)')).toBeLessThan(totpScreen.indexOf('pending.value = null',totpScreen.indexOf('async function cancelEnrollment')))
-    expect(totpScreen).toContain('errorText.value = safeError(error)')
-  })
-})

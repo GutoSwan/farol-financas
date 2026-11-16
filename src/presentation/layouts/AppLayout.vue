@@ -7,24 +7,21 @@ import { useTheme } from '../composables/useTheme'
 import { useWorkspaces } from '../composables/useWorkspaces'
 import { useAuth } from '../composables/useAuth'
 import { localLegacyAccess } from '../../infrastructure/persistence/legacyAccess'
-import { DEFAULT_WORKSPACE_ID } from '../../domain/entities/FinancialWorkspace'
-import type { FinancialWorkspace } from '../../domain/entities/FinancialWorkspace'
 
 const route = useRoute()
 const router = useRouter()
-const { isLoggedIn, isAdmin, user, profile, signOut } = useAuth()
+const { isLoggedIn, user, profile, signOut } = useAuth()
 const localAccessAllowed = computed(() => !!user.value && localLegacyAccess(user.value.id) === 'allowed')
 const profileMenuOpen = ref(false)
 const profileBusy = ref(false)
 const profileError = ref('')
 const loadingGiftRoute = ref(false)
 function openGiftRoute(): void { loadingGiftRoute.value = true }
-// O aviso aparece IMEDIATAMENTE, enquanto o guard aguarda login e 2FA.
+// O aviso aparece IMEDIATAMENTE, enquanto o guard aguarda login.
 const stopGiftProgress = router.afterEach(() => { loadingGiftRoute.value = false })
 const stopGiftError = router.onError(() => { loadingGiftRoute.value = false })
 const { isDark, toggleTheme } = useTheme()
-const { workspaces, activeWorkspaceId, error: workspaceError, selectWorkspace, createWorkspace, deleteWorkspace } = useWorkspaces()
-const managing = ref(false)
+const { workspaces, activeWorkspaceId, error: workspaceError, selectWorkspace } = useWorkspaces()
 const mobileMenuOpen = ref(false)
 const mobileMenuButton = ref<HTMLButtonElement | null>(null)
 const mobileCloseButton = ref<HTMLButtonElement | null>(null)
@@ -87,8 +84,6 @@ onBeforeUnmount(() => {
   stopGiftError()
   if (mobileMenuOpen.value) document.body.style.overflow = originalOverflow
 })
-const newName = ref('')
-const notice = ref('')
 const links = [
   { to: '/', label: 'Visão geral', icon: 'dashboard' as const },
   { to: '/contas-mensais', label: 'Contas mensais', icon: 'receipt' as const },
@@ -97,18 +92,15 @@ const links = [
   { to: '/cartoes', label: 'Cartões de crédito', icon: 'card' as const },
   { to: '/orcamentos', label: 'Orçamentos', icon: 'target' as const },
   { to: '/relatorios', label: 'Relatórios', icon: 'chart' as const },
-  { to: '/calendario', label: 'Calendário', icon: 'calendar' as const },
 ]
 
 watch(() => route.fullPath, () => {
   closeMobileMenu(true)
   profileMenuOpen.value = false
-  managing.value = false
 })
 
 function closeSidebarMenus(): void {
   profileMenuOpen.value = false
-  managing.value = false
 }
 
 async function logoutFromSidebar(): Promise<void> {
@@ -126,24 +118,6 @@ async function logoutFromSidebar(): Promise<void> {
   }
 }
 
-function submitWorkspace(): void {
-  notice.value = ''
-  if (createWorkspace(newName.value)) {
-    notice.value = 'Novo espaço criado.'
-    newName.value = ''
-  }
-}
-
-function removeWorkspace(space: FinancialWorkspace): void {
-  if (space.id === DEFAULT_WORKSPACE_ID) return
-  const answer = window.prompt(
-    `Excluir permanentemente o espaço "${space.name}"?\n\nIsso APAGARÁ contas mensais, gastos fixos, lançamentos e orçamentos deste espaço neste navegador. Não existe recuperação automática.\n\nDigite exatamente: ${space.name}`
-  )
-  if (answer !== space.name) return
-  if (deleteWorkspace(space.id)) {
-    notice.value = 'Espaço excluído junto com seus registros locais.'
-  }
-}
 </script>
 
 <template>
@@ -166,7 +140,7 @@ function removeWorkspace(space: FinancialWorkspace): void {
           <UiIcon :name="link.icon" :size="17" />
           <span>{{ link.label }}</span>
         </RouterLink>
-        <RouterLink v-if="isAdmin" to="/presentes" class="side-nav-link"
+        <RouterLink to="/presentes" class="side-nav-link"
           :class="{ active: route.path === '/presentes' }"
           @click="openGiftRoute(); closeMobileMenu(true)">
           <UiIcon name="gift" :size="17" /><span>Presentes</span>
@@ -175,34 +149,12 @@ function removeWorkspace(space: FinancialWorkspace): void {
       </div>
       <div class="sidebar-bottom">
       <div class="sidebar-workspace">
-        <p class="sidebar-workspace-label">SEUS ESPAÇOS</p>
+        <p class="sidebar-workspace-label">ESPAÇO FINANCEIRO</p>
         <label class="sr-only" for="workspace-select">Trocar espaço financeiro</label>
         <select id="workspace-select" class="workspace-select" :value="activeWorkspaceId" @change="selectAndCloseWorkspace">
           <option v-for="space in workspaces" :key="space.id" :value="space.id">{{ space.name }}</option>
         </select>
-        <button class="workspace-add" type="button" :aria-expanded="managing" @click="managing = !managing">
-          <UiIcon name="plus" :size="17" /> Novo espaço
-        </button>
-        <div v-if="managing" class="workspace-popover">
-          <form @submit.prevent="submitWorkspace">
-            <strong><UiIcon name="folder" :size="18" /> Novo espaço financeiro</strong>
-            <label for="workspace-name">Nome</label>
-            <input id="workspace-name" v-model="newName" required minlength="2" maxlength="60" placeholder="Ex.: Finanças do João" />
-            <p>Espaços locais não são usuários com login. Dados ficam neste navegador.</p>
-            <button class="primary" type="submit"><UiIcon name="plus" :size="16" /> Criar espaço</button>
-          </form>
-          <div class="workspace-manage-list">
-            <h3>Espaços existentes</h3>
-            <div v-for="space in workspaces" :key="space.id" class="workspace-manage-row">
-              <span>{{ space.name }}<small v-if="space.id === DEFAULT_WORKSPACE_ID">Inicial · protegido</small></span>
-              <button v-if="space.id !== DEFAULT_WORKSPACE_ID" type="button" class="icon-action danger" :title="'Excluir ' + space.name" :aria-label="'Excluir espaço ' + space.name" @click="removeWorkspace(space)">
-                <UiIcon name="trash" :size="16" />
-              </button>
-            </div>
-          </div>
-          <p v-if="notice" class="success" role="status">{{ notice }}</p>
-          <button class="secondary-action close-spaces" type="button" @click="managing = false">Fechar</button>
-        </div>
+
       </div>
 
       <div class="sidebar-profile">
@@ -211,7 +163,7 @@ function removeWorkspace(space: FinancialWorkspace): void {
           <span class="sidebar-profile-avatar"><UiIcon :name="isLoggedIn ? profile.avatarIcon : 'user'" :size="23" /></span>
           <span class="sidebar-profile-identification">
             <strong>{{ isLoggedIn ? profile.displayName : 'Minha conta' }}</strong>
-            <small>{{ isLoggedIn ? user?.email : 'Entrar ou criar conta' }}</small>
+            <small>{{ isLoggedIn ? user?.email : 'Entrar no Farol' }}</small>
           </span>
           <UiIcon name="settings" :size="17" />
         </button>
@@ -220,17 +172,8 @@ function removeWorkspace(space: FinancialWorkspace): void {
             <UiIcon :name="isLoggedIn ? 'edit' : 'user'" :size="16" />
             {{ isLoggedIn ? 'Meu perfil' : 'Entrar no Farol' }}
           </RouterLink>
-          <RouterLink v-if="!isLoggedIn" to="/cadastro" @click="profileMenuOpen = false">
-            <UiIcon name="plus" :size="16" /> Criar conta
-          </RouterLink>
-          <RouterLink v-if="isLoggedIn" to="/seguranca" @click="profileMenuOpen = false">
-            <UiIcon name="settings" :size="16" /> Segurança e acesso
-          </RouterLink>
           <RouterLink v-if="isLoggedIn" to="/backup-financeiro" @click="profileMenuOpen = false">
             <UiIcon name="folder" :size="16" /> Backup e restauração
-          </RouterLink>
-          <RouterLink v-if="isLoggedIn" to="/revisar-migracao" @click="profileMenuOpen = false">
-            <UiIcon name="folder" :size="16" /> Revisar migração
           </RouterLink>
           <button v-if="isLoggedIn" type="button" :disabled="profileBusy" @click="logoutFromSidebar">
             <UiIcon name="log-out" :size="16" /> {{ profileBusy ? 'Saindo...' : 'Sair da conta' }}

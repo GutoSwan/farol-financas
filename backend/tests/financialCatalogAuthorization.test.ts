@@ -70,12 +70,12 @@ describe('Catálogos financeiros por espaço: isolamento', () => {
        expect(calls).toHaveLength(0)
      } finally { await app.close() }
    })
-   it(kind + ': exige MFA mesmo para OWNER', async () => {
+   it(kind + ': permite leitura ao dono autenticado por senha', async () => {
      const { app, calls } = fixture()
      try {
        const res = await app.inject({ method: 'GET', url: pathFor(kind), headers: { authorization: 'Bearer password-only' } })
-       expect(res.statusCode).toBe(403)
-       expect(calls).toHaveLength(0)
+       expect(res.statusCode).toBe(200)
+       expect(calls).toHaveLength(1)
      } finally { await app.close() }
    })
    it(kind + ': permite leitura a VIEWER autorizado com limite controlado', async () => {

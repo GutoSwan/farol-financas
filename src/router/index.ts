@@ -14,23 +14,12 @@ import CalendarPage from '../presentation/pages/CalendarPage.vue'
 import LegacyDataAccessPage from '../presentation/pages/LegacyDataAccessPage.vue'
 import LegacyBackupPage from '../presentation/pages/LegacyBackupPage.vue'
 import MigrationReviewPage from '../presentation/pages/MigrationReviewPage.vue'
-import { localLegacyAccess, setVerifiedLocalUser } from '../infrastructure/persistence/legacyAccess'
 import AuthPage from '../presentation/pages/AuthPage.vue'
-import PhoneAuthPage from '../presentation/pages/PhoneAuthPage.vue'
-import MfaChallengePage from '../presentation/pages/MfaChallengePage.vue'
-import MfaSetupPage from '../presentation/pages/MfaSetupPage.vue'
+import { localLegacyAccess, setVerifiedLocalUser } from '../infrastructure/persistence/legacyAccess'
 import { supabase } from '../infrastructure/auth/supabase'
-import { listVerifiedTotpFactors } from '../infrastructure/auth/totpMfa'
 import { canAccessWithoutSession, shouldRedirectLoggedInVisitor } from './authNavigation'
-import { requiredMfaRedirect } from './mfaNavigation'
-import { isFarolAdmin, isFarolSuperAdmin } from '../domain/auth/adminAccess'
 import { routeDocumentTitle } from './documentTitle'
-import { allowedSuperAdminRecoveryRoute } from './superAdminRecovery'
-import { canReuseSidebarAuth, isFastSidebarPath } from './fastSidebarNavigation'
-import { trustedSessionExpired } from '../infrastructure/auth/trustedComputer'
-import type { VerifiedSidebarAuth } from './fastSidebarNavigation'
 import { useAuth } from '../presentation/composables/useAuth'
-import AccountSecurityPage from '../presentation/pages/AccountSecurityPage.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -39,191 +28,72 @@ const router = createRouter({
     component: AppLayout,
     meta: { requiresLegacyData: true },
     children: [
-      { path: '', component: DashboardPage, meta: { title: 'Dashboard' } },
+      { path: '', component: DashboardPage, meta: { title: 'Visão geral' } },
       { path: 'contas-mensais', component: BillsPage, meta: { title: 'Contas mensais' } },
       { path: 'gastos-fixos', component: FixedExpensesPage, meta: { title: 'Gastos fixos' } },
       { path: 'lancamentos', component: TransactionsPage, meta: { title: 'Lançamentos' } },
       { path: 'cartoes', component: ComingSoonPage, props: { title: 'Cartões de crédito' } },
       { path: 'orcamentos', component: BudgetsPage, meta: { title: 'Orçamentos' } },
       { path: 'relatorios', component: ReportsPage, meta: { title: 'Relatórios' } },
-      { path: 'calendario', component: CalendarPage, meta: { title: 'Calendário' } },
-      { path: 'presentes', component: GiftsPage, meta: { title: 'Presentes', requiresAdmin: true } },
+      { path: 'presentes', component: GiftsPage, meta: { title: 'Presentes' } },
       { path: 'relatorios/detalhes', component: MonthlyExpensesPage, meta: { title: 'Detalhes do mês' } },
-      { path: 'backup-financeiro', component: LegacyBackupPage,
-        meta: { title: 'Backup e restauração', requiresLegacyData: true } },
-      { path: 'revisar-migracao', component: MigrationReviewPage,
-        meta: { title: 'Revisar migração', requiresLegacyData: true } },
+      // Rotas antigas continuam acessíveis para não deixar registros locais órfãos.
+      { path: 'calendario', component: CalendarPage, meta: { title: 'Calendário antigo' } },
+      { path: 'backup-financeiro', component: LegacyBackupPage, meta: { title: 'Backup', requiresLegacyData: true } },
+      { path: 'revisar-migracao', component: MigrationReviewPage, meta: { title: 'Revisar dados antigos', requiresLegacyData: true } },
     ],
   },
-  // A tela online fica fora do AppLayout: não lê/mostra dados locais de outra conta.
-  { path: '/dados-online', component: CloudOnlyLayout, meta: { title: 'Dados na nuvem', requiresFinancialData: true } },
-  { path: '/entrar/celular', component: PhoneAuthPage, props: { mode: 'login' }, meta: { title: 'Entrar por celular' } },
-  { path: '/cadastro/celular', component: PhoneAuthPage, props: { mode: 'signup' }, meta: { title: 'Criar conta por celular' } },
-  { path: '/recuperar-celular', component: PhoneAuthPage, props: { mode: 'recovery' }, meta: { title: 'Recuperação por celular' } },
-  { path: '/verificar-2fa', component: MfaChallengePage, meta: { title: 'Verificar código' } },
-  { path: '/configurar-2fa', component: MfaSetupPage, meta: { title: 'Configurar autenticador' } },
+  { path: '/dados-online', component: CloudOnlyLayout, meta: { title: 'Dados da família', requiresFinancialData: true } },
   { path: '/vincular-dados-locais', component: LegacyDataAccessPage, meta: { title: 'Proteção dos dados locais' } },
   { path: '/entrar', component: AuthPage, props: { mode: 'login' }, meta: { title: 'Entrar' } },
-  { path: '/cadastro', component: AuthPage, props: { mode: 'signup' }, meta: { title: 'Criar conta' } },
-  { path: '/confirmar-email', component: AuthPage, props: { mode: 'confirmed' }, meta: { title: 'Confirmação de e-mail' } },
+  { path: '/confirmar-email', component: AuthPage, props: { mode: 'confirmed' }, meta: { title: 'Confirmar e-mail' } },
   { path: '/recuperar-senha', component: AuthPage, props: { mode: 'forgot' }, meta: { title: 'Recuperar senha' } },
   { path: '/redefinir-senha', component: AuthPage, props: { mode: 'reset' }, meta: { title: 'Nova senha' } },
-  { path: '/conta', component: AuthPage, props: { mode: 'profile' }, meta: { title: 'Minha conta' } },
-  { path: '/seguranca', component: AccountSecurityPage, meta: { title: 'Segurança e acesso' } },
-  ],
+  { path: '/conta', component: AuthPage, props: { mode: 'profile' }, meta: { title: 'Meu perfil' } },
+  // Favoritos ou links antigos não podem reabrir recursos aposentados.
+  { path: '/cadastro', redirect: '/entrar' },
+  { path: '/entrar/celular', redirect: '/entrar' },
+  { path: '/cadastro/celular', redirect: '/entrar' },
+  { path: '/recuperar-celular', redirect: '/recuperar-senha' },
+  { path: '/configurar-2fa', redirect: '/conta' },
+  { path: '/verificar-2fa', redirect: '/conta' },
+  { path: '/seguranca', redirect: '/conta' },
 })
 
 /**
- * Somente navegações ENTRE páginas comuns da sidebar podem reutilizar por até
- * 45 segundos uma validação server-side de identidade e MFA já concluída.
- * Restauração, backup, Presentes, autenticação e Admin SEMPRE passam pelo fluxo completo.
- * JWT, dono local e validade do token são conferidos novamente em cada clique.
+ * Nenhuma tela privada abre apenas por existir um token no armazenamento.
+ * A identidade é revalidada com o Supabase. A API também valida assinatura,
+ * sessão ativa e vínculo financeiro de cada pessoa no servidor.
  */
-let recentSidebarAuth: VerifiedSidebarAuth | null = null
-function invalidateRecentSidebarAuth(): void { recentSidebarAuth = null }
-if (supabase) {
-  supabase.auth.onAuthStateChange((event) => {
-    if (event !== 'INITIAL_SESSION') invalidateRecentSidebarAuth()
-  })
-}
-if (typeof window !== 'undefined') {
-  window.addEventListener('focus', invalidateRecentSidebarAuth)
-  window.addEventListener('storage', invalidateRecentSidebarAuth)
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState !== 'visible') invalidateRecentSidebarAuth()
-  })
-}
-
-// Frontend controla a navegação, mas APIs financeiras devem validar AAL2
-// no SERVIDOR antes de consultar dados, mesmo se alguém ignorar o roteador.
-router.beforeEach(async (to, from) => {
+router.beforeEach(async (to) => {
   setVerifiedLocalUser(null)
-  const { recoveringPassword, recoveryMfaVerified } = useAuth()
-  let superAdminRecoveryProfile = false
+  const { recoveringPassword } = useAuth()
   if (!supabase) {
     return canAccessWithoutSession(to.path) ? true : { path: '/entrar', replace: true }
   }
-  // Prazo de 30 dias expira mesmo se o token Supabase ainda existir.
-  if (trustedSessionExpired()) {
-    // Em falha de rede, conservar o registro expirado para bloquear novas rotas.
-    try { await supabase.auth.signOut({ scope: 'local' }) }
-    catch { setVerifiedLocalUser(null) }
-    return { path: '/entrar', replace: true }
+
+  // Link de recuperação gera uma sessão temporária. Nunca dar acesso aos
+  // dados financeiros antes de salvar a nova senha e entrar normalmente.
+  if (recoveringPassword.value && to.path !== '/redefinir-senha' && to.path !== '/recuperar-senha') {
+    return { path: '/redefinir-senha', replace: true }
   }
 
-  // A revisão rápida NÃO confia em getSession() sozinho. Só aceita um token
-  // idêntico ao que foi previamente verificado com getUser() e MFA AAL2.
-  // Permissões financeiras continuam obrigatoriamente validadas pela API.
-  if (!recoveringPassword.value && recentSidebarAuth &&
-      isFastSidebarPath(from.path) && isFastSidebarPath(to.path)) {
-    try {
-      const { data, error } = await supabase.auth.getSession()
-      const current = data.session
-      if (!error && current && canReuseSidebarAuth(recentSidebarAuth, {
-        userId: current.user.id,
-        accessToken: current.access_token,
-        expiresAt: current.expires_at ?? null,
-      })) {
-        setVerifiedLocalUser(current.user.id)
-        if (localLegacyAccess(current.user.id) === 'allowed') return true
-      }
-    } catch {
-      // Token inválido, sessão trocada ou falha local: exigir a verificação completa.
-    }
-  }
-  invalidateRecentSidebarAuth()
-
-  let authenticated = false
-  let verifiedUserId: string | null = null
-  let mfaAal2Verified = false
   let validatedUser: import('@supabase/supabase-js').User | null = null
   try {
-    // getSession() lê o estado local e não garante que o usuário ainda esteja válido.
-    // getUser() consulta o Supabase Auth e valida o token antes de abrir rotas privadas.
     const { data, error } = await supabase.auth.getUser()
-    authenticated = !error && !!data.user
-    validatedUser = authenticated ? data.user : null
-    if (authenticated && data.user && isFarolSuperAdmin(data.user) && recoveringPassword.value) {
-      const allowed = allowedSuperAdminRecoveryRoute(
-        to.path, recoveringPassword.value, recoveryMfaVerified.value,
-      )
-      if (!allowed) {
-        // Durante recuperação de senha, o Super Admin só acessa as telas estritamente permitidas.
-        authenticated = false
-        setVerifiedLocalUser(null)
-        await supabase.auth.signOut({ scope: 'local' })
-      } else {
-        superAdminRecoveryProfile = to.path === '/conta'
-        // Nunca vincular dados locais durante a recuperação por e-mail.
-        setVerifiedLocalUser(null)
-      }
-    } else if (authenticated && data.user) {
-      // Login comum, inclusive super_admin: a identidade já foi validada no Auth.
-      verifiedUserId = data.user.id
-      setVerifiedLocalUser(data.user.id)
-    }
+    if (!error) validatedUser = data.user
   } catch {
-    // Não mostrar telas financeiras se a sessão não puder ser restaurada.
+    // Sem identidade remota verificada, não abrir dados privados.
   }
-
-  if (!authenticated) {
-    if (!canAccessWithoutSession(to.path)) return { path: '/entrar', replace: true }
-    return true
+  if (!validatedUser) {
+    return canAccessWithoutSession(to.path) ? true : { path: '/entrar', replace: true }
   }
+  if (shouldRedirectLoggedInVisitor(to.path, true)) return { path: '/', replace: true }
 
-  if (shouldRedirectLoggedInVisitor(to.path, authenticated)) {
-    return { path: '/', replace: true }
-  }
-
-  const requiresAssurance = to.path === '/verificar-2fa' || to.path === '/configurar-2fa' || !canAccessWithoutSession(to.path)
-  if (requiresAssurance) {
-    try {
-      const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
-      if (error || !data) throw new Error('Não foi possível conferir o segundo fator.')
-      // A lista de fatores verificados é consultada no Supabase, nunca em
-      // localStorage: apagar o app do celular não desativa o TOTP no servidor.
-      const factors = await listVerifiedTotpFactors()
-      mfaAal2Verified = data.currentLevel === 'aal2' && factors.length > 0
-      // Durante recuperação do Super Admin, Meu perfil exige AAL2 real e fator ativo.
-      if (superAdminRecoveryProfile &&
-          (data.currentLevel !== 'aal2' || factors.length === 0)) {
-        return { path: '/redefinir-senha', replace: true }
-      }
-      const target = requiredMfaRedirect(
-        to.path,
-        Boolean(to.meta.requiresLegacyData || to.meta.requiresFinancialData) || to.path === '/vincular-dados-locais',
-        data.currentLevel,
-        data.nextLevel,
-        factors.length,
-      )
-      if (target) return { path: target, replace: true }
-    } catch {
-      // Não encaminhar um Super Admin em recuperação para o fluxo financeiro.
-      if (superAdminRecoveryProfile) return { path: '/redefinir-senha', replace: true }
-      // Em falha da verificação MFA, NÃO liberar dados financeiros.
-      if (to.path !== '/verificar-2fa' && to.path !== '/configurar-2fa') {
-        return { path: '/verificar-2fa', replace: true }
-      }
-    }
-  }
-
-  if (to.meta.requiresAdmin) {
-    // A identidade e o papel já vieram do getUser remoto nesta navegação.
-    // Repetir a chamada aqui adicionava uma ida desnecessária ao servidor.
-    if (!validatedUser) return { path: '/entrar', replace: true }
-    if (!isFarolAdmin(validatedUser)) return { path: '/', replace: true }
-  }
-
+  // Associar dados locais somente após verificar a identidade remotamente.
+  setVerifiedLocalUser(validatedUser.id)
   if (to.meta.requiresLegacyData || to.path === '/vincular-dados-locais') {
-    // Nunca carregar o layout, a sidebar ou os composables locais antes
-    // de verificar o vínculo da conta; eles leem localStorage no setup.
-    if (!validatedUser) {
-      setVerifiedLocalUser(null)
-      return { path: '/entrar', replace: true }
-    }
     const access = localLegacyAccess(validatedUser.id)
-    // Se este navegador pertence a outra identidade, abrir somente a nuvem
-    // sem inicializar telas nem repositórios financeiros locais.
     if (to.meta.requiresLegacyData && access === 'different-user') {
       return { path: '/dados-online', replace: true }
     }
@@ -234,33 +104,10 @@ router.beforeEach(async (to, from) => {
       return { path: '/', replace: true }
     }
   }
-
-  // Só guardar a autorização recente após passar por sessão remota válida,
-  // Authenticator AAL2 e vínculo local da MESMA identidade.
-  if (!recoveringPassword.value && verifiedUserId && mfaAal2Verified &&
-      isFastSidebarPath(to.path) && localLegacyAccess(verifiedUserId) === 'allowed') {
-    try {
-      const { data, error } = await supabase.auth.getSession()
-      const current = data.session
-      if (!error && current && current.user.id === verifiedUserId &&
-          typeof current.expires_at === 'number') {
-        recentSidebarAuth = {
-          userId: verifiedUserId,
-          accessToken: current.access_token,
-          expiresAt: current.expires_at,
-          verifiedAt: Date.now(),
-        }
-      }
-    } catch {
-      invalidateRecentSidebarAuth()
-    }
-  }
   return true
 })
 
 router.afterEach((to) => {
-  // Título do navegador identifica claramente a área e não substitui
-  // os guardas de acesso da API.
   document.title = routeDocumentTitle(to.path, String(to.meta.title ?? ''))
 })
 

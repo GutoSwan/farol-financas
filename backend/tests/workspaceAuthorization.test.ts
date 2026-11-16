@@ -50,11 +50,11 @@ describe('API: isolamento de workspace por ID', () => {
       expect(res.body).not.toContain('Família')
     } finally { await app.close() }
   })
-  it('exige MFA mesmo do dono', async () => {
+  it('permite ao dono acessar com sua senha', async () => {
     const app = createApp()
     try {
       const res = await app.inject({ method: 'GET', url: '/api/v1/workspaces/' + privateWorkspace, headers: { authorization: 'Bearer alice-aal1' } })
-      expect(res.statusCode).toBe(403)
+      expect(res.statusCode).toBe(200)
     } finally { await app.close() }
   })
   it('permite ao dono com MFA acessar seu próprio espaço', async () => {
