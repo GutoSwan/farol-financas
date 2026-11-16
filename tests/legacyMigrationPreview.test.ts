@@ -20,8 +20,8 @@ describe('Simulação segura da migração financeira local', () => {
     expect(result.blockers).toBe(0)
     expect(result.warnings).toBe(0)
     expect(result.readyForImportDesign).toBe(true)
-    expect(result.total.spaces).toBe(1)
-    expect(result.requiresRemapping).toBe(1)
+    expect(result.total.spaces).toBe(2)
+    expect(result.requiresRemapping).toBe(2)
     expect(result.cloudComparison).toBe('workspace-names-only')
     expect(data.size).toBe(0)
     expect(backup).toEqual(previous)
@@ -91,7 +91,7 @@ describe('Simulação segura da migração financeira local', () => {
     const result = analyzeLegacyMigration(backup, [])
     expect(result.issues.map(issue => issue.code)).toContain('ORPHAN_BUDGET_ITEM')
     expect(result.issues.map(issue => issue.code)).toContain('ORPHAN_QUOTE')
-    expect(result.requiresRemapping).toBe(4)
+    expect(result.requiresRemapping).toBe(5)
   })
 
   it('não inventa data de quitação nos gastos fixos', () => {

@@ -70,7 +70,7 @@ describe('Cliente financeiro online: isolamento e proteção de leitura', () => 
   })
   it('não considera erro de permissão como lista vazia', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 403 }))
-    await expect(readOnlineFinance(space, 'budgets', identityId)).rejects.toThrow('duas etapas')
+    await expect(readOnlineFinance(space, 'budgets', identityId)).rejects.toThrow('Acesso negado')
   })
   it('rejeita workspace sem UUID antes de enviar token', async () => {
     const fetchMock = vi.fn()

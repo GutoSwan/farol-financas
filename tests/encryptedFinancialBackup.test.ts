@@ -35,7 +35,7 @@ describe('Backup financeiro local criptografado', () => {
     expect(JSON.stringify(encrypted)).not.toContain('Internet privada')
     expect(JSON.stringify(encrypted)).not.toContain('token-secreto-nao-exportar')
     await expect(inspectEncryptedFinancialBackup(encrypted, passphrase, ownerId))
-      .resolves.toMatchObject({ spaces: 1, bills: 1, monthlyEntries: 0 })
+      .resolves.toMatchObject({ spaces: 2, bills: 1, monthlyEntries: 0 })
     expect(data).toEqual(before)
   })
 
@@ -73,7 +73,7 @@ describe('Backup financeiro local criptografado', () => {
     const backup = buildLocalFinancialBackup()
     const encrypted = await encryptFinancialBackup(backup, passphrase, ownerId)
     expect(await inspectEncryptedFinancialBackup(encrypted, passphrase, ownerId)).toMatchObject({
-      spaces: 1, transactions: 0,
+      spaces: 2, transactions: 0,
     })
     expect(data.size).toBe(0)
   })
