@@ -1,6 +1,11 @@
-/** Projeções mínimas: não retornar relações ou registros de outros espaços. */
+/** Projeções mínimas: histórico restrito ao cadastro pai, já filtrado por espaço. */
+export interface MonthlyBillSummary {
+  id: string; billId: string; yearMonth: string; amountCents: number
+  status: 'PENDING' | 'PAID'; paidAt: Date | null
+}
 export interface RecurringBillSummary {
   id: string; workspaceId: string; name: string; dueDay: number; active: boolean
+  version?: number; entries?: MonthlyBillSummary[]
 }
 export interface FixedExpenseSummary {
   id: string; workspaceId: string; name: string; amountCents: number; dueDay: number
