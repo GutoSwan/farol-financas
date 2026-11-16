@@ -49,6 +49,10 @@ export default async function handler(req, res) {
     ((req.method === 'POST' && QA_TRANSACTION_COLLECTION.test(route)) ||
       (['PATCH', 'DELETE'].includes(req.method) && QA_TRANSACTION_ITEM.test(route)))
   if (req.method !== 'GET' && !isQaMutation) {
+    // Diagnóstico restrito a métodos de escrita; não registrar URL, IDs ou JWT.
+    if (['POST', 'PATCH', 'DELETE'].includes(req.method)) {
+      console.warn('[farol-qa-proxy] mutation denied before proxy:', req.method)
+    }
     res.setHeader('Allow', 'GET')
     res.statusCode = 405
     return res.end(JSON.stringify({ error: 'Método não permitido no Preview.' }))
@@ -118,6 +122,11 @@ export default async function handler(req, res) {
       method: req.method, headers, ...(mutationBody ? { body: mutationBody } : {}), cache: 'no-store', redirect: 'manual',
       signal: AbortSignal.timeout(12000),
     })
+    if (isQaMutation) {
+      // Somente método e HTTP status: sem identificadores nem valores financeiros.
+      console.info('[farol-qa-proxy] mutation upstream:', req.method, upstream.status)
+      res.setHeader('X-Farol-QA-Backend', 'reached')
+    }
     if (upstream.status >= 300 && upstream.status < 400) {
       res.statusCode = 502
       return res.end(JSON.stringify({ error: 'O backend não está disponível.' }))
