@@ -119,8 +119,7 @@ onMounted(() => {
       void load()
     }
   }, 15000)
-}
-
+})
 
 function clearRecords(): void {
   generation++
