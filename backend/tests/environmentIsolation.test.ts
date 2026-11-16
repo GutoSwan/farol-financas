@@ -35,6 +35,20 @@ describe('Isolamento Dev do backend Vercel Preview', () => {
   it('não bloqueia aplicação fora de Preview', () => {
     expect(isVerifiedDevPreviewEnvironment({ VERCEL_ENV: 'production' })).toBe(true)
   })
+  it('aceita papel dedicado somente leitura apenas na Preview QA de sincronização', () => {
+    const dedicated = {
+      ...base,
+      FAROL_PREVIEW_ADMIN_QA_READONLY: 'true',
+      FAROL_PREVIEW_SYNC_QA_READONLY: 'true',
+      DATABASE_URL: 'postgresql://farol_preview_sync_ro.' + REF +
+        ':synthetic-password-for-sync-12345@aws-0-sa-east-1.pooler.supabase.com:6543/postgres',
+    }
+    expect(isVerifiedDevPreviewEnvironment(dedicated)).toBe(true)
+    expect(isVerifiedDevPreviewEnvironment({ ...dedicated, DATABASE_URL:base.DATABASE_URL })).toBe(false)
+    expect(isVerifiedDevPreviewEnvironment({ ...dedicated, FAROL_FINANCIAL_WRITES_ENABLED:'true' })).toBe(false)
+    expect(isVerifiedDevPreviewEnvironment({ ...dedicated, SUPABASE_URL:'https://xwzbcabyjhmgggbkaxvt.supabase.co' })).toBe(false)
+  })
+
   it('aceita apenas a role de QA com acesso read-only ao Supabase Dev, com segredo presente', () => {
     const env = {
       ...base,

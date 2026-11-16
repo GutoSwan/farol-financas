@@ -5,6 +5,7 @@ describe('Endereço da API hospedada', () => {
   it('usa proxy local apenas no ambiente de desenvolvimento', () => {
     expect(resolveApiBaseUrl('', true)).toBe('')
     expect(resolveApiBaseUrl('', false)).toBe(null)
+    expect(resolveApiBaseUrl('', false, true)).toBe('')
   })
   it('aceita HTTPS da Vercel, com ou sem barra final', () => {
     expect(resolveApiBaseUrl(' https://farol-api.vercel.app/ ', false))

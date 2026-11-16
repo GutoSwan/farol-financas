@@ -3,9 +3,10 @@
  * Em produção, só aceitamos um endpoint HTTPS absoluto.
  * No Vite local o proxy /api continua funcionando sem configurar esta variável.
  */
-export function resolveApiBaseUrl(raw: string, isDev: boolean): string | null {
+export function resolveApiBaseUrl(raw: string, isDev: boolean, devQaPreview = false): string | null {
   const value = raw.trim()
-  if (!value) return isDev ? '' : null
+  // Preview QA usa a Function na mesma origem; produção não recebe esse atalho.
+  if (!value) return isDev || devQaPreview ? '' : null
   try {
     const url = new URL(value)
     if (url.username || url.password || url.search || url.hash || url.pathname !== '/' ||
@@ -14,7 +15,11 @@ export function resolveApiBaseUrl(raw: string, isDev: boolean): string | null {
   } catch { return null }
 }
 
-export const apiBaseUrl = resolveApiBaseUrl(import.meta.env.VITE_API_BASE_URL ?? '', import.meta.env.DEV)
+export const apiBaseUrl = resolveApiBaseUrl(
+  import.meta.env.VITE_API_BASE_URL ?? '',
+  import.meta.env.DEV,
+  import.meta.env.VITE_FAROL_QA_DEV_ONLY === 'true',
+)
 export const apiConfigured = apiBaseUrl !== null
 
 export function apiEndpoint(path: string): string {
