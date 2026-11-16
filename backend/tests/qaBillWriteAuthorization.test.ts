@@ -6,10 +6,12 @@ import type { QaBillRepository } from '../src/domain/repositories/QaBillReposito
 import { StaleFinancialRecordError } from '../src/domain/errors/StaleFinancialRecordError.js'
 
 const qaSpace = '01c6765f-b873-420f-a5f2-68c54aa22500'
+const qaValoraSpace = '153045ae-c200-40f9-9d3a-5e20b5c55e54'
 const otherSpace = '33333333-3333-4333-8333-333333333333'
 const billId = '55555555-5555-4555-8555-555555555555'
 const owner = '11111111-1111-4111-8111-111111111111'
 const viewer = '22222222-2222-4222-8222-222222222222'
+const editor = '66666666-6666-4666-8666-666666666666'
 const outsider = '44444444-4444-4444-8444-444444444444'
 const endpoint = '/api/v1/qa-bill-write'
 const bill = { id: billId, workspaceId: qaSpace, name: 'Luz QA', dueDay: 10, active: true, version: 2, entries: [] }
@@ -23,12 +25,16 @@ function fixture(enabled = true) {
         { id: otherSpace, name: 'Real', role: 'OWNER' },
       ]
       if (id === viewer) return [{ id: qaSpace, name: 'QA - Casa compartilhada (Dev)', role: 'VIEWER' }]
+      if (id === editor) return [{ id: qaValoraSpace, name: 'QA - Valora3D compartilhada (Dev)', role: 'EDITOR' }]
       return []
     },
     async createOwnedBy() { throw new Error('unused') },
     async hasMembership(id, workspaceId, roles = []) {
-      const role = id === owner ? 'OWNER' : id === viewer ? 'VIEWER' : undefined
-      return !!role && [qaSpace, otherSpace].includes(workspaceId) && (!roles.length || roles.includes(role))
+      const role = id === owner && [qaSpace, otherSpace].includes(workspaceId) ? 'OWNER'
+        : id === viewer && workspaceId === qaSpace ? 'VIEWER'
+        : id === editor && workspaceId === qaValoraSpace ? 'EDITOR'
+        : undefined
+      return !!role && (!roles.length || roles.includes(role))
     },
   }
   const writer: QaBillRepository = {
@@ -53,7 +59,8 @@ function fixture(enabled = true) {
   }
   const app = buildApp({
     auth: { async verifyAccessToken(token) {
-      const userId = token === 'owner' ? owner : token === 'viewer' ? viewer : token === 'outsider' ? outsider : ''
+      const userId = token === 'owner' ? owner : token === 'viewer' ? viewer
+        : token === 'editor' ? editor : token === 'outsider' ? outsider : ''
       if (!userId) throw new Error('invalid token')
       return { userId, assuranceLevel: 'aal2' as const }
     } },
@@ -110,6 +117,31 @@ describe('Contas mensais QA: guarda de espaço, sessão e versão', () => {
       expect(response.statusCode).toBe(201)
       expect(response.json().data).toMatchObject(bill)
       expect(calls).toEqual(['create:' + qaSpace + ':10'])
+    } finally { await app.close() }
+  })
+  it('EDITOR pode gravar somente no espaço QA ao qual pertence; OWNER de outro QA não pode', async () => {
+    const { app, request, calls } = fixture()
+    const input = { action: 'create', workspaceId: qaValoraSpace, input: { name: 'Despesa QA', dueDay: 10 } }
+    try {
+      expect((await request(input, 'editor')).statusCode).toBe(201)
+      expect((await request(input, 'owner')).statusCode).toBe(404)
+      expect((await request(input, 'viewer')).statusCode).toBe(404)
+      expect((await request(input, 'outsider')).statusCode).toBe(404)
+      expect((await request({ ...input, workspaceId: qaSpace }, 'editor')).statusCode).toBe(404)
+      expect(calls).toEqual(['create:' + qaValoraSpace + ':10'])
+    } finally { await app.close() }
+  })
+  it('EDITOR pode alterar mês via catálogo, mas não pode trocar o espaço no corpo da requisição', async () => {
+    const { app, calls } = fixture()
+    try {
+      const payload = { action: 'upsert-month', workspaceId: qaValoraSpace, billId,
+        input: { yearMonth: '2026-11', amountCents: 2500, status: 'PAID' } }
+      const headers = { authorization: 'Bearer editor', 'if-match': '"2"' }
+      const endpoint = `/api/v1/workspaces/${qaValoraSpace}/recurring-bills`
+      expect((await app.inject({ method: 'POST', url: endpoint, headers, payload })).statusCode).toBe(200)
+      expect((await app.inject({ method: 'POST', url: endpoint, headers,
+        payload: { ...payload, workspaceId: qaSpace } })).statusCode).toBe(404)
+      expect(calls).toEqual(['month:' + qaValoraSpace + ':' + billId + ':2:2026-11:2500:PAID'])
     } finally { await app.close() }
   })
   it('exige versão para edição, alteração mensal e exclusão', async () => {
