@@ -58,6 +58,7 @@ const router = createRouter({
   { path: '/configurar-2fa', redirect: '/conta' },
   { path: '/verificar-2fa', redirect: '/conta' },
   { path: '/seguranca', redirect: '/conta' },
+  ],
 })
 
 /**
