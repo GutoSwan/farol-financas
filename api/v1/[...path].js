@@ -6,6 +6,7 @@
  */
 const UUID = '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}'
 const SPACE_PATH = new RegExp('^/api/v1/workspaces/' + UUID + '(?:/(?:transactions|recurring-bills|fixed-expenses|budgets))?$')
+const QA_BILL_PATH = '/api/v1/qa-bill-write'
 const QA_TRANSACTION_COLLECTION = new RegExp('^/api/v1/workspaces/' + UUID + '/transactions$')
 const QA_TRANSACTION_ITEM = new RegExp('^/api/v1/workspaces/' + UUID + '/transactions/' + UUID + '$')
 const READINESS_PATH = new RegExp('^/api/v1/workspaces/' + UUID + '/legacy-readiness$')
@@ -47,7 +48,8 @@ export default async function handler(req, res) {
   const route = url.pathname
   const isQaMutation = process.env.FAROL_QA_TRANSACTION_WRITES_ENABLED === 'true' &&
     ((req.method === 'POST' && QA_TRANSACTION_COLLECTION.test(route)) ||
-      (['PATCH', 'DELETE'].includes(req.method) && QA_TRANSACTION_ITEM.test(route)))
+      (['PATCH', 'DELETE'].includes(req.method) && QA_TRANSACTION_ITEM.test(route)) ||
+      (req.method === 'POST' && route === QA_BILL_PATH))
   if (req.method !== 'GET' && !isQaMutation) {
     // Diagnóstico restrito a métodos de escrita; não registrar URL, IDs ou JWT.
     if (['POST', 'PATCH', 'DELETE'].includes(req.method)) {
@@ -99,7 +101,8 @@ export default async function handler(req, res) {
       res.statusCode = 400
       return res.end(JSON.stringify({ error: 'DELETE não recebe conteúdo.' }))
     }
-    if (req.method === 'PATCH' || req.method === 'DELETE') {
+    if (req.method === 'PATCH' || req.method === 'DELETE' ||
+        (route === QA_BILL_PATH && req.body.action !== 'create')) {
       const version = req.headers['if-match']
       if (typeof version !== 'string' || !/^"([1-9][0-9]{0,9})"$/.test(version)) {
         res.statusCode = 428

@@ -8,6 +8,8 @@ import { readOnlineFinance } from '../../infrastructure/api/onlineFinance'
 import type { OnlineFinanceKind, OnlineFinanceRecord } from '../../infrastructure/api/onlineFinance'
 import { formatBRL, parseBRLToCents } from '../../domain/value-objects/Money'
 import MoneyInput from '../components/MoneyInput.vue'
+import QaBillsPanel from '../components/QaBillsPanel.vue'
+import { canWriteQaBills } from '../../infrastructure/api/qaBills'
 import { createQaTransaction, updateQaTransaction, deleteQaTransaction, qaTransactionWritesEnabled } from '../../infrastructure/api/qaTransactions'
 
 const { user } = useAuth()
@@ -31,6 +33,9 @@ const qaAvailable = computed(() => {
   return qaTransactionWritesEnabled && selectedModule.value === 'transactions' &&
     !!space && qaNames.has(space.name) && (space.role === 'OWNER' || space.role === 'EDITOR')
 })
+const selectedSpace = computed(() => workspaces.value.find(w => w.id === selectedId.value))
+const qaBillAvailable = computed(() => selectedModule.value === 'recurring-bills' &&
+  !!selectedSpace.value && canWriteQaBills(selectedSpace.value))
 const qaDescription = ref('')
 const qaCategory = ref('Feira')
 const qaAmount = ref('')
@@ -124,7 +129,8 @@ async function removeQa(record: OnlineFinanceRecord): Promise<void> {
 let refreshTimer: ReturnType<typeof setInterval> | null = null
 onMounted(() => {
   refreshTimer = setInterval(() => {
-    if (qaAvailable.value && verified.value && !busy.value && !qaEditing.value && document.visibilityState === 'visible') {
+    if ((qaAvailable.value || qaBillAvailable.value) && verified.value && !busy.value &&
+        !qaEditing.value && document.visibilityState === 'visible') {
       void load()
     }
   }, 15000)
@@ -192,7 +198,7 @@ onBeforeUnmount(() => {
   </div>
   <div class="notice">
     <strong>Dados reais continuam locais.</strong> A consulta é online. Somente os espaços
-    fictícios compartilhados de Dev permitem criar, editar e excluir lançamentos de teste;
+    fictícios compartilhados de Dev permitem criar, editar e excluir lançamentos e contas mensais de teste;
     essas alterações não são importadas para os espaços locais.
   </div>
   <section class="panel">
@@ -259,6 +265,9 @@ onBeforeUnmount(() => {
       </div>
     </template>
   </section>
+  <QaBillsPanel v-if="qaBillAvailable && selectedSpace && user?.id"
+    :key="selectedSpace.id" :space="selectedSpace" :user-id="user.id"
+    :records="records" :parent-busy="busy" @refresh="load" />
   <section v-if="qaAvailable" ref="qaEditorSection" class="panel">
     <div class="panel-title">
       <div>

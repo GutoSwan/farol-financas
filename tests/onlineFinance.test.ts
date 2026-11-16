@@ -67,7 +67,7 @@ describe('Cliente financeiro online: isolamento e proteção de leitura', () => 
       ok: true, status: 200,
       json: async () => ({ data: [{
         id: '66666666-6666-4666-8666-666666666666', workspaceId: space.id,
-        name: 'Luz', dueDay: 10,
+        name: 'Luz', dueDay: 10, active: true,
         entries: [{
           id: '55555555-5555-4555-8555-555555555555', billId: otherSpace,
           yearMonth: '2026-11', amountCents: 1234, status: 'PAID',

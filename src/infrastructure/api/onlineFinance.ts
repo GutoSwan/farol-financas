@@ -16,6 +16,7 @@ export interface OnlineFinanceRecord {
   amountCents?: number
   dueDay?: number
   monthlyEntries?: OnlineMonthlyBillEntry[]
+  active?: boolean
   category?: string
   kind?: 'EXPENSE' | 'INCOME'
   occurredOn?: string
@@ -101,6 +102,8 @@ export async function readOnlineFinance(workspace: OnlineWorkspace, kind: Online
       record.dueDay = row.dueDay
     }
     if (kind === 'recurring-bills') {
+      if (typeof row.active !== 'boolean') throw new Error('Situação da conta mensal inválida.')
+      record.active = row.active
       // Histórico vem exclusivamente da relação da conta já autorizada.
       if (!Array.isArray(row.entries) || row.entries.length > 24) {
         throw new Error('Histórico mensal inesperado.')

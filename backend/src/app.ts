@@ -5,6 +5,7 @@ import { WorkspaceService } from './application/use-cases/WorkspaceService.js'
 import { readConfig } from './shared/config.js'
 import type { WorkspaceRepository } from './domain/repositories/WorkspaceRepository.js'
 import type { TransactionRepository } from './domain/repositories/TransactionRepository.js'
+import type { QaBillRepository } from './domain/repositories/QaBillRepository.js'
 import type { FinancialCatalogRepository } from './domain/repositories/FinancialCatalogRepository.js'
 import type { FinancialCatalogMutations } from './domain/repositories/FinancialCatalogMutations.js'
 import type { InvoiceRepository } from './domain/repositories/InvoiceRepository.js'
@@ -117,6 +118,37 @@ const lazyQaTransactions: TransactionRepository = {
   },
   async deleteWithinWorkspace(workspaceId, id, expectedVersion) {
     return (await getQaTransactionRepository()).deleteWithinWorkspace(workspaceId, id, expectedVersion)
+  },
+}
+
+let qaBillsPromise: Promise<QaBillRepository> | undefined
+async function getQaBillRepository(): Promise<QaBillRepository> {
+  if (!isVerifiedQaTransactionWriteEnvironment(process.env)) {
+    throw new Error('Escrita de contas mensais QA indisponível.')
+  }
+  if (!qaBillsPromise) {
+    qaBillsPromise = Promise.all([
+      (qaPrismaPromise ??= import('./infrastructure/database/prisma.js').then(({ createPrismaClient }) =>
+        createPrismaClient(process.env.FAROL_QA_TRANSACTION_DATABASE_URL))),
+      import('./infrastructure/repositories/PrismaQaBillRepository.js'),
+    ]).then(([prisma, { PrismaQaBillRepository }]) => new PrismaQaBillRepository(prisma))
+      .catch((error: unknown) => { qaBillsPromise = undefined; throw error })
+  }
+  return qaBillsPromise
+}
+const lazyQaBills: QaBillRepository = {
+  async create(workspaceId, input) { return (await getQaBillRepository()).create(workspaceId, input) },
+  async update(workspaceId, billId, version, input) {
+    return (await getQaBillRepository()).update(workspaceId, billId, version, input)
+  },
+  async upsertMonth(workspaceId, billId, version, input) {
+    return (await getQaBillRepository()).upsertMonth(workspaceId, billId, version, input)
+  },
+  async removeMonth(workspaceId, billId, version, yearMonth) {
+    return (await getQaBillRepository()).removeMonth(workspaceId, billId, version, yearMonth)
+  },
+  async delete(workspaceId, billId, version) {
+    return (await getQaBillRepository()).delete(workspaceId, billId, version)
   },
 }
 
@@ -334,7 +366,8 @@ guardedFastify.addHook('onRequest', async (request, reply) => {
   const qaMutationMethod =
     (request.method === 'POST' && path.endsWith('/transactions')) ||
     (['PATCH', 'DELETE'].includes(request.method) && !path.endsWith('/transactions'))
-  const permittedQaMutation = qaMutationPath && qaMutationMethod &&
+  const permittedQaMutation = (qaMutationPath && qaMutationMethod ||
+    (request.method === 'POST' && path === '/api/v1/qa-bill-write')) &&
     isVerifiedQaTransactionWriteEnvironment(process.env)
   if (process.env.FAROL_PREVIEW_ADMIN_QA_READONLY === 'true' &&
       path.startsWith('/api/v1/')) {
@@ -358,6 +391,8 @@ const app = buildApp({
   transactionRepository: lazyTransactions,
   qaTransactionRepository: lazyQaTransactions,
   allowQaTransactionWrites: isVerifiedQaTransactionWriteEnvironment(process.env),
+  qaBillRepository: lazyQaBills,
+  allowQaBillWrites: isVerifiedQaTransactionWriteEnvironment(process.env),
   financialCatalog: lazyCatalog,
   financialCatalogMutations: lazyMutations,
   invoiceRepository: lazyInvoices,

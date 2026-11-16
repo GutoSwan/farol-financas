@@ -3,6 +3,8 @@ import { z } from 'zod'
 import type { AuthVerifier } from '../infrastructure/auth/SupabaseJwtVerifier.js'
 import { WorkspaceService } from '../application/use-cases/WorkspaceService.js'
 import type { TransactionRepository } from '../domain/repositories/TransactionRepository.js'
+import type { QaBillRepository } from '../domain/repositories/QaBillRepository.js'
+import { QaBillMonthMissingError } from '../domain/repositories/QaBillRepository.js'
 import { randomUUID } from 'node:crypto'
 import type { InvoiceRepository } from '../domain/repositories/InvoiceRepository.js'
 import type { FinancialCatalogRepository } from '../domain/repositories/FinancialCatalogRepository.js'
@@ -73,6 +75,18 @@ const billPatchSchema = z.object({
   dueDay: z.number().int().min(1).max(31).optional(),
   active: z.boolean().optional(),
 }).strict().refine(v => Object.keys(v).length > 0)
+const qaMonthSchema = z.object({
+  yearMonth: yearMonthSchema,
+  amountCents: z.number().int().min(0).max(2147483647),
+  status: z.enum(['PENDING', 'PAID']),
+}).strict()
+const qaBillCommandSchema = z.discriminatedUnion('action', [
+  z.object({ action: z.literal('create'), workspaceId: z.string().uuid(), input: billSchema }).strict(),
+  z.object({ action: z.literal('update'), workspaceId: z.string().uuid(), billId: z.string().uuid(), input: billPatchSchema }).strict(),
+  z.object({ action: z.literal('upsert-month'), workspaceId: z.string().uuid(), billId: z.string().uuid(), input: qaMonthSchema }).strict(),
+  z.object({ action: z.literal('delete-month'), workspaceId: z.string().uuid(), billId: z.string().uuid(), yearMonth: yearMonthSchema }).strict(),
+  z.object({ action: z.literal('delete'), workspaceId: z.string().uuid(), billId: z.string().uuid() }).strict(),
+])
 const fixedPatchSchema = z.object({
   name: z.string().trim().min(1).max(80).optional(),
   amountCents: positiveCents.optional(),
@@ -116,6 +130,9 @@ export interface AppDependencies {
   /** Persistência secundária com grants mínimos apenas nos lançamentos QA. */
   qaTransactionRepository?: TransactionRepository
   allowQaTransactionWrites?: boolean
+  /** Mesmo escritor QA, acessível apenas nas duas contas mensais fictícias. */
+  qaBillRepository?: QaBillRepository
+  allowQaBillWrites?: boolean
   financialCatalog?: FinancialCatalogRepository
   financialCatalogMutations?: FinancialCatalogMutations
   invoiceRepository?: InvoiceRepository
@@ -579,6 +596,85 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
     return deps.allowWorkspaceWrites === true
       ? deps.transactionRepository : deps.qaTransactionRepository
   }
+
+
+  // Rota POST fixa: a ponte Vercel nunca aceita verbos PATCH/DELETE vindos
+  // diretamente do navegador. Todas as operações exigem JWT, papel de escrita,
+  // escopo QA exato e If-Match antes de acessar o escritor PostgreSQL.
+  app.post('/api/v1/qa-bill-write', async (request, reply) => {
+    const identity = await authorized(request, reply)
+    if (!identity) return
+    if (deps.allowQaBillWrites !== true || !deps.qaBillRepository) {
+      return reply.code(403).send({ error: 'Contas mensais QA desativadas.' })
+    }
+    const command = qaBillCommandSchema.safeParse(request.body)
+    if (!command.success) return reply.code(400).send({ error: 'Comando de conta mensal inválido.' })
+    const input = command.data
+    const validQaSpace =
+      (input.workspaceId === '01c6765f-b873-420f-a5f2-68c54aa22500' ||
+        input.workspaceId === '153045ae-c200-40f9-9d3a-5e20b5c55e54')
+    if (!validQaSpace) return reply.code(404).send({ error: 'Espaço não encontrado.' })
+    try {
+      await deps.workspaceService.requireMember(identity.userId, input.workspaceId, ['OWNER', 'EDITOR'])
+      const spaces = await deps.workspaceService.listForUser(identity.userId)
+      const allowed = spaces.some(space => space.id === input.workspaceId &&
+        (space.role === 'OWNER' || space.role === 'EDITOR') &&
+        ((space.id === '01c6765f-b873-420f-a5f2-68c54aa22500' &&
+          space.name === 'QA - Casa compartilhada (Dev)') ||
+         (space.id === '153045ae-c200-40f9-9d3a-5e20b5c55e54' &&
+          space.name === 'QA - Valora3D compartilhada (Dev)')))
+      if (!allowed) return reply.code(404).send({ error: 'Espaço não encontrado.' })
+    } catch (error) {
+      if (!(error instanceof Error) || error.message !== 'Acesso negado ao espaço financeiro.') throw error
+      return reply.code(404).send({ error: 'Espaço não encontrado.' })
+    }
+    const version = input.action === 'create'
+      ? null : parseExpectedVersion(request.headers['if-match'])
+    if (version && version.status === 'missing') {
+      return reply.code(428).send({ error: 'Atualize a consulta para obter a versão do cadastro.' })
+    }
+    if (version && version.status === 'invalid') {
+      return reply.code(400).send({ error: 'Versão inválida.' })
+    }
+    const expected = version && version.status === 'ok' ? version.version : 0
+    const repository = deps.qaBillRepository
+    try {
+      switch (input.action) {
+        case 'create': {
+          const data = await repository.create(input.workspaceId, input.input)
+          return reply.code(201).send({ data })
+        }
+        case 'update': {
+          const data = await repository.update(input.workspaceId, input.billId, expected, input.input)
+          if (!data) return reply.code(404).send({ error: 'Conta não encontrada.' })
+          return { data }
+        }
+        case 'upsert-month': {
+          const data = await repository.upsertMonth(input.workspaceId, input.billId, expected, input.input)
+          if (!data) return reply.code(404).send({ error: 'Conta não encontrada.' })
+          return { data }
+        }
+        case 'delete-month': {
+          const data = await repository.removeMonth(input.workspaceId, input.billId, expected, input.yearMonth)
+          if (!data) return reply.code(404).send({ error: 'Conta não encontrada.' })
+          return { data }
+        }
+        case 'delete':
+          if (!await repository.delete(input.workspaceId, input.billId, expected)) {
+            return reply.code(404).send({ error: 'Conta não encontrada.' })
+          }
+          return reply.code(204).send()
+      }
+    } catch (error) {
+      if (error instanceof StaleFinancialRecordError) {
+        return reply.code(409).send({ error: 'Registro alterado por outra conta.', code: 'VERSION_CONFLICT' })
+      }
+      if (error instanceof QaBillMonthMissingError) {
+        return reply.code(404).send({ error: 'Mês não encontrado nesta conta.' })
+      }
+      throw error
+    }
+  })
 
   // Transações pertencem ao espaço autorizado, não ao usuário indicado no corpo.
   // A conexão Prisma pode ignorar RLS: nenhuma rota pode pular requireMember.
