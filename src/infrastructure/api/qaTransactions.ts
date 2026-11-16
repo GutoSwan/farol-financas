@@ -67,18 +67,26 @@ async function mutateQaTransaction(
   if (identityError || identity.user?.id !== expectedUserId) throw new Error('A sessão mudou. Entre novamente.')
   const { data, error } = await supabase.auth.getSession()
   if (error || !data.session || data.session.user.id !== expectedUserId) throw new Error('Sessão expirada.')
-  const url = '/api/v1/workspaces/' + workspace.id + '/transactions' +
-    (record ? '/' + record.id : '')
+  // Edição/exclusão usam uma função de endereço fixo na Preview.
+  // A ponte valida novamente JWT, acesso ao espaço e versão antes da gravação.
+  const url = record
+    ? '/api/v1/qa-transaction-write'
+    : '/api/v1/workspaces/' + workspace.id + '/transactions'
+  const body = record
+    ? { action: method === 'PATCH' ? 'update' : 'delete', workspaceId: workspace.id,
+        transactionId: record.id, ...(payload ? { input: payload } : {}) }
+    : payload
   let response: Response
   try {
     response = await fetch(apiEndpoint(url), {
-      method, cache: 'no-store', credentials: 'same-origin', redirect: 'error',
+      method: record ? 'POST' : method,
+      cache: 'no-store', credentials: 'same-origin', redirect: 'error',
       headers: {
         Authorization: 'Bearer ' + data.session.access_token,
         ...(record ? { 'If-Match': '"' + record.version + '"' } : {}),
-        ...(payload ? { 'Content-Type': 'application/json' } : {}),
+        ...(body ? { 'Content-Type': 'application/json' } : {}),
       },
-      ...(payload ? { body: JSON.stringify(payload) } : {}),
+      ...(body ? { body: JSON.stringify(body) } : {}),
     })
   } catch {
     throw new Error('Falha de conexão: nenhuma gravação foi confirmada. Consulte novamente antes de repetir.')
