@@ -56,7 +56,8 @@ describe('Envio do espaço revisado', () => {
       .rejects.toThrow('Confirme os meses pagos')
     expect(fetchMock).not.toHaveBeenCalled()
     await connectReviewedFinancialWorkspace(withPaid,destination,userId,true)
-    const payload=JSON.parse(fetchMock.mock.calls[0][1].body as string)
+    const [,requestOptions]=fetchMock.mock.calls[0] as unknown as [string, RequestInit]
+    const payload=JSON.parse(requestOptions.body as string)
     expect(payload.confirmUnknownFixedPaymentDates).toBe(true)
     expect(payload.fixedExpenses[0].paidMonths).toEqual(['2026-10'])
     expect(payload.fixedExpenses[0]).not.toHaveProperty('paidAt')
