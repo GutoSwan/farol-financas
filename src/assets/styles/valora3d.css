@@ -47,7 +47,8 @@
 .shell--valora .stat strong { color: #4a1f72; }
 .shell--valora .side-nav-link.active { border-left: 3px solid #efc41c; }
 
-:root[data-theme="light"] .shell--valora .main { background: #fcfaff; color: #39274b; }
+/* Fundo amarelo-creme suave somente no tema claro da Valora3D. */
+:root[data-theme="light"] .shell--valora .main { background: #fff9e6; color: #39274b; }
 :root[data-theme="light"] .shell--valora .sidebar {
   background: #f3ebfb;
   color: #4b2a64;

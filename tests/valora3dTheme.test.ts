@@ -23,6 +23,8 @@ describe('Identidade exclusiva do espaço financeiro Valora3D', () => {
     expect(brandStyles).toContain('#4a276b')
     expect(brandStyles).toContain('Arial Rounded MT Bold')
     expect(brandStyles).toContain('font-style: normal')
+    expect(brandStyles).toContain(':root[data-theme="light"] .shell--valora .main { background: #fff9e6;')
+    expect(brandStyles).toContain(':root[data-theme="dark"] .shell--valora .main { background: #150d20;')
     expect(brandStyles).toContain('--farol-card: #2a1939')
     expect(brandStyles).toContain('--farol-text: #f5e9ff')
     expect(brandStyles).toContain('input::placeholder')
