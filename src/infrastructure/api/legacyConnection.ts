@@ -42,7 +42,9 @@ export async function connectReviewedFinancialWorkspace(
     throw new Error('Confirme os meses pagos sem data exata antes de transferir.')
   }
   // Enviar somente este espaço. Nunca enviar o backup inteiro, presentes ou tokens.
-  const payload = JSON.stringify({...source,confirmUnknownFixedPaymentDates:unknownPaidDatesConfirmed})
+  const payload = JSON.stringify(unknownPaidDatesConfirmed
+    ? {...source,confirmUnknownFixedPaymentDates:true}
+    : source)
   if (new TextEncoder().encode(payload).length > 90_000) {
     throw new Error('Os registros excedem o tamanho do lote. Nenhum dado foi enviado.')
   }

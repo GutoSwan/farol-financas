@@ -43,6 +43,25 @@ describe('Envio do espaço revisado', () => {
     expect(options.body).not.toContain('presentes')
   })
 
+  it('exige confirmação antes de enviar meses pagos sem data e não inventa paidAt', async () => {
+    const withPaid: LocalReviewSpace = {...source,fixedExpenses:[{
+      id:'f1',name:'Internet',amountCents:9800,dueDay:10,startMonth:'2026-10',
+      endBeforeMonth:null,paidMonths:['2026-10'],createdAt:'2026-10-01T00:00:00.000Z',
+    }]}
+    const fetchMock=vi.fn(async () => new Response(JSON.stringify({
+      data:{status:'completed',workspaceMapping:'created',created:2,reused:0,total:2},
+    }),{status:200}))
+    vi.stubGlobal('fetch',fetchMock)
+    await expect(connectReviewedFinancialWorkspace(withPaid,destination,userId))
+      .rejects.toThrow('Confirme os meses pagos')
+    expect(fetchMock).not.toHaveBeenCalled()
+    await connectReviewedFinancialWorkspace(withPaid,destination,userId,true)
+    const payload=JSON.parse(fetchMock.mock.calls[0][1].body as string)
+    expect(payload.confirmUnknownFixedPaymentDates).toBe(true)
+    expect(payload.fixedExpenses[0].paidMonths).toEqual(['2026-10'])
+    expect(payload.fixedExpenses[0]).not.toHaveProperty('paidAt')
+  })
+
   it('não envia sem proprietário, com espaço trocado ou identidade incorreta', async () => {
     const fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)
