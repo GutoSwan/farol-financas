@@ -228,7 +228,27 @@ onBeforeUnmount(() => {
           <tbody>
             <tr v-for="record in records" :key="record.id">
               <td>{{ record.label }}</td>
-              <td>{{ record.amountCents === undefined ? 'Dia ' + (record.dueDay ?? '—') : formatBRL(record.amountCents) }}</td>
+              <td v-if="selectedModule === 'recurring-bills'">
+                <span>Vence dia {{ record.dueDay ?? '—' }}</span>
+                <template v-if="record.monthlyEntries?.length">
+                  <div class="bill-month-summary">
+                    {{ record.monthlyEntries[0]!.yearMonth }}:
+                    {{ formatBRL(record.monthlyEntries[0]!.amountCents) }}
+                    ({{ record.monthlyEntries[0]!.status === 'PAID' ? 'paga' : 'pendente' }})
+                  </div>
+                  <details v-if="record.monthlyEntries.length > 1">
+                    <summary>Histórico ({{ record.monthlyEntries.length }} meses)</summary>
+                    <ul>
+                      <li v-for="entry in record.monthlyEntries" :key="entry.id">
+                        {{ entry.yearMonth }}: {{ formatBRL(entry.amountCents) }}
+                        ({{ entry.status === 'PAID' ? 'paga' : 'pendente' }})
+                      </li>
+                    </ul>
+                  </details>
+                </template>
+                <div v-else class="bill-month-summary">Nenhum valor mensal salvo na nuvem</div>
+              </td>
+              <td v-else>{{ record.amountCents === undefined ? 'Dia ' + (record.dueDay ?? '—') : formatBRL(record.amountCents) }}</td>
               <td v-if="qaAvailable" class="row-actions">
                 <button type="button" :disabled="busy || !record.version" @click="editQa(record)">Editar</button>
                 <button type="button" :disabled="busy || !record.version" @click="removeQa(record)">Excluir</button>
