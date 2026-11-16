@@ -26,15 +26,22 @@ data de quitação inventada ao histórico.
   R$ 56,78 na Valora3D). Não são registros reais de Gustavo ou Ana.
 - Verificação SQL confirmou dois membros e um lançamento por espaço.
 - Os quatro espaços QA anteriores continuam com um membro cada.
-- **Ainda pendente:** autenticar-se na Preview com ambas as contas,
-  validar GETs da API em ambos os celulares e conferir atualização entre sessões.
-- O frontend financeiro principal ainda utiliza dados locais; por isso esta
-  conferência da tabela e dos vínculos NÃO demonstra sincronização automática.
-- A API Preview da branch `feat/valora3d-preparo-sincronizacao-20261116`
-  respondeu HTTP 503 em `/api/v1/workspaces` (`Ambiente de testes não isolado.`)
-  e `/api/v1/ready`. Não há variáveis exclusivas para essa branch no projeto
-  `farol-api`. **Não retirar a proteção nem reutilizar credenciais de outra
-  branch**; configurar a Preview de QA vinculada só ao Dev antes dos testes.
+- **Preview QA configurada:** a branch `feat/valora3d-preparo-sincronizacao-20261116`
+  usa variáveis próprias para frontend e API, Supabase Dev separado e papel
+  PostgreSQL exclusivo `farol_preview_sync_ro` (SELECT limitado aos espaços
+  `QA - %` por RLS; nenhum privilégio de escrita).
+- **Validação em 16/11/2026:** API Dev `/api/v1/health` e `/api/v1/ready`
+  retornaram HTTP 200. A ponte protegida de mesmo domínio do frontend
+  também retornou HTTP 200 nas duas rotas; `/dados-online` abriu HTTP 200.
+  Build do frontend: 231 testes aprovados. A proteção da Vercel permaneceu ativa.
+- **Preview para QA:** https://farol-financas-git-feat-valora3d-preparo-sincron-817c2c-farol13.vercel.app/dados-online
+- **Ainda pendente:** autenticar-se na Preview com ambas as contas, validar
+  GETs dos dois espaços nos aparelhos e conferir atualização entre sessões.
+  O frontend financeiro principal ainda utiliza dados locais; portanto o
+  teste de conectividade NÃO comprova sincronização automática.
+- O token de automação da Vercel é exclusivo de transporte entre as funções
+  protegidas; não substitui o JWT Supabase nem a verificação de permissão,
+  não aparece no cliente e deve ser revogado ao encerrar o QA.
 
 ## Segurança e próximos passos
 1. **Concluído em Dev:** esquema confirmado com `paidAt` anulável, default
