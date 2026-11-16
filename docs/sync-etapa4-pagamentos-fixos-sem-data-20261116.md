@@ -30,6 +30,11 @@ data de quitação inventada ao histórico.
   validar GETs da API em ambos os celulares e conferir atualização entre sessões.
 - O frontend financeiro principal ainda utiliza dados locais; por isso esta
   conferência da tabela e dos vínculos NÃO demonstra sincronização automática.
+- A API Preview da branch `feat/valora3d-preparo-sincronizacao-20261116`
+  respondeu HTTP 503 em `/api/v1/workspaces` (`Ambiente de testes não isolado.`)
+  e `/api/v1/ready`. Não há variáveis exclusivas para essa branch no projeto
+  `farol-api`. **Não retirar a proteção nem reutilizar credenciais de outra
+  branch**; configurar a Preview de QA vinculada só ao Dev antes dos testes.
 
 ## Segurança e próximos passos
 1. **Concluído em Dev:** esquema confirmado com `paidAt` anulável, default
