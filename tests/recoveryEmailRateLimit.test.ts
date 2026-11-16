@@ -30,6 +30,6 @@ describe('Limite de envio de e-mail: recuperação de senha',()=>{
     expect(page).toContain('recoveryEmailRateLimited.value = true')
     expect(page).toContain("props.mode === 'forgot' && recoveryEmailRateLimited.value")
     expect(page).toContain("mode === 'forgot' && recoveryEmailRateLimited")
-    expect(page).toContain('O Farol não pode remover esse limite.')
+    expect(page).toContain('O envio de e-mails atingiu um limite temporário.')
   })
 })

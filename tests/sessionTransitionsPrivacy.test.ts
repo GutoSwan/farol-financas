@@ -28,8 +28,8 @@ describe('Privacidade ao sair ou trocar de conta', () => {
   it('invalida acesso local no logout e impede restauração por resposta antiga', () => {
     expect(auth).toContain("if (event === 'SIGNED_OUT') {")
     expect(auth).toContain('setVerifiedLocalUser(null)')
-    expect(auth).toContain('authRevision++')
-    expect(auth).toContain('authRevision === initialRevision')
+    expect(auth).toContain('revision++')
+    expect(auth).toContain('revision === initialRevision')
   })
   it('troca de identidade não reutiliza dados locais de uma conta diferente', () => {
     expect(app).toContain('setVerifiedLocalUser(null)')
