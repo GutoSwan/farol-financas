@@ -34,7 +34,7 @@ function makeFixture(writes = true) {
      if (token === 'owner' || token === 'editor' || token === 'viewer' || token === 'outsider') {
        return { userId: token, assuranceLevel: 'aal2' as const }
      }
-     if (token === 'password') return { userId: 'owner', assuranceLevel: 'aal1' as const }
+     if (token === 'password') return { userId: 'owner', assuranceLevel: 'aal1' as const, mfaRequired: false }
      throw Error('unauthorized')
    }},
    allowWorkspaceWrites: writes,

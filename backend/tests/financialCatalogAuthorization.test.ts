@@ -40,7 +40,7 @@ function fixture() {
       if (token === 'owner') return { userId: alice, assuranceLevel: 'aal2' as const }
       if (token === 'viewer') return { userId: viewer, assuranceLevel: 'aal2' as const }
       if (token === 'outsider') return { userId: bob, assuranceLevel: 'aal2' as const }
-      if (token === 'password-only') return { userId: alice, assuranceLevel: 'aal1' as const }
+      if (token === 'password-only') return { userId: alice, assuranceLevel: 'aal1' as const, mfaRequired: false }
       throw new Error('unauthorized')
    }},
    checkDatabase: async () => true,

@@ -246,7 +246,9 @@ function getVerifier(): Promise<AuthVerifier> {
             const flags = await prisma.$queryRaw<Array<{ active: boolean }>>`
               SELECT farol_qa_private.is_active_session(${userId}::uuid, ${sessionId}::uuid) AS active
             `
-            return flags.length === 1 && flags[0].active === true
+            // O papel QA somente leitura não pode consultar os fatores de MFA.
+            // Exigir AAL2 para todos nesse modo, sem presumir que a senha basta.
+            return { active: flags.length === 1 && flags[0].active === true, mfaRequired: true }
           }
           const rows = await prisma.$queryRaw<Array<{ active: boolean; mfa_required: boolean }>>`
             SELECT EXISTS (

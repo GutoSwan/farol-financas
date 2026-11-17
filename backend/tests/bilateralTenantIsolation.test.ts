@@ -68,8 +68,8 @@ function setup() {
         const identities = {
           'a:aal2': { userId: a, assuranceLevel: 'aal2' as const },
           'b:aal2': { userId: b, assuranceLevel: 'aal2' as const },
-          'a:aal1': { userId: a, assuranceLevel: 'aal1' as const },
-          'b:aal1': { userId: b, assuranceLevel: 'aal1' as const },
+          'a:aal1': { userId: a, assuranceLevel: 'aal1' as const, mfaRequired: false },
+          'b:aal1': { userId: b, assuranceLevel: 'aal1' as const, mfaRequired: false },
         }
         const principal = identities[token as keyof typeof identities]
         if (!principal) throw new Error('JWT inválido')

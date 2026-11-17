@@ -53,7 +53,7 @@ function fixture(write = true) {
         const [name, aal] = token.split(':')
         const userId = name === 'alice' ? alice : name === 'bob' ? bob : name === 'viewer' ? viewer : ''
         if (!userId) throw new Error('invalid token')
-        return { userId, assuranceLevel: aal === 'aal2' ? 'aal2' as const : 'aal1' as const }
+        return { userId, assuranceLevel: aal === 'aal2' ? 'aal2' as const : 'aal1' as const, mfaRequired: false }
       },
     },
     workspaceService: new WorkspaceService(repository),

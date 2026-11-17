@@ -99,7 +99,8 @@ function fixture({ writes = true, invoiceReads = true, invoiceUploads = true }:
       async verifyAccessToken(raw) {
         const users = {
           'owner-aal2': { userId: owner, assuranceLevel: 'aal2' as const },
-          'owner-aal1': { userId: owner, assuranceLevel: 'aal1' as const },
+          'owner-aal1': { userId: owner, assuranceLevel: 'aal1' as const, mfaRequired: false },
+          'owner-unknown-mfa': { userId: owner, assuranceLevel: 'aal1' as const },
           'owner-pending-totp': { userId: owner, assuranceLevel: 'aal1' as const, mfaRequired: true },
           'editor-aal2': { userId: editor, assuranceLevel: 'aal2' as const },
           'viewer-aal2': { userId: viewer, assuranceLevel: 'aal2' as const },
@@ -149,6 +150,16 @@ describe('Regressão de segurança: autenticação e acesso entre usuários', ()
     expect(seen.membership).not.toHaveBeenCalled()
     expect(seen.transactionsRead).not.toHaveBeenCalled()
     expect(seen.transactionsCreate).not.toHaveBeenCalled()
+  })
+  it('nega acesso com AAL1 quando não foi possível determinar se há MFA cadastrado', async () => {
+    const { app, seen } = createApp()
+    for (const url of ['/api/v1/me', '/api/v1/workspaces', path + '/transactions']) {
+      const response = await app.inject({ method: 'GET', url, headers: token('owner-unknown-mfa') })
+      expect(response.statusCode).toBe(403)
+    }
+    expect(seen.list).not.toHaveBeenCalled()
+    expect(seen.membership).not.toHaveBeenCalled()
+    expect(seen.transactionsRead).not.toHaveBeenCalled()
   })
   it('não expõe identidade, espaços ou lançamentos sem token válido', async () => {
     const { app, seen } = createApp()

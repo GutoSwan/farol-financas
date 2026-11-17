@@ -301,7 +301,9 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
       const identity = await deps.auth.verifyAccessToken(match[1])
       // AAL e fatores são verificados no servidor: a UI e a URL não concedem acesso.
       // Quem não cadastrou TOTP pode usar AAL1. Quem cadastrou precisa de AAL2.
-      if (identity.mfaRequired === true && identity.assuranceLevel !== 'aal2') {
+      // Se o verificador não conseguir confirmar a ausência de TOTP,
+      // não liberar dados com AAL1 por omissão de metadados.
+      if (identity.mfaRequired !== false && identity.assuranceLevel !== 'aal2') {
         reply.code(403).send({ error: 'Confirme o autenticador para acessar suas finanças.' })
         return null
       }

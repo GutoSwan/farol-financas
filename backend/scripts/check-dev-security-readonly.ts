@@ -54,12 +54,34 @@ async function main(): Promise<void> {
       ORDER BY c.relname
     `)
     const policyResult = await client.query<PolicyPermission>(`
-      SELECT tablename::text, cmd::text, roles::text AS roles_text,
+      SELECT tablename::text, policyname::text, permissive::text,
+        cmd::text, roles::text AS roles_text,
         qual::text, with_check::text
       FROM pg_catalog.pg_policies
       WHERE schemaname = 'public'
       ORDER BY tablename, policyname
     `)
+    const factorGateResult = await client.query<{
+      definer: boolean; client_can_execute: boolean; anonymous_can_execute: boolean;
+      client_schema_usage: boolean; anonymous_schema_usage: boolean
+    }>(`
+      SELECT p.prosecdef AS definer,
+        has_function_privilege('authenticated', p.oid, 'EXECUTE') AS client_can_execute,
+        has_function_privilege('anon', p.oid, 'EXECUTE') AS anonymous_can_execute,
+        has_schema_privilege('authenticated', n.oid, 'USAGE') AS client_schema_usage,
+        has_schema_privilege('anon', n.oid, 'USAGE') AS anonymous_schema_usage
+      FROM pg_catalog.pg_proc p
+      JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+      WHERE n.nspname = 'farol_security_private'
+        AND p.proname = 'current_user_requires_totp'
+        AND p.pronargs = 0
+    `)
+    const gate = factorGateResult.rows[0]
+    if (factorGateResult.rows.length !== 1 || !gate?.definer ||
+        !gate.client_can_execute || gate.anonymous_can_execute ||
+        !gate.client_schema_usage || gate.anonymous_schema_usage) {
+      throw new Error('Função privada de MFA ausente ou com permissões inesperadas.')
+    }
     const result = validateDevMetadata(tableResult.rows, policyResult.rows)
     await client.query('ROLLBACK')
     console.info(

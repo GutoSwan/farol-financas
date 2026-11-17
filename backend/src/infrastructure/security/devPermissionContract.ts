@@ -23,6 +23,8 @@ export interface TablePermission {
 }
 export interface PolicyPermission {
   tablename: string
+  policyname: string
+  permissive: string
   cmd: string
   roles_text: string
   qual: string | null
@@ -47,6 +49,15 @@ function boundToOwner(expression: string | null): boolean {
     normalized === 'user_id=selectauth.uidasuid' ||
     normalized === 'auth.uid=user_id' ||
     normalized === 'user_id=auth.uid'
+}
+
+/** A policy de MFA é restritiva e só deixa AAL1 passar sem TOTP verificado.
+ * É comparada de forma fechada para impedir a inserção acidental de OR true. */
+function hasReviewedCalendarMfaGate(expression: string | null): boolean {
+  if (typeof expression !== 'string') return false
+  const normalized = expression.toLowerCase().replace(/::text/g, '').replace(/[()\s]/g, '')
+  return normalized ===
+    "selectauth.jwt->>'aal'='aal2'ornotselectfarol_security_private.current_user_requires_totpascurrent_user_requires_totp"
 }
 
 /**
@@ -76,7 +87,9 @@ export function validateDevMetadata(
       throw new Error('Política inesperada para calendário: ' + command)
     }
     const policy = matches[0]
-    if (policy.roles_text !== '{authenticated}') {
+    const expectedName = 'calendar_events_' + command.toLowerCase() + '_own'
+    if (policy.roles_text !== '{authenticated}' || policy.permissive !== 'PERMISSIVE' ||
+        policy.policyname !== expectedName) {
       throw new Error('Calendário acessível por papel não autorizado: ' + command)
     }
     if (command !== 'INSERT' && !boundToOwner(policy.qual)) {
@@ -87,9 +100,15 @@ export function validateDevMetadata(
       throw new Error('Calendário sem proteção de escrita: ' + command)
     }
   }
-  if (policies.some(policy => policy.tablename === 'calendar_events' &&
-      !['SELECT', 'INSERT', 'UPDATE', 'DELETE'].includes(policy.cmd))) {
-    throw new Error('Calendário com política genérica não revisada.')
+  const gates = policies.filter(policy => policy.tablename === 'calendar_events' && policy.cmd === 'ALL')
+  if (gates.length !== 1 || gates[0].policyname !== 'calendar_events_verified_totp_aal2' ||
+      gates[0].permissive !== 'RESTRICTIVE' || gates[0].roles_text !== '{authenticated}' ||
+      !hasReviewedCalendarMfaGate(gates[0].qual) ||
+      !hasReviewedCalendarMfaGate(gates[0].with_check)) {
+    throw new Error('Calendário sem bloqueio adicional de MFA verificado.')
+  }
+  if (policies.filter(policy => policy.tablename === 'calendar_events').length !== 5) {
+    throw new Error('Calendário com políticas adicionais não revisadas.')
   }
   // Não permitir que tabelas administrativas do Prisma fiquem acessíveis.
   const migrations = byName.get('_prisma_migrations')

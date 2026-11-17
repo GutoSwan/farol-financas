@@ -7,16 +7,16 @@ const claims = { sub: userId, session_id: sessionId, role: 'authenticated', aal:
 
 describe('Regressão de autenticação Supabase: sessão autenticada e MFA', () => {
   it('aceita somente sessão ativa e preserva AAL2 validado', async () => {
-    const active = vi.fn(async () => true)
+    const active = vi.fn(async () => ({ active: true, mfaRequired: false }))
     expect(await validateSignedSessionClaims(claims, active)).toEqual({
-      userId, assuranceLevel: 'aal2',
+      userId, assuranceLevel: 'aal2', mfaRequired: false,
     })
     expect(active).toHaveBeenCalledTimes(1)
     expect(active).toHaveBeenCalledWith(userId, sessionId)
   })
 
   it('rejeita sessão revogada mesmo se o JWT já tiver assinatura válida', async () => {
-    const inactive = vi.fn(async () => false)
+    const inactive = vi.fn(async () => ({ active: false, mfaRequired: false }))
     await expect(validateSignedSessionClaims(claims, inactive))
       .rejects.toThrow('Sessão revogada ou expirada')
     expect(inactive).toHaveBeenCalledWith(userId, sessionId)
@@ -28,7 +28,7 @@ describe('Regressão de autenticação Supabase: sessão autenticada e MFA', () 
   })
 
   it('não permite promover AAL1 ou AAL desconhecido a AAL2', async () => {
-    const active = async () => true
+    const active = async () => ({ active: true, mfaRequired: false })
     expect((await validateSignedSessionClaims({ ...claims, aal: 'aal1' }, active)).assuranceLevel).toBe('aal1')
     expect((await validateSignedSessionClaims({ ...claims, aal: 'unknown' }, active)).assuranceLevel).toBe('aal1')
     expect((await validateSignedSessionClaims({ ...claims, aal: undefined }, active)).assuranceLevel).toBe('aal1')
@@ -48,7 +48,7 @@ describe('Regressão de autenticação Supabase: sessão autenticada e MFA', () 
   })
 
   it('rejeita contas anônimas, outras roles e sessão inválida antes de acessar o banco', async () => {
-    const check = vi.fn(async () => true)
+    const check = vi.fn(async () => ({ active: true, mfaRequired: false }))
     for (const invalid of [
       { ...claims, is_anonymous: true },
       { ...claims, role: 'service_role' },
@@ -64,8 +64,10 @@ describe('Regressão de autenticação Supabase: sessão autenticada e MFA', () 
   })
 
   it('uma identidade não pode validar a sessão de outra pessoa pelo ID declarado', async () => {
-    const belongingToAnotherUser = async (subject: string, session: string) =>
-      subject === userId && session === '33333333-3333-4333-8333-333333333333'
+    const belongingToAnotherUser = async (subject: string, session: string) => ({
+      active: subject === userId && session === '33333333-3333-4333-8333-333333333333',
+      mfaRequired: false,
+    })
     await expect(validateSignedSessionClaims(claims, belongingToAnotherUser))
       .rejects.toThrow('Sessão revogada ou expirada')
   })

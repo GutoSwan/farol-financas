@@ -75,7 +75,7 @@ function setup(qaName = 'QA - Casa compartilhada (Dev)') {
   const app = buildApp({
     auth: { async verifyAccessToken(token) {
       if (!['a','b','viewer'].includes(token)) throw Error('token inválido')
-      return { userId: token, assuranceLevel: 'aal1' as const }
+      return { userId: token, assuranceLevel: 'aal1' as const, mfaRequired: false }
     }},
     workspaceService: new WorkspaceService(workspaces),
     transactionRepository: { ...writer, async createForWorkspace() { throw Error('Não usar RO na gravação') } },

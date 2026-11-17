@@ -30,19 +30,26 @@ const owner = '(( SELECT auth.uid() AS uid) = user_id)'
 function policy(cmd: string): PolicyPermission {
   return {
     tablename: 'calendar_events', cmd,
+    policyname: 'calendar_events_' + cmd.toLowerCase() + '_own', permissive: 'PERMISSIVE',
     roles_text: '{authenticated}',
     qual: cmd === 'INSERT' ? null : owner,
     with_check: ['INSERT', 'UPDATE'].includes(cmd) ? owner : null,
   }
 }
-const validPolicies = ['SELECT', 'INSERT', 'UPDATE', 'DELETE'].map(policy)
+const mfaExpression = "((( SELECT (auth.jwt() ->> 'aal'::text)) = 'aal2'::text) OR (NOT ( SELECT farol_security_private.current_user_requires_totp() AS current_user_requires_totp)))"
+const mfaGate: PolicyPermission = {
+  tablename: 'calendar_events', policyname: 'calendar_events_verified_totp_aal2',
+  permissive: 'RESTRICTIVE', cmd: 'ALL', roles_text: '{authenticated}',
+  qual: mfaExpression, with_check: mfaExpression,
+}
+const validPolicies = [...['SELECT', 'INSERT', 'UPDATE', 'DELETE'].map(policy), mfaGate]
 const validTables = [...FINANCIAL_TABLES, 'calendar_events'].map(table)
 
 describe('Contrato live Dev Supabase: introspecção somente leitura', () => {
   it('aceita política de calendário por titular e tabelas financeiras bloqueadas ao cliente', () => {
     expect(validateDevMetadata(validTables, validPolicies)).toEqual({
       tablesReviewed: 13,
-      policiesReviewed: 4,
+      policiesReviewed: 5,
     })
   })
 
@@ -70,8 +77,12 @@ describe('Contrato live Dev Supabase: introspecção somente leitura', () => {
       validPolicies.map(p => p.cmd === 'UPDATE' ? { ...p, with_check: null } : p),
       validPolicies.map(p => p.cmd === 'INSERT' ? { ...p, roles_text: '{anon,authenticated}' } : p),
       validPolicies.filter(p => p.cmd !== 'DELETE'),
-      [...validPolicies, { tablename: 'calendar_events', cmd: 'ALL',
-        roles_text: '{public}', qual: 'true', with_check: 'true' }],
+      validPolicies.filter(p => p.cmd !== 'ALL'),
+      validPolicies.map(p => p.cmd === 'ALL' ? { ...p, permissive: 'PERMISSIVE' } : p),
+      validPolicies.map(p => p.cmd === 'ALL' ? { ...p, qual: 'true' } : p),
+      validPolicies.map(p => p.cmd === 'ALL' ? { ...p, with_check: 'true' } : p),
+      [...validPolicies, { tablename: 'calendar_events', policyname: 'calendar_events_unreviewed',
+        permissive: 'PERMISSIVE', cmd: 'ALL', roles_text: '{public}', qual: 'true', with_check: 'true' }],
     ]
     for (const changed of variants) {
       expect(() => validateDevMetadata(validTables, changed)).toThrow()

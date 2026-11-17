@@ -8,7 +8,7 @@ export interface AuthVerifier {
 }
 
 export type ActiveSessionChecker = (userId: string, sessionId: string) =>
-  Promise<boolean | { active: boolean; mfaRequired: boolean }>
+  Promise<{ active: boolean; mfaRequired: boolean }>
 
 /** Valida claims somente DEPOIS de jwtVerify ter conferido assinatura e expiração. */
 export async function validateSignedSessionClaims(
@@ -24,14 +24,16 @@ export async function validateSignedSessionClaims(
   }
   // Se o banco estiver indisponível, negar acesso em vez de aceitar JWT revogado.
   const state = await checkActiveSession(userId, sessionId)
-  const active = typeof state === 'boolean' ? state : state.active
-  if (!active) {
+  if (!state || typeof state.active !== 'boolean' || typeof state.mfaRequired !== 'boolean') {
+    throw new Error('Estado da sessão ou do MFA não confirmado.')
+  }
+  if (!state.active) {
     throw new Error('Sessão revogada ou expirada.')
   }
   return {
     userId,
     assuranceLevel: claims.aal === 'aal2' ? 'aal2' : 'aal1',
-    ...(typeof state !== 'boolean' ? { mfaRequired: state.mfaRequired } : {}),
+    mfaRequired: state.mfaRequired,
   }
 }
 

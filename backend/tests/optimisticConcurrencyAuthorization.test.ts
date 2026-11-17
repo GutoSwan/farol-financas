@@ -67,7 +67,7 @@ function fixture() {
     financialCatalogMutations: catalog,
     auth: { async verifyAccessToken(token) {
       if (token === 'owner:aal2') return { userId: 'owner', assuranceLevel: 'aal2' as const }
-      if (token === 'owner:aal1') return { userId: 'owner', assuranceLevel: 'aal1' as const }
+      if (token === 'owner:aal1') return { userId: 'owner', assuranceLevel: 'aal1' as const, mfaRequired: false }
       if (token === 'intruder:aal2') return { userId: 'intruder', assuranceLevel: 'aal2' as const }
       throw Error('unauthorized')
     }},

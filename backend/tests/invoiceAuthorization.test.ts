@@ -40,7 +40,7 @@ function fixture(writes = false, uploads = false) {
       const name = token.split(':')[0]
       const userId = name === 'owner' ? ownerId : name === 'viewer' ? viewerId : name === 'outsider' ? outsiderId : ''
       if (!userId) throw Error('Invalid token')
-      return { userId, assuranceLevel: token.endsWith(':aal2') ? 'aal2' as const : 'aal1' as const }
+      return { userId, assuranceLevel: token.endsWith(':aal2') ? 'aal2' as const : 'aal1' as const, mfaRequired: false }
     }},
     checkDatabase: async () => true,
     allowWorkspaceWrites: writes, allowInvoiceUploads: uploads, allowInvoiceReads: true,

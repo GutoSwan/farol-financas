@@ -25,7 +25,7 @@ function fixtures(allowWorkspaceWrites = true) {
     async verifyAccessToken(token) {
       if (token === 'valid-for-test') return { userId, assuranceLevel: 'aal2' }
       if (token === 'other-user-test') return { userId: '823e4567-e89b-42d3-a456-426614174999', assuranceLevel: 'aal2' }
-      if (token === 'password-only-test') return { userId, assuranceLevel: 'aal1' }
+      if (token === 'password-only-test') return { userId, assuranceLevel: 'aal1', mfaRequired: false }
       throw new Error('invalid')
     },
   }

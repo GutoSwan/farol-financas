@@ -63,7 +63,7 @@ function setup() {
       const userId = identity === 'a' ? a : identity === 'b' ? b :
         identity === 'viewer' ? viewer : null
       if (!userId) throw Error('Invalid token')
-      return { userId, assuranceLevel: assurance === 'aal2' ? 'aal2' as const : 'aal1' as const }
+      return { userId, assuranceLevel: assurance === 'aal2' ? 'aal2' as const : 'aal1' as const, mfaRequired: false }
     } },
     workspaceService: new WorkspaceService(workspaces),
     transactionRepository: transactions,

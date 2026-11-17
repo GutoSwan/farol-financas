@@ -47,7 +47,8 @@ function asAuthUser(value: unknown): AuthUser | null {
     ? value as AuthUser : null
 }
 function verifiedTotp(factors: unknown): boolean {
-  if (!Array.isArray(factors)) return false
+  // Resposta incompleta do Auth não significa ausência de autenticador.
+  if (!Array.isArray(factors)) throw new Error('Estado dos fatores de MFA indisponível.')
   return factors.some((factor: unknown) => {
     if (!factor || typeof factor !== 'object') return false
     const f = factor as { factor_type?: unknown; status?: unknown }

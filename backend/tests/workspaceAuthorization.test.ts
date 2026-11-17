@@ -23,7 +23,7 @@ function createApp() {
       async verifyAccessToken(token) {
         if (token === 'alice-aal2') return { userId: alice, assuranceLevel: 'aal2' as const }
         if (token === 'bob-aal2') return { userId: bob, assuranceLevel: 'aal2' as const }
-        if (token === 'alice-aal1') return { userId: alice, assuranceLevel: 'aal1' as const }
+        if (token === 'alice-aal1') return { userId: alice, assuranceLevel: 'aal1' as const, mfaRequired: false }
         throw new Error('invalid token')
       },
     },
