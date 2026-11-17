@@ -29,3 +29,17 @@ intermediário e consulta posterior). A API de migração permanece desativada
 por configuração. Só habilitar escritas Dev após revisar credenciais e executar
 um teste isolado da API com identificações fictícias; nunca habilitar Preview
 ou produção automaticamente.
+
+### Complemento — autorização da API com JWT assinado
+
+`backend/tests/signedJwtApiIsolation.test.ts` testa o roteamento HTTP real do
+Fastify com JWTs RSA assinados, uma JWKS servida **somente em localhost** e
+repositórios fictícios em memória. Verifica assinatura falsa, emissor e público
+inválidos, token expirado, sessão revogada, AAL1 com MFA, isolamento de dois
+espaços, leitura de VIEWER, negação de escrita e exigência de OWNER AAL2 para
+conectar registros. O build da API passou com **302 testes**.
+
+**Escopo distinto:** esta etapa valida JWT + middleware + rotas sem chamar
+Supabase Dev, Prisma nem o conector de migração real. O E2E integrado de
+migração com Auth Dev e persistência PostgreSQL continua pendente, e as
+gravações de migração seguem desativadas na Preview e em produção.
