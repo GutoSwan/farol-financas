@@ -1,6 +1,8 @@
-// Branch fixa de QA: links por e-mail não podem apontar para previews antigos.
-const PREVIEW_DEV_AUTH_ORIGIN =
-  'https://farol-financas-git-feat-v029-admin-standalone-preview-farol13.vercel.app'
+// Apenas endereços fixos e revisados de QA Dev podem receber links por e-mail.
+const PREVIEW_DEV_AUTH_ORIGINS = new Set([
+  'https://farol-financas-git-feat-v029-admin-standalone-preview-farol13.vercel.app',
+  'https://farol-financas-git-feat-password-safety-free-20261117-farol13.vercel.app',
+])
 
 /**
  * Recuperação por e-mail precisa retornar sempre a um endereço estável.
@@ -18,7 +20,7 @@ export function safeAuthRedirect(
   if (u.protocol !== 'https:' ||
       (u.href !== u.origin + '/' && u.href !== u.origin) ||
       u.username || u.password || u.search || u.hash ||
-      (qaDevOnly && u.origin !== PREVIEW_DEV_AUTH_ORIGIN)) {
+      (qaDevOnly && !PREVIEW_DEV_AUTH_ORIGINS.has(u.origin))) {
     throw new Error('A URL de retorno do Auth Dev não está configurada com segurança.')
   }
   return u.origin + pathname

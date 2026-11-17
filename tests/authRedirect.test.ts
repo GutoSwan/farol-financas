@@ -2,12 +2,20 @@ import { describe, expect, it } from 'vitest'
 import { safeAuthRedirect } from '../src/domain/auth/authRedirect'
 
 const allowed='https://farol-financas-git-feat-v029-admin-standalone-preview-farol13.vercel.app'
+const passwordSafetyPreview='https://farol-financas-git-feat-password-safety-free-20261117-farol13.vercel.app'
 describe('URL canônica de recuperação de senha',()=>{
   it('sempre retorna o domínio estável da Preview quando em QA Dev-only',()=>{
     expect(safeAuthRedirect('/redefinir-senha',
       'https://farol-financas-random.vercel.app',allowed,true)).toBe(allowed+'/redefinir-senha')
     expect(safeAuthRedirect('/confirmar-email',
       'https://farol-financas-random.vercel.app',allowed,true)).toBe(allowed+'/confirmar-email')
+  })
+  it('permite somente a URL estável da nova Preview de verificação de senhas',()=>{
+    expect(safeAuthRedirect('/redefinir-senha',
+      'https://farol-financas-random.vercel.app',passwordSafetyPreview,true))
+      .toBe(passwordSafetyPreview+'/redefinir-senha')
+    expect(()=>safeAuthRedirect('/redefinir-senha',passwordSafetyPreview,
+      'https://farol-financas-cl5b7gfpn-farol13.vercel.app',true)).toThrow()
   })
   it('não aceita redirecionar Dev para produção, HTTP ou domínios falsificados',()=>{
     for(const candidate of [
