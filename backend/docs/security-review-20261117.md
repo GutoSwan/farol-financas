@@ -23,8 +23,8 @@ financeiro foi exportado. Este relatório não é certificação de segurança.
 - O bucket `farol-invoices-private` permanece privado; a tabela de metadados
   de faturas não tem acesso de cliente.
 - A rota pessoal `/presentes` agora exige `farol_role` administrativo em
-  `app_metadata`, obtido da identidade remota do Supabase Auth. O menu não
-  aparece para outras contas, e o guard também bloqueia URLs diretas.
+  `app_metadata`, obtido da identidade remota do Supabase Auth, e sessão AAL2.
+  O menu não aparece para outras contas; URLs diretas são igualmente bloqueadas.
 
 ## Testes realizados
 

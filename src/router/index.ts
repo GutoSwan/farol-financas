@@ -102,9 +102,16 @@ router.beforeEach(async (to) => {
   if (shouldRedirectLoggedInVisitor(to.path, true)) return { path: '/', replace: true }
 
   // Ocultar o link no menu não protege URLs abertas diretamente.
-  // Usar somente o papel retornado pela identidade validada no Supabase Auth.
-  if (to.meta.requiresAdmin && !canAccessAdminOnlyFeature(validatedUser)) {
-    return { path: '/', replace: true }
+  // Exigir papel remoto E sessão AAL2 mesmo se um administrador remover o TOTP.
+  if (to.meta.requiresAdmin) {
+    if (!canAccessAdminOnlyFeature(validatedUser)) return { path: '/', replace: true }
+    try {
+      const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+      if (error || data?.currentLevel !== 'aal2') return { path: '/conta', replace: true }
+    } catch {
+      // Falha na consulta nunca concede acesso administrativo.
+      return { path: '/conta', replace: true }
+    }
   }
 
   // Associar dados locais somente após verificar a identidade remotamente.
