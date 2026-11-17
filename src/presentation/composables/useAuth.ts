@@ -7,6 +7,7 @@ import { normalizeDisplayName, normalizeProfileIcon, readProfile } from '../../d
 import { parseRecoveryConfirmationLink } from '../../domain/auth/passwordRecovery'
 import { safeAuthRedirect } from '../../domain/auth/authRedirect'
 import { recoveryEmailRequestError } from '../../domain/auth/recoveryEmailRateLimit'
+import { assertPasswordNotLeaked } from '../../domain/auth/passwordSafety'
 import type { ProfileIcon } from '../../domain/profile/profile'
 
 const session = ref<Session | null>(null)
@@ -107,7 +108,6 @@ export function useAuth() {
   }
 
   async function updatePassword(password: string): Promise<void> {
-    if (password.length < 8) throw new Error('A nova senha precisa ter pelo menos 8 caracteres.')
     if (!recoveringPassword.value) {
       throw new Error('Confirme primeiro o link de recuperação enviado ao seu e-mail.')
     }
@@ -118,6 +118,7 @@ export function useAuth() {
         active.session.user.id !== identity.user.id) {
       throw new Error('Sessão de recuperação inválida. Solicite um novo link.')
     }
+    await assertPasswordNotLeaked(password)
     const { error } = await auth.updateUser({ password })
     if (error) throw new Error(error.message)
     passwordJustChanged.value = true

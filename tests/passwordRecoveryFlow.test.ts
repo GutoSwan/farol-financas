@@ -4,6 +4,7 @@ const auth = readFileSync(new URL('../src/presentation/composables/useAuth.ts',i
 const page = readFileSync(new URL('../src/presentation/pages/AuthPage.vue',import.meta.url),'utf8')
 const router = readFileSync(new URL('../src/router/index.ts',import.meta.url),'utf8')
 const app = readFileSync(new URL('../src/App.vue',import.meta.url),'utf8')
+const vercel = readFileSync(new URL('../vercel.json',import.meta.url),'utf8')
 
 describe('Recuperação por e-mail sem autenticador', () => {
   it('usa o redirect de recuperação e confirma token pelo Supabase', () => {
@@ -22,5 +23,13 @@ describe('Recuperação por e-mail sem autenticador', () => {
     expect(auth).toContain('await Promise.all([auth.getSession(), auth.getUser()])')
     expect(auth).toContain("await auth.signOut({ scope: 'local' })")
     expect(page).toContain("recoveryLinkInput.value = ''")
+  })
+  it('exige uma consulta de vazamentos antes de alterar a senha no Supabase', () => {
+    expect(auth).toContain('await assertPasswordNotLeaked(password)')
+    expect(auth.indexOf('await assertPasswordNotLeaked(password)')).toBeLessThan(
+      auth.indexOf('await auth.updateUser({ password })'),
+    )
+    expect(page).toContain(':minlength="MIN_NEW_PASSWORD_LENGTH"')
+    expect(vercel).toContain('https://api.pwnedpasswords.com')
   })
 })

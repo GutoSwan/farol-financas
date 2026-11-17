@@ -6,6 +6,7 @@ import { useAuth } from '../composables/useAuth'
 import { useTheme } from '../composables/useTheme'
 import { PROFILE_ICONS } from '../../domain/profile/profile'
 import { RecoveryEmailRateLimitError } from '../../domain/auth/recoveryEmailRateLimit'
+import { MIN_NEW_PASSWORD_LENGTH } from '../../domain/auth/passwordSafety'
 import type { ProfileIcon } from '../../domain/profile/profile'
 import BackNavigation from '../components/BackNavigation.vue'
 import UiIcon from '../components/UiIcon.vue'
@@ -62,8 +63,8 @@ function clearMessages(): void { message.value = ''; errorText.value = '' }
 async function submit(): Promise<void> {
   if (busy.value || !configured || (props.mode === 'forgot' && recoveryEmailRateLimited.value)) return
   clearMessages()
-  if (props.mode === 'reset' && (password.value !== confirmPassword.value || password.value.length < 8)) {
-    errorText.value = 'A senha deve ter pelo menos 8 caracteres e ser igual nos dois campos.'
+  if (props.mode === 'reset' && (password.value !== confirmPassword.value || Array.from(password.value).length < MIN_NEW_PASSWORD_LENGTH)) {
+    errorText.value = `A senha deve ter pelo menos ${MIN_NEW_PASSWORD_LENGTH} caracteres e ser igual nos dois campos.`
     return
   }
   busy.value = true
@@ -230,6 +231,7 @@ async function logout(): Promise<void> {
 
         <form v-if="mode !== 'reset' || (recoveringPassword && !passwordResetDone)"
           class="auth-form" @submit.prevent="submit">
+          <p v-if="mode === 'reset'" class="auth-muted">Use pelo menos {{ MIN_NEW_PASSWORD_LENGTH }} caracteres. Antes de salvar, verificamos gratuitamente se a senha já apareceu em vazamentos, sem enviá-la completa.</p>
           <label v-if="mode !== 'reset'">E-mail
             <input v-model.trim="email" type="email" autocomplete="email" maxlength="254" required :disabled="busy || !configured" />
           </label>
@@ -237,7 +239,7 @@ async function logout(): Promise<void> {
             <span class="auth-password-row">
               <input v-model="password" :type="showPassword ? 'text' : 'password'"
                 :autocomplete="mode === 'login' ? 'current-password' : 'new-password'"
-                :minlength="mode === 'login' ? 1 : 8" required :disabled="busy || !configured" />
+                :minlength="mode === 'login' ? 1 : MIN_NEW_PASSWORD_LENGTH" required :disabled="busy || !configured" />
               <button class="auth-password-toggle" type="button" @click="showPassword = !showPassword">
                 {{ showPassword ? 'Ocultar' : 'Mostrar' }}
               </button>
@@ -245,7 +247,7 @@ async function logout(): Promise<void> {
           </label>
           <label v-if="mode === 'reset'">Confirmar nova senha
             <input v-model="confirmPassword" :type="showPassword ? 'text' : 'password'"
-              autocomplete="new-password" minlength="8" required :disabled="busy || !configured" />
+              autocomplete="new-password" :minlength="MIN_NEW_PASSWORD_LENGTH" required :disabled="busy || !configured" />
           </label>
           <button class="primary auth-full-button" type="submit"
             :disabled="busy || !configured || (mode === 'forgot' && recoveryEmailRateLimited)">

@@ -59,6 +59,15 @@ Fontes oficiais:
 - Supabase RLS: https://supabase.com/docs/guides/database/postgres/row-level-security
 - PCI SSC CVV: https://www.pcisecuritystandards.org/faqs/are-merchants-allowed-to-request-card-verification-codes-values-from-cardholders/
 
+## Atualização de segurança — 2026-11-17
+
+- A tabela `public._prisma_migrations` em Produção teve os privilégios de `anon`/`authenticated` revogados e RLS ativado em operação já verificada; o aviso crítico de exposição foi resolvido. As notas de 06/11 acima permanecem como histórico.
+- O Supabase da organização continua no plano Free; a proteção **nativa** contra senhas vazadas depende do Pro. Nenhum plano foi contratado.
+- Como alternativa gratuita, a tela de redefinição valida o mínimo de 12 caracteres, limita a senha a 72 bytes para compatibilidade com bcrypt e consulta a API pública Pwned Passwords do Have I Been Pwned. O hash SHA-1 é calculado localmente **somente** para essa consulta e **apenas os primeiros cinco dígitos do hash** são enviados. O serviço não recebe a senha nem seu hash completo. Requisição com padding, sem cookies e sem Referer; a CSP permite somente esse host adicional.
+- A operação de troca é bloqueada se o serviço de verificação falhar ou se a senha constar no conjunto conhecido. O login existente não é alterado.
+- **Limitação importante:** essa checagem é feita no cliente, portanto não impede que alguém contorne a interface e faça solicitações diretamente ao Supabase Auth. É uma defesa adicional, não substitui a política de segurança no servidor nem a proteção nativa do plano Pro.
+- O cadastro público permanece desativado neste momento. Quando voltar, a mesma proteção deve ser aplicada e testada. Ainda faltam QA real em Preview HTTPS, configuração de política nativa de comprimento seguro no Supabase (avaliando possíveis efeitos em senhas já existentes), revisão de MFA/recuperação e validação E2E antes de publicar.
+
 ## Ordem de execução
 
 1. Revisar e corrigir `_prisma_migrations`/proteção contra senhas vazadas após aprovar a mudança de acesso ao banco.
