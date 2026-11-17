@@ -11,10 +11,10 @@ afterEach(() => vi.unstubAllGlobals())
 describe('Proteção gratuita de senhas novas', () => {
   const candidate = 'frase exclusiva de teste 2026!'
 
-  it('exige senha longa, mas permite frases com espaços e caracteres especiais', () => {
-    expect(MIN_NEW_PASSWORD_LENGTH).toBe(12)
-    expect(() => validateNewPassword('curtinha')).toThrow('pelo menos 12')
-    expect(() => validateNewPassword('🔒'.repeat(5))).toThrow('pelo menos 12')
+  it('exige pelo menos 8 caracteres e permite frases com espaços e caracteres especiais', () => {
+    expect(MIN_NEW_PASSWORD_LENGTH).toBe(8)
+    expect(() => validateNewPassword('curta')).toThrow('pelo menos 8')
+    expect(() => validateNewPassword('🔒'.repeat(8))).not.toThrow()
     expect(() => validateNewPassword('á'.repeat(40))).toThrow('72 bytes')
     expect(() => validateNewPassword(candidate)).not.toThrow()
   })
@@ -59,7 +59,7 @@ describe('Proteção gratuita de senhas novas', () => {
   it('não consulta serviços externos quando a senha não cumpre o comprimento mínimo', async () => {
     const mock = vi.fn()
     vi.stubGlobal('fetch', mock)
-    await expect(assertPasswordNotLeaked('123456789')).rejects.toThrow('pelo menos 12')
+    await expect(assertPasswordNotLeaked('1234567')).rejects.toThrow('pelo menos 8')
     expect(mock).not.toHaveBeenCalled()
   })
 })

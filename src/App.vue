@@ -22,7 +22,7 @@ const canRenderCurrentPage = computed(() =>
 
 // O Supabase pode voltar pela Site URL padrão em vez de /redefinir-senha.
 // Quando o token de recuperação é validado, abrir a tela de troca de senha
-// sem navegar para a visão geral nem pedir o autenticador antes da troca.
+// sem navegar para a visão geral. Se houver MFA, a página solicita AAL2.
 watch(recoveringPassword, (isRecovery) => {
   if (!isRecovery) return
   void router.isReady().then(() => {

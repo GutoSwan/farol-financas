@@ -24,6 +24,15 @@ describe('Recuperação por e-mail sem autenticador', () => {
     expect(auth).toContain("await auth.signOut({ scope: 'local' })")
     expect(page).toContain("recoveryLinkInput.value = ''")
   })
+  it('exige TOTP e AAL2 na recuperação de uma conta com MFA', () => {
+    expect(auth).toContain('auth.mfa.getAuthenticatorAssuranceLevel()')
+    expect(auth).toContain('auth.mfa.listFactors()')
+    expect(auth).toContain('auth.mfa.challengeAndVerify({ factorId: factor.id')
+    expect(auth).toContain("recoveryMfaDecision(levels) === 'required'")
+    expect(page).toContain('confirmAuthenticator')
+    expect(page).toContain("recoveryMfaStatus === 'required'")
+    expect(page).toContain("recoveryMfaStatus === 'ready'")
+  })
   it('exige uma consulta de vazamentos antes de alterar a senha no Supabase', () => {
     expect(auth).toContain('await assertPasswordNotLeaked(password)')
     expect(auth.indexOf('await assertPasswordNotLeaked(password)')).toBeLessThan(

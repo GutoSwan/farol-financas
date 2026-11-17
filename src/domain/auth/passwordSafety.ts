@@ -3,7 +3,7 @@
  * A senha e seu hash completo nunca são enviados ao serviço de vazamentos.
  * A validação no navegador complementa (não substitui) a política do Supabase Auth.
  */
-export const MIN_NEW_PASSWORD_LENGTH = 12
+export const MIN_NEW_PASSWORD_LENGTH = 8
 const MAX_NEW_PASSWORD_BYTES = 72
 const PWNED_PASSWORDS_ENDPOINT = 'https://api.pwnedpasswords.com/range/'
 
