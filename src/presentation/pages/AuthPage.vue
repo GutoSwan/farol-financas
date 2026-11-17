@@ -182,8 +182,9 @@ async function logout(): Promise<void> {
 <template>
   <div class="auth-screen">
     <div class="auth-card">
-      <BackNavigation v-if="mode !== 'login'" :fallback="mode === 'profile' ? '/' : '/entrar'" />
-      <RouterLink class="auth-brand" to="/">◈ Farol <span>Finanças</span></RouterLink>
+      <BackNavigation v-if="mode !== 'login' && mode !== 'reset'" :fallback="mode === 'profile' ? '/' : '/entrar'" />
+      <span v-if="mode === 'reset'" class="auth-brand">◈ Farol <span>Finanças</span></span>
+      <RouterLink v-else class="auth-brand" to="/">◈ Farol <span>Finanças</span></RouterLink>
       <button class="auth-theme-button" type="button"
         :aria-label="isDark ? 'Ativar tema claro' : 'Ativar tema escuro'"
         @click="toggleTheme"><UiIcon :name="isDark ? 'sun' : 'moon'" :size="19" /></button>
@@ -244,10 +245,10 @@ async function logout(): Promise<void> {
 
       <template v-else>
         <h1>{{ mode === 'login' ? 'Entrar no Farol' : mode === 'forgot' ? 'Recuperar senha' : 'Definir nova senha' }}</h1>
-        <p class="auth-subtitle">{{ mode === 'login' ? 'Acesso reservado às duas contas da família.' : mode === 'forgot' ? 'Enviaremos um link para o e-mail da sua conta.' : 'Escolha uma nova senha para entrar no Farol.' }}</p>
+        <p class="auth-subtitle">{{ mode === 'login' ? 'Acesso reservado às duas contas da família.' : mode === 'forgot' ? 'Enviaremos um link para o e-mail da sua conta.' : recoveryMfaStatus === 'required' ? 'Só falta confirmar sua identidade para continuar.' : 'Escolha uma nova senha para entrar no Farol.' }}</p>
         <p v-if="mode === 'login' && passwordJustChanged" class="success" role="status">Sua senha foi atualizada.</p>
 
-        <section v-if="mode === 'reset' && !recoveringPassword && !passwordResetDone" class="auth-warning">
+        <section v-if="mode === 'reset' && !recoveringPassword && !passwordResetDone" class="auth-warning auth-step-panel">
           <strong>Confirme seu link de recuperação</strong>
           <p>Abra o link do e-mail. Caso ele não abra esta página, copie o endereço completo e cole abaixo. Nunca compartilhe o link com ninguém.</p>
           <form class="auth-form" @submit.prevent="confirmRecoveryLink">
@@ -267,20 +268,25 @@ async function logout(): Promise<void> {
         <p v-if="mode === 'reset' && recoveringPassword && recoveryMfaStatus === 'checking'" class="auth-muted" role="status">
           Verificando a proteção de duas etapas da sua conta...
         </p>
-        <section v-if="mode === 'reset' && recoveringPassword && recoveryMfaStatus === 'required'" class="auth-warning">
-          <strong>Confirme seu autenticador</strong>
-          <p>Sua conta tem verificação em duas etapas. Abra o aplicativo autenticador e informe o código atual antes de trocar a senha.</p>
+        <section v-if="mode === 'reset' && recoveringPassword && recoveryMfaStatus === 'required'" class="auth-warning auth-step-panel auth-mfa-step">
+          <div class="auth-step-heading">
+            <span class="auth-step-icon" aria-hidden="true"><UiIcon name="shield-check" :size="21" /></span>
+            <div>
+              <strong>Verificação em duas etapas</strong>
+              <p>Abra seu aplicativo autenticador e digite o código de 6 dígitos para continuar.</p>
+            </div>
+          </div>
           <form class="auth-form" @submit.prevent="confirmAuthenticator">
             <label>Código do autenticador
               <input v-model.trim="authenticatorCode" type="text" inputmode="numeric" autocomplete="one-time-code"
-                pattern="[0-9]{6}" minlength="6" maxlength="6" required :disabled="busy" />
+                pattern="[0-9]{6}" minlength="6" maxlength="6" placeholder="000000" required :disabled="busy" />
             </label>
             <button class="primary auth-full-button" type="submit" :disabled="busy || !/^\d{6}$/.test(authenticatorCode)">
-              {{ busy ? 'Verificando...' : 'Confirmar código' }}
+              {{ busy ? 'Verificando...' : 'Verificar autenticador' }}
             </button>
           </form>
         </section>
-        <section v-if="mode === 'reset' && recoveringPassword && recoveryMfaStatus === 'error'" class="auth-warning">
+        <section v-if="mode === 'reset' && recoveringPassword && recoveryMfaStatus === 'error'" class="auth-warning auth-step-panel">
           <p>Não foi possível verificar a autenticação em duas etapas.</p>
           <button class="secondary-action auth-full-button" type="button" :disabled="busy" @click="retryAuthenticatorCheck">Tentar novamente</button>
         </section>
