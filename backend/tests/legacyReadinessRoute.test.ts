@@ -51,11 +51,12 @@ describe('GET de prontidão exata para migração, sem escrita',()=>{
       expect(requests).toHaveLength(0)
     }finally{await app.close()}
   })
-  it('aceita senha válida do proprietário e devolve prontidão exata',async()=>{
+  it('senha sem segundo fator não permite conferir dados do destino',async()=>{
     const {app,requests}=setup({aal:'aal1'})
     try {
       const r=await app.inject({method:'GET',url,headers:{authorization:'Bearer valid'}})
-      expect(r.statusCode).toBe(200);expect(requests).toEqual([[alice,ws]])
+      expect(r.statusCode).toBe(403);expect(requests).toEqual([])
+      expect(r.body).not.toContain('transactions')
     }finally{await app.close()}
   })
   it('sem OWNER e com segunda conta retorna 404 e não vaza contagens',async()=>{

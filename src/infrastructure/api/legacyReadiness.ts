@@ -59,7 +59,7 @@ export async function inspectOnlineLegacyReadiness(
     throw new Error('Não foi possível conferir o banco online. Verifique a conexão.')
   }
   if(response.status===401) throw new Error('Sessão recusada pelo servidor.')
-  if(response.status===403) throw new Error('Você não tem permissão para revisar esse destino.')
+  if(response.status===403) throw new Error('Conclua a verificação em duas etapas para revisar esse destino.')
   if(response.status===404) throw new Error('Você não é proprietário deste espaço online.')
   if(!response.ok) throw new Error('A conferência exata está indisponível. Nenhuma transferência foi iniciada.')
   const envelope=asObject(await response.json().catch(()=>null))

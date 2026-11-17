@@ -42,6 +42,8 @@ describe('Proxy protegido do Farol Preview', () => {
     expect(proxy).toContain("backendOrigin()")
     expect(proxy).toContain("['...path', 'workspaceId', 'kind']")
     expect(proxy).toContain("FAROL_QA_BACKEND_ORIGIN")
+    // A flag de CRUD QA não pode liberar a rota de importação financeira.
+    expect(proxy).not.toContain('legacy-connect')
   })
 
   it('autentica chamadas entre as duas Previews usando credenciais privadas do servidor', () => {

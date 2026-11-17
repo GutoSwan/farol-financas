@@ -30,8 +30,6 @@ describe('Vercel Fastify entrypoint', () => {
     const app = read('../src/presentation/app.ts')
     expect(app).not.toContain("app.get('/api/v1/admin/access'")
     expect(app).not.toContain('deps.checkSuperAdmin')
-    expect(app).not.toContain("identity.assuranceLevel !== 'aal2'")
-  
   })
 
   it('abre porta apenas no server.ts local', () => {

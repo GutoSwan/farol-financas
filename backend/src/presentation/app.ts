@@ -406,6 +406,10 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
     '/api/v1/workspaces/:workspaceId/legacy-readiness', async (request, reply) => {
       const identity = await authorized(request, reply)
       if (!identity) return
+      // A conferência da migração é uma operação sensível: senha isolada não basta.
+      if (identity.assuranceLevel !== 'aal2') {
+        return reply.code(403).send({ error: 'Verificação em duas etapas necessária.' })
+      }
       const id = z.string().uuid().safeParse(request.params.workspaceId)
       if (!id.success) return reply.code(404).send({ error: 'Espaço não encontrado.' })
       try {
@@ -438,6 +442,9 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
     '/api/v1/workspaces/:workspaceId/legacy-connect', async (request,reply) => {
       const identity=await authorized(request,reply)
       if(!identity)return
+      if(identity.assuranceLevel!=='aal2'){
+        return reply.code(403).send({error:'Verificação em duas etapas necessária.'})
+      }
       const id=z.string().uuid().safeParse(request.params.workspaceId)
       if(!id.success)return reply.code(404).send({error:'Espaço não encontrado.'})
       if(deps.allowWorkspaceWrites!==true || deps.allowLegacyConnectionWrites!==true) {
