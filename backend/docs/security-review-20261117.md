@@ -25,6 +25,10 @@ financeiro foi exportado. Este relatório não é certificação de segurança.
 - A rota pessoal `/presentes` agora exige `farol_role` administrativo em
   `app_metadata`, obtido da identidade remota do Supabase Auth, e sessão AAL2.
   O menu não aparece para outras contas; URLs diretas são igualmente bloqueadas.
+- A revisão de migração agora também executa uma conferência detalhada dos
+  registros **somente no navegador**, antes de habilitar o envio e novamente
+  antes de cada tentativa. Valores fora do limite da API, datas inválidas e
+  campos incompatíveis bloqueiam a transferência, sem tocar na origem.
 
 ## Testes realizados
 

@@ -95,6 +95,8 @@ describe('Prévia da revisão de migração',()=>{
     expect(page).toContain('Criar destino vazio')
     expect(page).toContain('confirmedOwner')
     expect(page).toContain('originalFingerprint')
+    expect(page).toContain('inspectMigrationSource(snapshot.value,selectedLocal.value.workspace.id)')
+    expect(page).toContain('...inspectMigrationSource(snapshot.value!,source.workspace.id)')
     expect(page).toContain('cloudUnavailable')
     expect(page).toContain('Registros locais disponíveis para conferência')
     expect(page).toContain('A API reconheceu uma conta diferente.')

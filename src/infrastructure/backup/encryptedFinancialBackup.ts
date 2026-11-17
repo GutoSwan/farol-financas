@@ -90,7 +90,8 @@ function associatedData(userId: string): Uint8Array<ArrayBuffer> {
 }
 
 /**
- * Validação somente leitura. A recuperação/transferência real ainda não existe.
+ * Validação somente leitura. A restauração local exige verificações adicionais
+ * no módulo restoreLocalFinancialBackup; a transferência online é separada.
  * Nunca aplicar um JSON restaurado diretamente ao localStorage ou ao backend.
  */
 export function summarizeFinancialBackup(raw: unknown): FinancialBackupSummary {

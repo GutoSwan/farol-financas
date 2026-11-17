@@ -11,6 +11,7 @@ import { apiConfigured } from '../../infrastructure/api/apiEndpoint'
 import { buildLocalFinancialBackup } from '../../application/use-cases/exportFinancialBackup'
 import type { FinancialBackup } from '../../infrastructure/backup/encryptedFinancialBackup'
 import { fingerprintFinancialBackup } from '../../infrastructure/backup/encryptedFinancialBackup'
+import { inspectMigrationSource } from '../../application/use-cases/inspectMigrationSource'
 import { summarizeMigrationSource, reviewMigrationDestination } from '../../domain/services/migrationReview'
 import type { DestinationInspection } from '../../domain/services/migrationReview'
 import { formatBRL } from '../../domain/value-objects/Money'
@@ -44,10 +45,12 @@ const selectedDestination=computed(()=>remoteSpaces.value.find(
   item=>item.id===destinationId.value,
 ))
 const summary=computed(()=>selectedLocal.value? summarizeMigrationSource(selectedLocal.value):null)
+const strictSourceIssues=computed(()=>snapshot.value && selectedLocal.value
+  ? inspectMigrationSource(snapshot.value,selectedLocal.value.workspace.id):[])
 const destinationIssues=computed(()=> selectedLocal.value?
   reviewMigrationDestination(selectedLocal.value,snapshot.value?.workspaces??[],
     selectedDestination.value,remoteSpaces.value,inspection.value):[])
-const allIssues=computed(()=>[...(summary.value?.issues??[]),...destinationIssues.value])
+const allIssues=computed(()=>[...(summary.value?.issues??[]),...strictSourceIssues.value,...destinationIssues.value])
 const nameMatches = (a:string,b:string):boolean =>
   a.trim().normalize('NFC').toLocaleLowerCase('pt-BR')===b.trim().normalize('NFC').toLocaleLowerCase('pt-BR')
 const destinationExists=computed(()=> !!selectedLocal.value && remoteSpaces.value.some(
@@ -305,6 +308,7 @@ async function transferReviewed():Promise<void>{
       },
     }
     const issues=[...summarizeMigrationSource(source).issues,
+      ...inspectMigrationSource(snapshot.value!,source.workspace.id),
       ...reviewMigrationDestination(source,snapshot.value?.workspaces??[],
         dest,remoteSpaces.value,latest)]
     if(issues.length)throw new Error('A nuvem mudou ou surgiu um impedimento. Refaça a conferência.')
