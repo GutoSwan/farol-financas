@@ -16,7 +16,7 @@ describe('Privacidade ao sair ou trocar de conta', () => {
   })
   it('oculta a rota financeira imediatamente após encerrar a sessão', () => {
     expect(app).toContain('const canRenderCurrentPage = computed(')
-    expect(app).toContain('ready.value && !!user.value?.id && !privateViewSuspended.value')
+    expect(app).toContain("mfaStatus.value === 'ready' && !recoveringPassword.value && !privateViewSuspended.value")
     expect(app).toContain('<RouterView v-if="canRenderCurrentPage" />')
     expect(app).toContain("flush: 'sync'")
     expect(app).toContain('privateViewSuspended.value = true')

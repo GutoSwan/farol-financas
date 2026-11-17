@@ -100,6 +100,7 @@ function fixture({ writes = true, invoiceReads = true, invoiceUploads = true }:
         const users = {
           'owner-aal2': { userId: owner, assuranceLevel: 'aal2' as const },
           'owner-aal1': { userId: owner, assuranceLevel: 'aal1' as const },
+          'owner-pending-totp': { userId: owner, assuranceLevel: 'aal1' as const, mfaRequired: true },
           'editor-aal2': { userId: editor, assuranceLevel: 'aal2' as const },
           'viewer-aal2': { userId: viewer, assuranceLevel: 'aal2' as const },
           'outsider-aal2': { userId: outsider, assuranceLevel: 'aal2' as const },
@@ -131,6 +132,24 @@ afterEach(async () => {
 })
 
 describe('Regressão de segurança: autenticação e acesso entre usuários', () => {
+  it('exige AAL2 em TODOS os endpoints financeiros quando TOTP está ativo, até por URL direta', async () => {
+    const { app, seen } = createApp()
+    const headers = token('owner-pending-totp')
+    for (const url of ['/api/v1/me', '/api/v1/workspaces', path, path + '/transactions',
+      ...catalogKinds.map(pathCatalog), path + '/invoices']) {
+      const res = await app.inject({ method: 'GET', url, headers })
+      expect(res.statusCode).toBe(403)
+      expect(res.body).not.toContain('Família')
+    }
+    for (const url of [path + '/transactions', pathCatalog('recurring-bills'), '/api/v1/workspaces']) {
+      const res = await app.inject({ method: 'POST', url, headers, payload: {} })
+      expect(res.statusCode).toBe(403)
+    }
+    expect(seen.list).not.toHaveBeenCalled()
+    expect(seen.membership).not.toHaveBeenCalled()
+    expect(seen.transactionsRead).not.toHaveBeenCalled()
+    expect(seen.transactionsCreate).not.toHaveBeenCalled()
+  })
   it('não expõe identidade, espaços ou lançamentos sem token válido', async () => {
     const { app, seen } = createApp()
     for (const url of ['/api/v1/me', '/api/v1/workspaces', path, path + '/transactions']) {

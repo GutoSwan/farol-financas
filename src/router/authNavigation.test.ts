@@ -7,7 +7,7 @@ describe('navegação do Farol Familiar com duas contas', () => {
     (path) => expect(canAccessWithoutSession(path)).toBe(true),
   )
 
-  it.each(['/', '/conta', '/lancamentos', '/presentes', '/cadastro',
+  it.each(['/', '/conta', '/lancamentos', '/presentes', '/verificar-2fa', '/cadastro',
     '/entrar/celular', '/configurar-2fa', '/dados-online'])(
     'não torna %s uma rota pública',
     (path) => expect(canAccessWithoutSession(path)).toBe(false),

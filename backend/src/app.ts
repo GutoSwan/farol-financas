@@ -248,7 +248,7 @@ function getVerifier(): Promise<AuthVerifier> {
             `
             return flags.length === 1 && flags[0].active === true
           }
-          const rows = await prisma.$queryRaw<Array<{ active: boolean }>>`
+          const rows = await prisma.$queryRaw<Array<{ active: boolean; mfa_required: boolean }>>`
             SELECT EXISTS (
               SELECT 1 FROM auth.sessions s
               INNER JOIN auth.users u ON u.id = s.user_id
@@ -258,9 +258,16 @@ function getVerifier(): Promise<AuthVerifier> {
                 AND u.deleted_at IS NULL
                 AND (u.banned_until IS NULL OR u.banned_until <= NOW())
                 AND u.is_anonymous IS NOT TRUE
-            ) AS active
+            ) AS active,
+            EXISTS (
+              SELECT 1 FROM auth.mfa_factors f
+              WHERE f.user_id = ${userId}::uuid
+                AND f.status = 'verified'
+                AND f.factor_type = 'totp'
+            ) AS mfa_required
           `
-          return rows.length === 1 && rows[0].active === true
+          if (rows.length !== 1) throw new Error('Sessão não confirmada.')
+          return { active: rows[0].active === true, mfaRequired: rows[0].mfa_required === true }
         },
       ))
       .catch((error: unknown) => {

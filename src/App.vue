@@ -8,7 +8,7 @@ import { setVerifiedLocalUser } from './infrastructure/persistence/legacyAccess'
 import { invalidateFinancialUiSession } from './presentation/composables/financialUiSession'
 import { restoreThemeFromProfile } from './presentation/composables/useTheme'
 
-const { user, ready, recoveringPassword } = useAuth()
+const { user, ready, recoveringPassword, mfaStatus } = useAuth()
 const router = useRouter()
 const route = useRoute()
 const privateViewSuspended = ref(false)
@@ -17,12 +17,25 @@ const privateViewSuspended = ref(false)
 // Não esperar uma nova navegação para esconder dados financeiros locais.
 const canRenderCurrentPage = computed(() =>
   canAccessWithoutSession(route.path) ||
-  (ready.value && !!user.value?.id && !privateViewSuspended.value)
+  (route.path === '/verificar-2fa' && ready.value && !!user.value?.id) ||
+  (ready.value && !!user.value?.id && mfaStatus.value === 'ready' && !recoveringPassword.value && !privateViewSuspended.value)
 )
+
+watch(mfaStatus, (status) => {
+  if (status !== 'ready') {
+    setVerifiedLocalUser(null)
+    invalidateFinancialUiSession()
+  }
+  if (status === 'required' || status === 'error') {
+    if (route.path !== '/verificar-2fa' && !recoveringPassword.value) {
+      void router.isReady().then(() => router.replace('/verificar-2fa'))
+    }
+  }
+}, { flush: 'sync' })
 
 // O Supabase pode voltar pela Site URL padrão em vez de /redefinir-senha.
 // Quando o token de recuperação é validado, abrir a tela de troca de senha
-// sem navegar para a visão geral. Se houver MFA, a página solicita AAL2.
+// sem navegar para a visão geral nem pedir o autenticador antes da troca.
 watch(recoveringPassword, (isRecovery) => {
   if (!isRecovery) return
   void router.isReady().then(() => {

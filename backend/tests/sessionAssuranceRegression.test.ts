@@ -34,6 +34,19 @@ describe('Regressão de autenticação Supabase: sessão autenticada e MFA', () 
     expect((await validateSignedSessionClaims({ ...claims, aal: undefined }, active)).assuranceLevel).toBe('aal1')
   })
 
+  it('conserva a exigência de TOTP consultada no banco, sem confiar no JWT para essa decisão', async () => {
+    const active = async () => ({ active: true, mfaRequired: true })
+    expect(await validateSignedSessionClaims({ ...claims, aal: 'aal1' }, active)).toEqual({
+      userId, assuranceLevel: 'aal1', mfaRequired: true,
+    })
+    const withoutFactor = async () => ({ active: true, mfaRequired: false })
+    expect(await validateSignedSessionClaims({ ...claims, aal: 'aal1' }, withoutFactor)).toEqual({
+      userId, assuranceLevel: 'aal1', mfaRequired: false,
+    })
+    const revoked = async () => ({ active: false, mfaRequired: true })
+    await expect(validateSignedSessionClaims(claims, revoked)).rejects.toThrow('Sessão revogada')
+  })
+
   it('rejeita contas anônimas, outras roles e sessão inválida antes de acessar o banco', async () => {
     const check = vi.fn(async () => true)
     for (const invalid of [

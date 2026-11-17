@@ -49,6 +49,7 @@ const router = createRouter({
   { path: '/confirmar-email', component: AuthPage, props: { mode: 'confirmed' }, meta: { title: 'Confirmar e-mail' } },
   { path: '/recuperar-senha', component: AuthPage, props: { mode: 'forgot' }, meta: { title: 'Recuperar senha' } },
   { path: '/redefinir-senha', component: AuthPage, props: { mode: 'reset' }, meta: { title: 'Nova senha' } },
+  { path: '/verificar-2fa', component: AuthPage, props: { mode: 'mfa' }, meta: { title: 'Confirmar autenticador' } },
   { path: '/conta', component: AuthPage, props: { mode: 'profile' }, meta: { title: 'Meu perfil' } },
   // Favoritos ou links antigos não podem reabrir recursos aposentados.
   { path: '/cadastro', redirect: '/entrar' },
@@ -56,7 +57,6 @@ const router = createRouter({
   { path: '/cadastro/celular', redirect: '/entrar' },
   { path: '/recuperar-celular', redirect: '/recuperar-senha' },
   { path: '/configurar-2fa', redirect: '/conta' },
-  { path: '/verificar-2fa', redirect: '/conta' },
   { path: '/seguranca', redirect: '/conta' },
   ],
 })
@@ -68,7 +68,7 @@ const router = createRouter({
  */
 router.beforeEach(async (to) => {
   setVerifiedLocalUser(null)
-  const { recoveringPassword } = useAuth()
+  const { recoveringPassword, refreshLoginMfa } = useAuth()
   if (!supabase) {
     return canAccessWithoutSession(to.path) ? true : { path: '/entrar', replace: true }
   }
@@ -88,6 +88,15 @@ router.beforeEach(async (to) => {
   }
   if (!validatedUser) {
     return canAccessWithoutSession(to.path) ? true : { path: '/entrar', replace: true }
+  }
+  // A senha cria apenas AAL1. Com TOTP cadastrado, nem links diretos podem
+  // montar a interface ou recuperar dados locais até o desafio chegar a AAL2.
+  if (to.path !== '/redefinir-senha' || !recoveringPassword.value) {
+    const assurance = await refreshLoginMfa()
+    if (assurance !== 'ready') {
+      return to.path === '/verificar-2fa' ? true : { path: '/verificar-2fa', replace: true }
+    }
+    if (to.path === '/verificar-2fa') return { path: '/', replace: true }
   }
   if (shouldRedirectLoggedInVisitor(to.path, true)) return { path: '/', replace: true }
 

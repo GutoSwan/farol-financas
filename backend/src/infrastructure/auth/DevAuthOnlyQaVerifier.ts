@@ -83,7 +83,7 @@ export class DevAuthOnlyQaVerifier implements AuthVerifier {
     return res.json() as Promise<unknown>
   }
 
-  async verifyAccessToken(token: string): Promise<{ userId: string; assuranceLevel: 'aal1' | 'aal2' }> {
+  async verifyAccessToken(token: string): Promise<{ userId: string; assuranceLevel: 'aal1' | 'aal2'; mfaRequired: boolean }> {
     const { payload } = await jwtVerify(token, this.jwks, {
       issuer: DEV + '/auth/v1',
       audience: 'authenticated',
@@ -95,7 +95,8 @@ export class DevAuthOnlyQaVerifier implements AuthVerifier {
     if (!current || current.id !== verified.userId ||
         typeof current.email_confirmed_at !== 'string' ||
         current.is_anonymous === true) throw new Error('Conta de teste não autorizada.')
-    return { userId: verified.userId, assuranceLevel: verified.level }
+    return { userId: verified.userId, assuranceLevel: verified.level,
+      mfaRequired: verifiedTotp(current.factors) }
   }
 
   async checkSuperAdmin(userId: string, token?: string): Promise<boolean> {

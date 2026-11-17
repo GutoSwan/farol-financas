@@ -4,16 +4,17 @@ import type { JWTPayload } from 'jose'
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
 export interface AuthVerifier {
-  verifyAccessToken(token: string): Promise<{ userId: string; assuranceLevel?: 'aal1' | 'aal2' }>
+  verifyAccessToken(token: string): Promise<{ userId: string; assuranceLevel?: 'aal1' | 'aal2'; mfaRequired?: boolean }>
 }
 
-export type ActiveSessionChecker = (userId: string, sessionId: string) => Promise<boolean>
+export type ActiveSessionChecker = (userId: string, sessionId: string) =>
+  Promise<boolean | { active: boolean; mfaRequired: boolean }>
 
 /** Valida claims somente DEPOIS de jwtVerify ter conferido assinatura e expiração. */
 export async function validateSignedSessionClaims(
   claims: JWTPayload,
   checkActiveSession: ActiveSessionChecker,
-): Promise<{ userId: string; assuranceLevel: 'aal1' | 'aal2' }> {
+): Promise<{ userId: string; assuranceLevel: 'aal1' | 'aal2'; mfaRequired?: boolean }> {
   const userId = claims.sub
   const sessionId = claims.session_id
   if (typeof userId !== 'string' || !UUID.test(userId) ||
@@ -22,10 +23,16 @@ export async function validateSignedSessionClaims(
     throw new Error('Token inválido.')
   }
   // Se o banco estiver indisponível, negar acesso em vez de aceitar JWT revogado.
-  if (!await checkActiveSession(userId, sessionId)) {
+  const state = await checkActiveSession(userId, sessionId)
+  const active = typeof state === 'boolean' ? state : state.active
+  if (!active) {
     throw new Error('Sessão revogada ou expirada.')
   }
-  return { userId, assuranceLevel: claims.aal === 'aal2' ? 'aal2' : 'aal1' }
+  return {
+    userId,
+    assuranceLevel: claims.aal === 'aal2' ? 'aal2' : 'aal1',
+    ...(typeof state !== 'boolean' ? { mfaRequired: state.mfaRequired } : {}),
+  }
 }
 
 /**
@@ -43,7 +50,7 @@ export class SupabaseJwtVerifier implements AuthVerifier {
     this.jwks = createRemoteJWKSet(new URL(`${this.issuer}/.well-known/jwks.json`))
   }
 
-  async verifyAccessToken(token: string): Promise<{ userId: string; assuranceLevel: 'aal1' | 'aal2' }> {
+  async verifyAccessToken(token: string): Promise<{ userId: string; assuranceLevel: 'aal1' | 'aal2'; mfaRequired?: boolean }> {
     const { payload } = await jwtVerify(token, this.jwks, {
       issuer: this.issuer,
       audience: 'authenticated',
