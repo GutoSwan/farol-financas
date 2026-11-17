@@ -8,10 +8,12 @@ import { useWorkspaces } from '../composables/useWorkspaces'
 import { useAuth } from '../composables/useAuth'
 import { localLegacyAccess } from '../../infrastructure/persistence/legacyAccess'
 import { VALORA3D_WORKSPACE_ID } from '../../domain/entities/FinancialWorkspace'
+import { canAccessAdminOnlyFeature } from '../../router/privilegedAccess'
 
 const route = useRoute()
 const router = useRouter()
 const { isLoggedIn, user, profile, signOut } = useAuth()
+const canOpenGifts = computed(() => canAccessAdminOnlyFeature(user.value))
 const localAccessAllowed = computed(() => !!user.value && localLegacyAccess(user.value.id) === 'allowed')
 const profileMenuOpen = ref(false)
 const profileBusy = ref(false)
@@ -151,7 +153,7 @@ async function logoutFromSidebar(): Promise<void> {
           <UiIcon :name="link.icon" :size="17" />
           <span>{{ link.to === '/cartoes' && isValoraWorkspace ? 'Maquininha' : link.label }}</span>
         </RouterLink>
-        <RouterLink v-if="!isValoraWorkspace" to="/presentes" class="side-nav-link"
+        <RouterLink v-if="!isValoraWorkspace && canOpenGifts" to="/presentes" class="side-nav-link"
           :class="{ active: route.path === '/presentes' }"
           @click="openGiftRoute(); closeMobileMenu(true)">
           <UiIcon name="gift" :size="17" /><span>Presentes</span>

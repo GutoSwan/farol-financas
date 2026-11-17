@@ -8,8 +8,10 @@ import main from '../src/main.ts?raw'
 describe('Experiência de presentes na barra lateral', () => {
   it('abre uma tela própria com seletor de Gustavo e Ana, acessível por modal', () => {
     expect(sidebar).toContain('to="/presentes"')
-    expect(sidebar).not.toContain('v-if="isAdmin"')
+    expect(sidebar).toContain('v-if="!isValoraWorkspace && canOpenGifts"')
     expect(routes).toContain("path: 'presentes', component: GiftsPage")
+    expect(routes).toContain('requiresAdmin: true')
+    expect(routes).toContain('canAccessAdminOnlyFeature(validatedUser)')
     expect(gifts).toContain('v-if="user"')
     expect(gifts).toContain('role="dialog"')
     expect(gifts).toContain("choosePerson('gustavo')")

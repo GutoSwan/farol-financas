@@ -25,7 +25,7 @@ describe('Maquininha apenas no espaço Valora3D', () => {
   })
 
   it('restringe Presentes à família, inclusive quando a rota é aberta diretamente', () => {
-    expect(layout).toContain('v-if="!isValoraWorkspace" to="/presentes"')
+    expect(layout).toContain('v-if="!isValoraWorkspace && canOpenGifts" to="/presentes"')
     expect(layout).toContain("if (valora && path === '/presentes')")
     expect(layout).toContain("route.path === '/presentes'")
     expect(layout).toContain('<RouterView v-else />')

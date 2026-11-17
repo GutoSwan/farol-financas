@@ -22,6 +22,9 @@ financeiro foi exportado. Este relatório não é certificação de segurança.
   como uma lista vazia.
 - O bucket `farol-invoices-private` permanece privado; a tabela de metadados
   de faturas não tem acesso de cliente.
+- A rota pessoal `/presentes` agora exige `farol_role` administrativo em
+  `app_metadata`, obtido da identidade remota do Supabase Auth. O menu não
+  aparece para outras contas, e o guard também bloqueia URLs diretas.
 
 ## Testes realizados
 
@@ -53,6 +56,11 @@ financeiro foi exportado. Este relatório não é certificação de segurança.
    malware e autorização ponta a ponta; restauração de backups ainda é pendência.
 7. O Security Advisor de performance recomenda avaliar índices para três
    chaves estrangeiras; sem evidência de lentidão, não remover índices existentes.
+8. A autorização de `/presentes` na interface não criptografa seu conteúdo:
+   presentes e fotos permanecem no armazenamento do navegador. Um script com
+   acesso ao mesmo origin ou alguém com controle do navegador ainda pode ler
+   esses arquivos. Autorização forte requer migrar os dados para o servidor,
+   com checagem administrativa por requisição, antes de prometer isolamento.
 
 ## Próxima etapa sugerida
 

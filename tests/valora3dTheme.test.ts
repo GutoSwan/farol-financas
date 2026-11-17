@@ -15,7 +15,7 @@ describe('Identidade exclusiva do espaço financeiro Valora3D', () => {
     expect(layout).toContain('v-else to="/" class="brand"')
     expect(layout).toContain('FINANÇAS · VALORA3D')
     expect(layout).not.toContain('valora-space-banner')
-    expect(layout).toContain('v-if="!isValoraWorkspace" to="/presentes"')
+    expect(layout).toContain('v-if="!isValoraWorkspace && canOpenGifts" to="/presentes"')
     expect(layout).toContain("if (valora && path === '/presentes')")
   })
   it('usa roxo e amarelo sem apagar a opção de tema claro/escuro', () => {

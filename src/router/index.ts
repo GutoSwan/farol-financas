@@ -20,6 +20,7 @@ import { supabase } from '../infrastructure/auth/supabase'
 import { canAccessWithoutSession, shouldRedirectLoggedInVisitor } from './authNavigation'
 import { routeDocumentTitle } from './documentTitle'
 import { useAuth } from '../presentation/composables/useAuth'
+import { canAccessAdminOnlyFeature } from './privilegedAccess'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -35,7 +36,7 @@ const router = createRouter({
       { path: 'cartoes', component: CardsWorkspacePage, meta: { title: 'Cartões de crédito' } },
       { path: 'orcamentos', component: BudgetsPage, meta: { title: 'Orçamentos' } },
       { path: 'relatorios', component: ReportsPage, meta: { title: 'Relatórios' } },
-      { path: 'presentes', component: GiftsPage, meta: { title: 'Presentes' } },
+      { path: 'presentes', component: GiftsPage, meta: { title: 'Presentes', requiresAdmin: true } },
       { path: 'relatorios/detalhes', component: MonthlyExpensesPage, meta: { title: 'Detalhes do mês' } },
       // Rotas antigas continuam acessíveis para não deixar registros locais órfãos.
       { path: 'calendario', component: CalendarPage, meta: { title: 'Calendário antigo' } },
@@ -99,6 +100,12 @@ router.beforeEach(async (to) => {
     if (to.path === '/verificar-2fa') return { path: '/', replace: true }
   }
   if (shouldRedirectLoggedInVisitor(to.path, true)) return { path: '/', replace: true }
+
+  // Ocultar o link no menu não protege URLs abertas diretamente.
+  // Usar somente o papel retornado pela identidade validada no Supabase Auth.
+  if (to.meta.requiresAdmin && !canAccessAdminOnlyFeature(validatedUser)) {
+    return { path: '/', replace: true }
+  }
 
   // Associar dados locais somente após verificar a identidade remotamente.
   setVerifiedLocalUser(validatedUser.id)
