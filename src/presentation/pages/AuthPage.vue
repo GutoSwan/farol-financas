@@ -16,9 +16,10 @@ const props = defineProps<{ mode: AuthMode }>()
 const router = useRouter()
 const { isDark, toggleTheme } = useTheme()
 const {
-  configured, ready, user, profile, isLoggedIn, recoveringPassword, passwordJustChanged,
+  configured, ready, user, profile, isLoggedIn, recoveringPassword, recoveryMfaStatus, passwordJustChanged,
   signIn, signOut, updateProfile, requestPasswordReset, recoverFromEmailLink, updatePassword,
   mfaStatus, refreshLoginMfa, verifyLoginAuthenticator,
+  inspectRecoveryMfa, verifyRecoveryAuthenticator,
 } = useAuth()
 
 const email = ref('')
@@ -48,6 +49,10 @@ watch(() => props.mode, () => {
   errorText.value = ''
   editingProfile.value = false
 })
+watch([() => props.mode, recoveringPassword], ([mode, isRecovery]) => {
+  if (mode !== 'reset' || !isRecovery) return
+  void inspectRecoveryMfa().catch(cause => { errorText.value = errorMessage(cause) })
+}, { immediate: true })
 watch([() => props.mode, ready, user], async ([mode, loaded]) => {
   if (mode !== 'confirmed' || !loaded || !supabase) return
   try {
@@ -125,7 +130,7 @@ async function confirmRecoveryLink(): Promise<void> {
   clearMessages()
   try {
     await recoverFromEmailLink(recoveryLinkInput.value)
-    message.value = 'Link confirmado. Você já pode definir uma nova senha.'
+    message.value = 'Link confirmado. Verificando se sua conta exige o código do autenticador.'
   } catch (cause) {
     errorText.value = errorMessage(cause)
   } finally {
@@ -133,6 +138,27 @@ async function confirmRecoveryLink(): Promise<void> {
     recoveryLinkInput.value = ''
     busy.value = false
   }
+}
+
+async function confirmAuthenticator(): Promise<void> {
+  if (busy.value) return
+  busy.value = true
+  clearMessages()
+  try {
+    await verifyRecoveryAuthenticator(authenticatorCode.value)
+    authenticatorCode.value = ''
+    message.value = 'Autenticador confirmado. Agora você pode salvar uma nova senha.'
+  } catch (cause) { errorText.value = errorMessage(cause) }
+  finally { busy.value = false }
+}
+
+async function retryAuthenticatorCheck(): Promise<void> {
+  if (busy.value) return
+  busy.value = true
+  clearMessages()
+  try { await inspectRecoveryMfa() }
+  catch (cause) { errorText.value = errorMessage(cause) }
+  finally { busy.value = false }
 }
 
 function startProfileEdit(): void {
@@ -175,8 +201,9 @@ async function logout(): Promise<void> {
 <template>
   <div class="auth-screen">
     <div class="auth-card">
-      <BackNavigation v-if="mode !== 'login' && mode !== 'mfa'" :fallback="mode === 'profile' ? '/' : '/entrar'" />
-      <RouterLink class="auth-brand" to="/">◈ Farol <span>Finanças</span></RouterLink>
+      <BackNavigation v-if="mode !== 'login' && mode !== 'reset' && mode !== 'mfa'" :fallback="mode === 'profile' ? '/' : '/entrar'" />
+      <span v-if="mode === 'reset'" class="auth-brand">◈ Farol <span>Finanças</span></span>
+      <RouterLink v-else class="auth-brand" to="/">◈ Farol <span>Finanças</span></RouterLink>
       <button class="auth-theme-button" type="button"
         :aria-label="isDark ? 'Ativar tema claro' : 'Ativar tema escuro'"
         @click="toggleTheme"><UiIcon :name="isDark ? 'sun' : 'moon'" :size="19" /></button>
@@ -264,10 +291,10 @@ async function logout(): Promise<void> {
 
       <template v-else>
         <h1>{{ mode === 'login' ? 'Entrar no Farol' : mode === 'forgot' ? 'Recuperar senha' : 'Definir nova senha' }}</h1>
-        <p class="auth-subtitle">{{ mode === 'login' ? 'Acesso reservado às duas contas da família.' : mode === 'forgot' ? 'Enviaremos um link para o e-mail da sua conta.' : 'Escolha uma nova senha para entrar no Farol.' }}</p>
+        <p class="auth-subtitle">{{ mode === 'login' ? 'Acesso reservado às duas contas da família.' : mode === 'forgot' ? 'Enviaremos um link para o e-mail da sua conta.' : recoveryMfaStatus === 'required' ? 'Só falta confirmar sua identidade para continuar.' : 'Escolha uma nova senha para entrar no Farol.' }}</p>
         <p v-if="mode === 'login' && passwordJustChanged" class="success" role="status">Sua senha foi atualizada.</p>
 
-        <section v-if="mode === 'reset' && !recoveringPassword && !passwordResetDone" class="auth-warning">
+        <section v-if="mode === 'reset' && !recoveringPassword && !passwordResetDone" class="auth-warning auth-step-panel">
           <strong>Confirme seu link de recuperação</strong>
           <p>Abra o link do e-mail. Caso ele não abra esta página, copie o endereço completo e cole abaixo. Nunca compartilhe o link com ninguém.</p>
           <form class="auth-form" @submit.prevent="confirmRecoveryLink">
@@ -284,7 +311,33 @@ async function logout(): Promise<void> {
           <RouterLink class="primary auth-full-button" to="/entrar">Entrar novamente</RouterLink>
         </div>
 
-        <form v-if="mode !== 'reset' || (recoveringPassword && !passwordResetDone)"
+        <p v-if="mode === 'reset' && recoveringPassword && recoveryMfaStatus === 'checking'" class="auth-muted" role="status">
+          Verificando a proteção de duas etapas da sua conta...
+        </p>
+        <section v-if="mode === 'reset' && recoveringPassword && recoveryMfaStatus === 'required'" class="auth-warning auth-step-panel auth-mfa-step">
+          <div class="auth-step-heading">
+            <span class="auth-step-icon" aria-hidden="true"><UiIcon name="shield-check" :size="21" /></span>
+            <div>
+              <strong>Verificação em duas etapas</strong>
+              <p>Abra seu aplicativo autenticador e digite o código de 6 dígitos para continuar.</p>
+            </div>
+          </div>
+          <form class="auth-form" @submit.prevent="confirmAuthenticator">
+            <label>Código do autenticador
+              <input v-model.trim="authenticatorCode" type="text" inputmode="numeric" autocomplete="one-time-code"
+                pattern="[0-9]{6}" minlength="6" maxlength="6" placeholder="000000" required :disabled="busy" />
+            </label>
+            <button class="primary auth-full-button" type="submit" :disabled="busy || !/^\d{6}$/.test(authenticatorCode)">
+              {{ busy ? 'Verificando...' : 'Verificar autenticador' }}
+            </button>
+          </form>
+        </section>
+        <section v-if="mode === 'reset' && recoveringPassword && recoveryMfaStatus === 'error'" class="auth-warning auth-step-panel">
+          <p>Não foi possível verificar a autenticação em duas etapas.</p>
+          <button class="secondary-action auth-full-button" type="button" :disabled="busy" @click="retryAuthenticatorCheck">Tentar novamente</button>
+        </section>
+
+        <form v-if="mode !== 'reset' || (recoveringPassword && recoveryMfaStatus === 'ready' && !passwordResetDone)"
           class="auth-form" @submit.prevent="submit">
           <p v-if="mode === 'reset'" class="auth-muted">Use pelo menos {{ MIN_NEW_PASSWORD_LENGTH }} caracteres. Antes de salvar, verificamos gratuitamente se a senha já apareceu em vazamentos, sem enviá-la completa.</p>
           <label v-if="mode !== 'reset'">E-mail

@@ -9,11 +9,13 @@ import { safeAuthRedirect } from '../../domain/auth/authRedirect'
 import { recoveryEmailRequestError } from '../../domain/auth/recoveryEmailRateLimit'
 import { assertPasswordNotLeaked } from '../../domain/auth/passwordSafety'
 import { loginMfaStatus, type LoginMfaStatus } from '../../domain/auth/loginMfaGate'
+import { recoveryMfaDecision, type RecoveryMfaStatus } from '../../domain/auth/recoveryMfaGate'
 import type { ProfileIcon } from '../../domain/profile/profile'
 
 const session = ref<Session | null>(null)
 const ready = ref(!authConfigured)
 const recoveringPassword = ref(false)
+const recoveryMfaStatus = ref<RecoveryMfaStatus>('checking')
 const passwordJustChanged = ref(false)
 const mfaStatus = ref<LoginMfaStatus>('checking')
 let mfaRevision = 0
@@ -72,9 +74,11 @@ if (supabase) {
     }
     if (event === 'PASSWORD_RECOVERY' || claimRecoveryCallbackSession(nextSession?.access_token)) {
       recoveringPassword.value = true
+      recoveryMfaStatus.value = 'checking'
     }
     if (event === 'SIGNED_OUT') {
       recoveringPassword.value = false
+      recoveryMfaStatus.value = 'checking'
       setVerifiedLocalUser(null)
       invalidateFinancialUiSession()
     }
@@ -113,6 +117,7 @@ export function useAuth() {
     if (error || !data.session) throw new Error(error?.message ?? 'Não foi possível iniciar a sessão.')
     session.value = data.session
     recoveringPassword.value = false
+    recoveryMfaStatus.value = 'checking'
     passwordJustChanged.value = false
     await refreshCurrentUser()
     const mfa = await refreshLoginMfa()
@@ -161,6 +166,51 @@ export function useAuth() {
     if (error || !data.session) throw new Error('O link expirou ou já foi utilizado. Solicite outro e-mail.')
     session.value = data.session
     recoveringPassword.value = true
+    recoveryMfaStatus.value = 'checking'
+  }
+
+  async function inspectRecoveryMfa(): Promise<'required' | 'ready'> {
+    if (!recoveringPassword.value) throw new Error('Confirme primeiro seu link de recuperação.')
+    recoveryMfaStatus.value = 'checking'
+    try {
+      const auth = client().auth
+      const { data: identity, error: identityError } = await auth.getUser()
+      if (identityError || !identity.user || !recoveringPassword.value) {
+        throw new Error('Sua sessão de recuperação expirou. Solicite outro link.')
+      }
+      const { data: levels, error: levelError } = await auth.mfa.getAuthenticatorAssuranceLevel()
+      if (levelError || !levels) throw new Error('Não foi possível consultar o autenticador. Tente novamente.')
+      const decision = recoveryMfaDecision(levels)
+      if (decision === 'required') {
+        const { data: factors, error: factorError } = await auth.mfa.listFactors()
+        if (factorError || !factors) throw new Error('Não foi possível consultar o autenticador. Tente novamente.')
+        if (!factors.totp.some(factor => factor.status === 'verified')) {
+          throw new Error('Esta conta exige autenticação adicional, mas não há um autenticador TOTP disponível. Não é possível ignorar a proteção de duas etapas.')
+        }
+      }
+      if (recoveringPassword.value) recoveryMfaStatus.value = decision
+      return decision
+    } catch (error) {
+      recoveryMfaStatus.value = 'error'
+      throw error
+    }
+  }
+
+  async function verifyRecoveryAuthenticator(code: string): Promise<void> {
+    if (!recoveringPassword.value || recoveryMfaStatus.value !== 'required') {
+      throw new Error('Confirme primeiro seu link de recuperação.')
+    }
+    if (!/^\d{6}$/.test(code.trim())) throw new Error('Digite os 6 números do autenticador.')
+    const auth = client().auth
+    const { data: factors, error: factorError } = await auth.mfa.listFactors()
+    if (factorError || !factors) throw new Error('Não foi possível consultar o autenticador. Tente novamente.')
+    const factor = factors.totp.find(item => item.status === 'verified')
+    if (!factor) throw new Error('Nenhum autenticador ativo foi encontrado nesta conta.')
+    const { error } = await auth.mfa.challengeAndVerify({ factorId: factor.id, code: code.trim() })
+    if (error) throw new Error('Código inválido ou expirado. Confira o aplicativo autenticador e tente novamente.')
+    if (await inspectRecoveryMfa() !== 'ready') {
+      throw new Error('Não foi possível confirmar a segunda etapa. Tente novamente.')
+    }
   }
 
   async function updatePassword(password: string): Promise<void> {
@@ -174,11 +224,18 @@ export function useAuth() {
         active.session.user.id !== identity.user.id) {
       throw new Error('Sessão de recuperação inválida. Solicite um novo link.')
     }
+    const { data: levels, error: levelError } = await auth.mfa.getAuthenticatorAssuranceLevel()
+    if (levelError || !levels) throw new Error('Não foi possível verificar a segurança da sessão.')
+    if (recoveryMfaDecision(levels) === 'required') {
+      recoveryMfaStatus.value = 'required'
+      throw new Error('Confirme o código do autenticador antes de alterar a senha.')
+    }
     await assertPasswordNotLeaked(password)
     const { error } = await auth.updateUser({ password })
     if (error) throw new Error(error.message)
     passwordJustChanged.value = true
     recoveringPassword.value = false
+    recoveryMfaStatus.value = 'checking'
     // Não utilizar a sessão temporária de recuperação para abrir dados financeiros.
     await auth.signOut({ scope: 'local' })
     session.value = null
@@ -199,9 +256,11 @@ export function useAuth() {
       session.value?.user?.email,
     )),
     recoveringPassword: computed(() => recoveringPassword.value),
+    recoveryMfaStatus: computed(() => recoveryMfaStatus.value),
     passwordJustChanged: computed(() => passwordJustChanged.value),
     mfaStatus: computed(() => mfaStatus.value),
     refreshLoginMfa, verifyLoginAuthenticator,
-    signIn, updateProfile, signOut, requestPasswordReset, recoverFromEmailLink, updatePassword,
+    signIn, updateProfile, signOut, requestPasswordReset, recoverFromEmailLink,
+    inspectRecoveryMfa, verifyRecoveryAuthenticator, updatePassword,
   }
 }
