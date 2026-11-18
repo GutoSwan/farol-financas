@@ -115,7 +115,15 @@ em identidades reais. A verificação SQL final retornou **zero** para os
 quatro conjuntos: `auth.users`, `public.User`, `public.Workspace` e
 `public.WorkspaceMember` (filtrados exclusivamente pelos IDs QA acima).
 
-**Status:** dados QA totalmente removidos do Supabase Dev; resta somente o
-teste HTTP Owner/Viewer na API Preview protegida pela Vercel. Para executá-lo,
-serão necessárias **novas contas QA** e uma via de acesso à Preview autorizada,
-com cleanup após a execução.
+**Status atualizado:** Auth e limpeza QA validados. Teste HTTP Owner/Viewer com dados do Postgres Dev ainda PENDENTE.
+
+## Acesso seguro à API Preview (18/11/2026)
+
+- A Vercel está com SSO de Deployments ativo. Não desativar a proteção nem criar link persistente de bypass.
+- A branch `feat/password-safety-free-20261117` tem `FAROL_PREVIEW_ADMIN_QA_AUTH_ONLY=true` e não tem `DATABASE_URL` na Vercel. A API consegue autenticar, mas NÃO consegue comprovar acesso a registros financeiros do banco. Isso bloqueia o teste Owner/Viewer real, independentemente do bypass da Vercel.
+- O script `verify-live-dev-auth-readonly.ts` foi atualizado para usar o header `x-vercel-trusted-oidc-idp-token` nas requisições da API protegida, sem imprimir o token. `VERCEL_OIDC_TOKEN` ausente ou inválido interrompe a execução antes de fazer login no Supabase.
+- No Mac, com a Vercel CLI autenticada e vinculada ao projeto `farol-api`, conferir o vínculo em `.vercel/project.json`, executar `vercel whoami` e usar `vercel env run -- node --import tsx scripts/verify-live-dev-auth-readonly.ts`. A Vercel fornece um token OIDC temporário do projeto correto; não salvá-lo em arquivos nem no Git.
+- Antes de repetir o teste real, criar outra Preview isolada com papel PostgreSQL exclusivamente SELECT no Supabase Dev e conferência de `auth.sessions`; manter gravações financeiras e de faturas desligadas; então recriar contas QA e espaços fictícios e removê-los depois.
+- O encerramento com `signOut({scope:'local'})` revoga o refresh token da sessão de teste, mas JWTs de acesso podem permanecer válidos até `exp`; a API real precisa consultar a validade de `auth.sessions` em cada operação sensível.
+
+**Não marcar Owner/Viewer HTTP como validado enquanto o servidor não tiver acesso de leitura Dev e o teste não tiver sido executado.**
