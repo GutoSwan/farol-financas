@@ -18,6 +18,12 @@ function assert(condition: unknown, message: string): asserts condition {
 
 async function main() {
   const cfg = requireLiveDevAuthE2eConfig(process.env)
+  // A Preview mantém Vercel Authentication ligada. O token OIDC é temporário,
+  // obtido pela Vercel CLI vinculada ao projeto farol-api, sem link de bypass.
+  // Falhar ANTES de fazer login no Supabase se esse acesso não estiver pronto.
+  const trustedOidcToken = process.env.VERCEL_OIDC_TOKEN?.trim() ?? ''
+  assert(trustedOidcToken.startsWith('eyJ') && trustedOidcToken.length >= 100,
+    'Token OIDC temporário da Vercel ausente. Execute via Vercel CLI vinculada à API; não desative Deployment Protection.')
   const prompt = createInterface({ input: stdin, output: stdout })
   const makeClient = () => createClient(LIVE_QA_AUTH_ORIGIN, cfg.apiKey, {
     auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
@@ -54,6 +60,7 @@ async function main() {
     const response = await fetch(LIVE_QA_API_ORIGIN + '/api/v1' + path, {
       method, redirect: 'error',
       headers: { Authorization: `Bearer ${token}`, Accept: 'application/json',
+        'x-vercel-trusted-oidc-idp-token': trustedOidcToken,
         ...(method === 'POST' ? { 'Content-Type': 'application/json' } : {}) },
       ...(method === 'POST' ? { body: '{}' } : {}),
       signal: AbortSignal.timeout(10000),
@@ -71,6 +78,7 @@ async function main() {
   try {
     const health = await fetch(LIVE_QA_API_ORIGIN + '/api/v1/health', {
       redirect: 'error', signal: AbortSignal.timeout(10000),
+      headers: { 'x-vercel-trusted-oidc-idp-token': trustedOidcToken },
     })
     assert(health.status === 200, 'Preview da API indisponível ou incorreta.')
 
@@ -120,7 +128,9 @@ async function main() {
     console.info('PASS: Supabase Auth Dev AAL2, API real, Owner/Viewer e isolamento.')
     console.info('PASS: migração HTTP permanece desativada. Nenhum registro financeiro gravado.')
   } finally {
-    // Sempre revogar as sessões temporárias que o teste conseguiu abrir.
+    // Encerrar as sessões QA mesmo após uma falha. Supabase invalida os refresh
+    // tokens da sessão local; tokens de acesso ainda valem até expirarem.
+    // A checagem server-side de auth.sessions deve impedir esse reaproveitamento.
     await Promise.allSettled([owner.auth.signOut({ scope: 'local' }), viewer.auth.signOut({ scope: 'local' })])
     prompt.close()
   }
