@@ -4,6 +4,9 @@ STATUS: NÃO LIBERAR DADOS REAIS. Implementação inicial sem certificação LGP
 
 ## Regras técnicas
 - Faturas pessoais por padrão. Mesmo membros de espaço familiar não acessam faturas de outro usuário.
+- A consulta e o envio de faturas exigem sessão AAL2 mesmo que outras telas
+  permitam AAL1 para contas sem TOTP. Sem MFA configurado, o usuário precisa
+  cadastrá-lo antes de acessar este módulo sensível.
 - Nunca capturar PAN completo, CVV, senhas bancárias, tokens de banco nem validade de cartão.
 - Campos permitidos: emissor, total em centavos, competência, vencimento e últimos quatro dígitos opcionais.
 - AES-256-GCM no backend, IV de 12 bytes único por objeto, tag de 16 bytes, AAD vinculando espaço, fatura e tipo metadata/pdf.

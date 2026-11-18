@@ -22,6 +22,13 @@ financeiro foi exportado. Este relatório não é certificação de segurança.
   como uma lista vazia.
 - O bucket `farol-invoices-private` permanece privado; a tabela de metadados
   de faturas não tem acesso de cliente.
+- Endpoints de listagem e envio de faturas agora exigem **AAL2 sempre**,
+  inclusive quando o usuário ainda não cadastrou TOTP. AAL1 não alcança
+  consulta de vínculo, repositório nem armazenamento de PDFs. A disponibilização
+  das faturas continua bloqueada até a conclusão do gate de segurança.
+- O escritor excepcional de lançamentos QA exige **UUID e nome** de um dos
+  dois espaços Dev explicitamente permitidos, além de papel OWNER/EDITOR;
+  copiar o nome de uma conta QA para outro espaço não autoriza gravações.
 - A rota pessoal `/presentes` agora exige `farol_role` administrativo em
   `app_metadata`, obtido da identidade remota do Supabase Auth, e sessão AAL2.
   O menu não aparece para outras contas; URLs diretas são igualmente bloqueadas.

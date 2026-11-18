@@ -41,10 +41,25 @@ Estado: **em desenvolvimento**. Este documento não certifica conformidade com a
 - Revisão jurídica e testes independentes são necessários para qualquer afirmação formal de conformidade.
 
 ## Auditoria de 2026-11-07
-- Produção: 11 tabelas de negócio com RLS ligado e sem políticas; _prisma_migrations tem RLS desligado e permissões concedidas a anon/authenticated; proteção contra senhas vazadas desativada.
+- Produção em 07/11: 11 tabelas de negócio com RLS ligado e sem políticas; `_prisma_migrations` tinha RLS desligado e permissões concedidas a `anon`/`authenticated`; proteção contra senhas vazadas desativada.
 - Desenvolvimento: 11 tabelas de negócio com RLS ligado e sem políticas; sem grants diretos dos papéis anon/authenticated em public.User.
-- **Ação urgente em produção (ainda não executada):** revisar e revogar grants públicos sobre _prisma_migrations e/ou habilitar RLS sem políticas, respeitando o usuário de migrações. Validar Prisma após a correção.
+- A preocupação com `_prisma_migrations` foi reavaliada por consulta somente leitura em 18/11 (abaixo); a observação de 07/11 está preservada apenas como histórico.
 - Não foi executado teste adversarial completo; situação de segurança não está certificada.
+
+## Verificação somente leitura de 18/11/2026
+- **Produção:** a tabela `_prisma_migrations` agora está com RLS ligado e
+  sem `SELECT`/`INSERT` para `anon` e `authenticated`. Nenhuma alteração foi
+  feita em produção nesta verificação.
+- **Dev:** tabelas financeiras, de usuários e de faturas estão com RLS ligado
+  e sem `SELECT`/`INSERT` para `anon` e `authenticated`; a exceção prevista é
+  `calendar_events`, com concessão ao papel autenticado e políticas por titular.
+- O Security Advisor do Dev aponta apenas ausência deliberada de policies em
+  `public.User` e `public.invoice_documents` (sem grants diretos), além do aviso
+  de proteção hospedada contra senhas vazadas indisponível no plano atual.
+- A API agora requer AAL2 para **leitura e envio de faturas**, mesmo quando
+  a conta não possui autenticador cadastrado. O escritor QA verifica UUID e
+  nome exatos dos espaços autorizados. Esses controles precisam de E2E real
+  antes de liberar dados financeiros sensíveis.
 
 ## Critérios de aprovação
 1. Usuário sem sessão e usuário com token inválido não acessam páginas nem respostas financeiras.

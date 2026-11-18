@@ -183,13 +183,14 @@ describe('Regressão de segurança: autenticação e acesso entre usuários', ()
     expect(me.statusCode).toBe(200)
     expect(me.json().data.id).toBe(owner)
     for (const url of ['/api/v1/workspaces', path, path + '/transactions',
-      ...catalogKinds.map(pathCatalog), path + '/invoices']) {
+      ...catalogKinds.map(pathCatalog)]) {
       expect((await app.inject({ method: 'GET', url, headers })).statusCode).toBe(200)
     }
+    expect((await app.inject({ method: 'GET', url: path + '/invoices', headers })).statusCode).toBe(403)
     expect(seen.list).toHaveBeenCalled()
     expect(seen.membership).toHaveBeenCalled()
     expect(seen.transactionsRead).toHaveBeenCalled()
-    expect(seen.invoicesRead).toHaveBeenCalled()
+    expect(seen.invoicesRead).not.toHaveBeenCalled()
     await app.close()
   })
 

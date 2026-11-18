@@ -86,13 +86,17 @@ describe('Faturas: isolamento pessoal, sessão autenticada e upload fechado por 
     expect(calls).toHaveLength(0)
   } finally { await app.close() }
  })
- it('dono com senha pode consultar e enviar fatura quando autorizado', async () => {
+ it('mesmo sem TOTP cadastrado, sessão AAL1 não pode consultar nem enviar faturas', async () => {
   const {app,calls}=fixture(true,true)
   try {
     const headers=auth('owner:aal1')
-    expect((await app.inject({method:'GET',url,headers})).statusCode).toBe(200)
-    expect((await app.inject({method:'POST',url,headers,payload:body})).statusCode).toBe(202)
-    expect(calls).toHaveLength(2)
+    const read = await app.inject({method:'GET',url,headers})
+    const upload = await app.inject({method:'POST',url,headers,payload:body})
+    expect(read.statusCode).toBe(403)
+    expect(upload.statusCode).toBe(403)
+    expect(read.body).not.toContain('Banco Teste')
+    expect(upload.body).not.toContain('Banco Teste')
+    expect(calls).toHaveLength(0)
   } finally { await app.close() }
  })
  it('VIEWER pode listar apenas suas próprias faturas, nunca enviar', async () => {

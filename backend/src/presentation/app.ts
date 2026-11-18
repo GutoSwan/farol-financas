@@ -356,6 +356,11 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
     if (deps.allowInvoiceReads !== true) return reply.code(503).send({ error: 'Faturas indisponíveis.' })
     const identity = await authorized(request, reply)
     if (!identity) return
+    // Faturas são dados sensíveis: a ausência de TOTP cadastrado NÃO dispensa AAL2.
+    // Exigimos um segundo fator mesmo de contas que podem usar AAL1 em outras rotas.
+    if (identity.assuranceLevel !== 'aal2') {
+      return reply.code(403).send({ error: 'Verificação em duas etapas necessária para acessar faturas.' })
+    }
     const space = z.string().uuid().safeParse(request.params.workspaceId)
     if (!space.success) return reply.code(404).send({ error: 'Espaço não encontrado.' })
     try {
@@ -373,6 +378,9 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
   }, async (request, reply) => {
     const identity = await authorized(request, reply)
     if (!identity) return
+    if (identity.assuranceLevel !== 'aal2') {
+      return reply.code(403).send({ error: 'Verificação em duas etapas necessária para enviar faturas.' })
+    }
     const space = z.string().uuid().safeParse(request.params.workspaceId)
     if (!space.success) return reply.code(404).send({ error: 'Espaço não encontrado.' })
     // Independente das outras telas, upload de faturas exige DUAS flags no servidor.
@@ -602,14 +610,19 @@ export function buildApp(deps: AppDependencies, app = Fastify({ logger: false, b
     })
   }
 
-  // Apenas os DOIS espaços de teste compartilhados; nenhuma operação local,
-  // espaço pessoal ou Valora3D real pode atravessar o portão QA.
+  // Apenas os DOIS UUIDs de teste compartilhados, com os nomes esperados.
+  // Um espaço com nome QA copiado NÃO é suficiente para habilitar gravação.
   async function canWriteQaTransaction(userId: string, workspaceId: string): Promise<boolean> {
     if (deps.allowQaTransactionWrites !== true) return false
+    const qaSpaces: Record<string, string> = {
+      '01c6765f-b873-420f-a5f2-68c54aa22500': 'QA - Casa compartilhada (Dev)',
+      '153045ae-c200-40f9-9d3a-5e20b5c55e54': 'QA - Valora3D compartilhada (Dev)',
+    }
+    if (!Object.hasOwn(qaSpaces, workspaceId)) return false
     const spaces = await deps.workspaceService.listForUser(userId)
     return spaces.some(space => space.id === workspaceId &&
       ['OWNER', 'EDITOR'].includes(space.role) &&
-      ['QA - Casa compartilhada (Dev)', 'QA - Valora3D compartilhada (Dev)'].includes(space.name))
+      space.name === qaSpaces[workspaceId])
   }
 
   function getWriteTransactionRepository(): TransactionRepository | undefined {

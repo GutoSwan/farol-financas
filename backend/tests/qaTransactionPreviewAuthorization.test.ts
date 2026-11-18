@@ -22,28 +22,29 @@ const baseEnv = {
   FAROL_FINANCIAL_WRITES_ENABLED: 'false',
   FAROL_INVOICE_UPLOADS_ENABLED: 'false',
 }
-const qa = '33333333-3333-4333-8333-333333333333'
+const qa = '01c6765f-b873-420f-a5f2-68c54aa22500'
 const normal = '44444444-4444-4444-8444-444444444444'
+const namedButForeign = '33333333-3333-4333-8333-333333333333'
 const recordId = '55555555-5555-4555-8555-555555555555'
 const transactionBody = { description: 'Feira', category: 'QA', amountCents: 123,
   kind: 'INCOME', occurredOn: '2026-11-16' }
 const url = '/api/v1/workspaces/' + qa + '/transactions'
 
-function setup(qaName = 'QA - Casa compartilhada (Dev)') {
+function setup(qaName = 'QA - Casa compartilhada (Dev)', qaId = qa) {
   const writes: string[] = []
   const roles = { a: 'OWNER', b: 'EDITOR', viewer: 'VIEWER' } as const
   const workspaces: WorkspaceRepository = {
     async listForUser(userId) {
       if (!(userId in roles)) return []
       return [
-        { id: qa, name: qaName, role: roles[userId as keyof typeof roles] },
+        { id: qaId, name: qaName, role: roles[userId as keyof typeof roles] },
         { id: normal, name: 'Gustavo e Ana', role: 'OWNER' as const },
       ]
     },
     async createOwnedBy() { throw Error('Nunca criar espaço QA pelo teste') },
     async hasMembership(userId, workspaceId, allowed = []) {
       if (!(userId in roles)) return false
-      const role = workspaceId === qa
+      const role = workspaceId === qaId
         ? roles[userId as keyof typeof roles]
         : workspaceId === normal ? 'OWNER' : null
       return !!role && (!allowed.length || allowed.includes(role))
@@ -119,6 +120,17 @@ describe('Preview QA: somente lançamentos fictícios e privilégio mínimo', ()
     const { app, writes } = setup('QA - Valora3D parecida')
     try {
       const response = await app.inject({ method: 'POST', url, headers: { authorization: 'Bearer a' }, payload: transactionBody })
+      expect(response.statusCode).toBe(404)
+      expect(writes).toEqual([])
+    } finally { await app.close() }
+  })
+
+  it('nome QA exato em UUID não autorizado também não concede escrita', async () => {
+    const { app, writes } = setup('QA - Casa compartilhada (Dev)', namedButForeign)
+    try {
+      const response = await app.inject({ method: 'POST',
+        url: '/api/v1/workspaces/' + namedButForeign + '/transactions',
+        headers: { authorization: 'Bearer a' }, payload: transactionBody })
       expect(response.statusCode).toBe(404)
       expect(writes).toEqual([])
     } finally { await app.close() }
