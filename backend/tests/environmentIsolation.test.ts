@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isVerifiedDevPreviewEnvironment } from '../src/infrastructure/security/environmentIsolation.js'
+import { isVerifiedDevPreviewEnvironment, readonlyQaConfigIssue } from '../src/infrastructure/security/environmentIsolation.js'
 
 const REF = 'tvirkrjkgdtybtcundon'
 const base = {
@@ -96,6 +96,31 @@ describe('Isolamento Dev do backend Vercel Preview', () => {
       { FAROL_FINANCIAL_WRITES_ENABLED: 'true' },
     ]) {
       expect(isVerifiedDevPreviewEnvironment({ ...baseHttpQa, ...partial })).toBe(false)
+    }
+  })
+
+  it('classifica usuário SQL de QA incorreto sem expor segredos nos logs', () => {
+    const valid = {
+      ...base,
+      FAROL_PREVIEW_ADMIN_QA_READONLY: 'true',
+      FAROL_PREVIEW_HTTP_QA_READONLY: 'true',
+      DATABASE_URL: 'postgresql://farol_preview_httpqa_ro.' + REF +
+        ':synthetic-long-password-for-test-123456@aws-1-sa-east-1.pooler.supabase.com:6543/postgres',
+    }
+    expect(isVerifiedDevPreviewEnvironment(valid)).toBe(true)
+    for (const [actualUser, category] of [
+      ['postgres.' + REF, 'db-user-is-default-postgres'],
+      ['farol_preview_httpqa_ro', 'db-user-missing-dev-suffix'],
+      ['farol_preview_httpqa_ro.aaaaaaaaaaaaaaaaaaaa', 'db-user-wrong-dev-suffix'],
+      ['farol_preview_adminqa_ro.' + REF, 'db-user-wrong-role-name'],
+      ['totally-unexpected', 'db-role-not-readonly'],
+    ]) {
+      const modified = { ...valid, DATABASE_URL: valid.DATABASE_URL.replace('farol_preview_httpqa_ro.' + REF, actualUser) }
+      const issue = readonlyQaConfigIssue(modified)
+      expect(issue).toBe(category)
+      expect(issue).not.toContain('synthetic-long-password')
+      expect(issue).not.toContain(actualUser)
+      expect(isVerifiedDevPreviewEnvironment(modified)).toBe(false)
     }
   })
 
