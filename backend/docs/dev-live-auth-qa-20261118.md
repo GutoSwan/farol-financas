@@ -1,11 +1,10 @@
 # E2E real de Auth — somente Supabase Dev
 
 **Estado em 18/11/2026:** teste real de **Supabase Auth Dev concluído** com
-duas contas técnicas e MFA. A validação HTTP Owner/Viewer da **API Preview**
-continua **pendente** por proteção de acesso da Vercel. A limpeza final dos
-objetos QA Dev também **está pendente**: o conector SQL exigiu uma confirmação
-que expirou, sem executar a exclusão. Não criar nem excluir usuários diretamente
-por SQL em `auth.users`; utilizar o Supabase Auth/Admin.
+duas contas técnicas e MFA, com **limpeza integral dos objetos QA confirmada**.
+A validação HTTP Owner/Viewer da **API Preview** continua **pendente** por
+proteção de acesso da Vercel. Não criar nem excluir usuários diretamente por
+SQL em `auth.users`; utilizar o Supabase Auth/Admin.
 
 ## Escopo técnico
 
@@ -78,7 +77,7 @@ credenciais de produção para executar esse teste.
   contas não técnicas e flags de escrita indevidas.
 - Build da API: **305 testes aprovados**.
 
-## Execução real de 18/11/2026 — resultados e limpeza pendente
+## Execução real de 18/11/2026 — resultados e limpeza concluída
 
 - Supabase Auth Dev: duas contas descartáveis criadas pelo formulário oficial,
   sem enviar e-mails reais. MFA TOTP registrado e confirmado em cada uma.
@@ -97,7 +96,7 @@ credenciais de produção para executar esse teste.
   segredos TOTP em memória foram removidos. Nenhuma senha ou semente TOTP foi
   persistida em arquivos ou no Git.
 
-**Alvos exatos de limpeza pendente, exclusivamente Dev:**
+**Alvos exatos da limpeza realizada, exclusivamente Dev:**
 
 | Tipo | Identificador |
 | --- | --- |
@@ -108,8 +107,15 @@ credenciais de produção para executar esse teste.
 
 Preflight de exclusão retornou exatamente **2 `public.User`**, **2 `Workspace`**,
 **3 `WorkspaceMember`**, **0 vínculos a outros espaços** e **0 lançamentos,
-contas mensais ou faturas** nesses espaços. A tentativa de limpeza SQL foi
-recusada pelo fluxo de confirmação do conector; consulta posterior confirmou
-que os dois espaços e os dois usuários `public.User` ainda existiam. **Não
-declarar limpeza concluída** até remover primeiro os vínculos/espaços/usuários
-de `public` e depois as duas contas em Supabase Auth, verificando contagem zero.
+contas mensais ou faturas** nesses espaços. Após a expiração da primeira
+confirmação SQL, a nova execução foi aprovada; a operação guardada removeu os
+três vínculos, os dois espaços e os dois usuários internos. O painel oficial
+de Supabase Auth confirmou a exclusão das duas contas técnicas, sem tocar
+em identidades reais. A verificação SQL final retornou **zero** para os
+quatro conjuntos: `auth.users`, `public.User`, `public.Workspace` e
+`public.WorkspaceMember` (filtrados exclusivamente pelos IDs QA acima).
+
+**Status:** dados QA totalmente removidos do Supabase Dev; resta somente o
+teste HTTP Owner/Viewer na API Preview protegida pela Vercel. Para executá-lo,
+serão necessárias **novas contas QA** e uma via de acesso à Preview autorizada,
+com cleanup após a execução.
