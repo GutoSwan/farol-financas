@@ -29,6 +29,8 @@ export function isVerifiedDevPreviewEnvironment(env: NodeJS.ProcessEnv): boolean
     if (env.FAROL_PREVIEW_ADMIN_QA_READONLY === 'true') {
       return ref === 'tvirkrjkgdtybtcundon' &&
         database.hostname.endsWith('.pooler.supabase.com') &&
+        (env.FAROL_PREVIEW_HTTP_QA_READONLY !== 'true' ||
+          database.hostname === 'aws-1-sa-east-1.pooler.supabase.com') &&
         database.port === '6543' &&
         database.pathname === '/postgres' &&
         database.password.length >= 24 &&
@@ -62,7 +64,9 @@ export function readonlyQaConfigIssue(env: NodeJS.ProcessEnv): string {
         supabase.pathname !== '/') return 'supabase-dev-url'
     const db = new URL(env.DATABASE_URL ?? '')
     if (!['postgresql:','postgres:'].includes(db.protocol)) return 'db-protocol'
-    if (!db.hostname.endsWith('.pooler.supabase.com')) return 'db-not-supabase-pooler'
+    if (!db.hostname.endsWith('.pooler.supabase.com') ||
+        (env.FAROL_PREVIEW_HTTP_QA_READONLY === 'true' &&
+          db.hostname !== 'aws-1-sa-east-1.pooler.supabase.com')) return 'db-not-supabase-pooler'
     if (db.port !== '6543') return 'db-not-transaction-pooler'
     if (db.pathname !== '/postgres') return 'db-name'
     if (decodeURIComponent(db.username) !==
