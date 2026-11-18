@@ -33,9 +33,11 @@ export function isVerifiedDevPreviewEnvironment(env: NodeJS.ProcessEnv): boolean
         database.pathname === '/postgres' &&
         database.password.length >= 24 &&
         decodeURIComponent(database.username) ===
-          (env.FAROL_PREVIEW_SYNC_QA_READONLY === 'true'
-            ? 'farol_preview_sync_ro.' + ref
-            : 'farol_preview_adminqa_ro.' + ref) &&
+          (env.FAROL_PREVIEW_HTTP_QA_READONLY === 'true'
+            ? 'farol_preview_httpqa_ro.' + ref
+            : env.FAROL_PREVIEW_SYNC_QA_READONLY === 'true'
+              ? 'farol_preview_sync_ro.' + ref
+              : 'farol_preview_adminqa_ro.' + ref) &&
         env.FAROL_FINANCIAL_WRITES_ENABLED !== 'true' &&
         env.FAROL_INVOICE_UPLOADS_ENABLED !== 'true'
     }
@@ -64,9 +66,11 @@ export function readonlyQaConfigIssue(env: NodeJS.ProcessEnv): string {
     if (db.port !== '6543') return 'db-not-transaction-pooler'
     if (db.pathname !== '/postgres') return 'db-name'
     if (decodeURIComponent(db.username) !==
-        (env.FAROL_PREVIEW_SYNC_QA_READONLY === 'true'
-          ? 'farol_preview_sync_ro.tvirkrjkgdtybtcundon'
-          : 'farol_preview_adminqa_ro.tvirkrjkgdtybtcundon'))
+        (env.FAROL_PREVIEW_HTTP_QA_READONLY === 'true'
+          ? 'farol_preview_httpqa_ro.tvirkrjkgdtybtcundon'
+          : env.FAROL_PREVIEW_SYNC_QA_READONLY === 'true'
+            ? 'farol_preview_sync_ro.tvirkrjkgdtybtcundon'
+            : 'farol_preview_adminqa_ro.tvirkrjkgdtybtcundon'))
       return 'db-role-not-readonly'
     if (db.password.length < 24) return 'db-password-missing-or-short'
     return 'unexpected-guard-mismatch'
