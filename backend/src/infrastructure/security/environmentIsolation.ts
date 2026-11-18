@@ -69,13 +69,22 @@ export function readonlyQaConfigIssue(env: NodeJS.ProcessEnv): string {
           db.hostname !== 'aws-1-sa-east-1.pooler.supabase.com')) return 'db-not-supabase-pooler'
     if (db.port !== '6543') return 'db-not-transaction-pooler'
     if (db.pathname !== '/postgres') return 'db-name'
-    if (decodeURIComponent(db.username) !==
-        (env.FAROL_PREVIEW_HTTP_QA_READONLY === 'true'
-          ? 'farol_preview_httpqa_ro.tvirkrjkgdtybtcundon'
-          : env.FAROL_PREVIEW_SYNC_QA_READONLY === 'true'
-            ? 'farol_preview_sync_ro.tvirkrjkgdtybtcundon'
-            : 'farol_preview_adminqa_ro.tvirkrjkgdtybtcundon'))
+    const dbUser = decodeURIComponent(db.username)
+    const requiredUser = env.FAROL_PREVIEW_HTTP_QA_READONLY === 'true'
+      ? 'farol_preview_httpqa_ro.tvirkrjkgdtybtcundon'
+      : env.FAROL_PREVIEW_SYNC_QA_READONLY === 'true'
+        ? 'farol_preview_sync_ro.tvirkrjkgdtybtcundon'
+        : 'farol_preview_adminqa_ro.tvirkrjkgdtybtcundon'
+    if (dbUser !== requiredUser) {
+      // Diagnósticos categóricos sem registrar o usuário efetivo nem segredos.
+      if (env.FAROL_PREVIEW_HTTP_QA_READONLY === 'true') {
+        if (dbUser === 'postgres.tvirkrjkgdtybtcundon') return 'db-user-is-default-postgres'
+        if (dbUser === 'farol_preview_httpqa_ro') return 'db-user-missing-dev-suffix'
+        if (dbUser.startsWith('farol_preview_httpqa_ro.')) return 'db-user-wrong-dev-suffix'
+        if (dbUser.endsWith('.tvirkrjkgdtybtcundon')) return 'db-user-wrong-role-name'
+      }
       return 'db-role-not-readonly'
+    }
     if (db.password.length < 24) return 'db-password-missing-or-short'
     return 'unexpected-guard-mismatch'
   } catch { return 'db-connection-url-invalid' }
