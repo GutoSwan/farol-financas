@@ -76,4 +76,27 @@ describe('Isolamento Dev do backend Vercel Preview', () => {
     })).toBe(false)
   })
 
+  it('confere papel HTTP QA de leitura no host Transaction Pooler Dev exato', () => {
+    const baseHttpQa = {
+      ...base,
+      FAROL_PREVIEW_ADMIN_QA_READONLY: 'true',
+      FAROL_PREVIEW_HTTP_QA_READONLY: 'true',
+      FAROL_PREVIEW_ADMIN_QA_AUTH_ONLY: 'false',
+      DATABASE_URL: 'postgresql://farol_preview_httpqa_ro.' + REF +
+        ':synthetic-password-for-qa-readonly-123456@aws-1-sa-east-1.pooler.supabase.com:6543/postgres',
+    }
+    expect(isVerifiedDevPreviewEnvironment(baseHttpQa)).toBe(true)
+    for (const partial of [
+      { DATABASE_URL: baseHttpQa.DATABASE_URL.replace('farol_preview_httpqa_ro.', 'postgres.') },
+      { DATABASE_URL: baseHttpQa.DATABASE_URL.replace('aws-1-sa-east-1.pooler.supabase.com', 'example.com') },
+      { DATABASE_URL: baseHttpQa.DATABASE_URL.replace(':6543/', ':5432/') },
+      { DATABASE_URL: baseHttpQa.DATABASE_URL.replace('synthetic-password-for-qa-readonly-123456', 'short') },
+      { DATABASE_URL: baseHttpQa.DATABASE_URL.replace(REF, 'aaaaaaaaaaaaaaaaaaaa') },
+      { FAROL_INVOICE_UPLOADS_ENABLED: 'true' },
+      { FAROL_FINANCIAL_WRITES_ENABLED: 'true' },
+    ]) {
+      expect(isVerifiedDevPreviewEnvironment({ ...baseHttpQa, ...partial })).toBe(false)
+    }
+  })
+
 })
