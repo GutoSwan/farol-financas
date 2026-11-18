@@ -19,9 +19,9 @@
 ## Bloqueio atual
 
 - `DATABASE_URL` **ainda não existe** nesta branch: nenhuma credencial de Postgres foi transmitida ou armazenada.
-- A role `farol_preview_httpqa_ro` **não foi criada**. O procedimento automático que geraria e transferiria o segredo entre conectores foi bloqueado por segurança; não foi repetido por métodos alternativos.
+- A role `farol_preview_httpqa_ro` foi criada **NOLOGIN**, sem senha. Ela tem grants SELECT apenas em `Workspace`, `WorkspaceMember` e `Transaction`, política SELECT por nome de workspace de QA, e EXECUTE apenas na função privada de validação de sessão. Foi verificado que não possui acesso à tabela `User`, privilégios de escrita ou bypass de RLS. A senha NÃO foi gerada nem transferida.
 - O Preview QA **deve falhar fechado** sem essa conexão. Não declarar `/ready` ou Owner/Viewer HTTP como aprovados enquanto não for configurada uma credencial válida e checada.
-- Para executar a integração real ainda faltam: criar role com SELECT limitado a espaços QA e função privada de `auth.sessions`, guardar DATABASE_URL como variável **Sensitive** na Vercel sem revelar a senha em chat, publicar novamente, confirmar `/ready`, criar duas novas contas Auth descartáveis com MFA AAL2 e espaços QA, executar teste e limpar todos os registros de QA.
+- Para executar a integração real ainda faltam: definir a senha privada no Supabase Dev, habilitar LOGIN nessa role, guardar DATABASE_URL como variável **Sensitive** na Vercel sem revelar a senha em chat, publicar novamente, confirmar `/ready`, criar duas novas contas Auth descartáveis com MFA AAL2 e espaços QA, executar teste e limpar todos os registros de QA.
 
 ## Controle de segurança obrigatório para futura role
 
@@ -33,4 +33,4 @@
 - Não habilitar `FAROL_FINANCIAL_WRITES_ENABLED`, `FAROL_PREVIEW_SYNC_QA_TRANSACTION_WRITES`, `FAROL_INVOICE_UPLOADS_ENABLED` ou `FAROL_INVOICE_READS_ENABLED`.
 - Não reutilizar DATABASE_URL de produção, não registrar senha no Git ou no chat, não criar bypass público da Vercel.
 
-**Situação:** configuração segura da Preview concluída na parte não secreta; credencial e teste integrado pendentes.
+**Situação:** role NOLOGIN criada e verificada, Preview isolada preparada; senha/cadastro no painel da Vercel e teste integrado pendentes.
