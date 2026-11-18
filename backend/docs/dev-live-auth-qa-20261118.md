@@ -1,9 +1,11 @@
 # E2E real de Auth — somente Supabase Dev
 
-**Estado em 18/11/2026:** verificador preparado, mas teste real **ainda não
-executado**: faltam duas contas Auth Dev descartáveis e seus MFA. Não criar
-contas por SQL diretamente em `auth.users`; usar o Supabase Auth para manter
-as sessões e identidades consistentes.
+**Estado em 18/11/2026:** teste real de **Supabase Auth Dev concluído** com
+duas contas técnicas e MFA. A validação HTTP Owner/Viewer da **API Preview**
+continua **pendente** por proteção de acesso da Vercel. A limpeza final dos
+objetos QA Dev também **está pendente**: o conector SQL exigiu uma confirmação
+que expirou, sem executar a exclusão. Não criar nem excluir usuários diretamente
+por SQL em `auth.users`; utilizar o Supabase Auth/Admin.
 
 ## Escopo técnico
 
@@ -75,3 +77,39 @@ credenciais de produção para executar esse teste.
 - `backend/tests/liveDevAuthE2eGuard.test.ts`: bloqueio de Prod/URL arbitrária,
   contas não técnicas e flags de escrita indevidas.
 - Build da API: **305 testes aprovados**.
+
+## Execução real de 18/11/2026 — resultados e limpeza pendente
+
+- Supabase Auth Dev: duas contas descartáveis criadas pelo formulário oficial,
+  sem enviar e-mails reais. MFA TOTP registrado e confirmado em cada uma.
+- Teste independente com a API pública do Supabase Auth: ambas passaram em
+  login AAL1 somente com senha; código TOTP propositalmente incorreto foi
+  recusado sem elevar AAL; código correto elevou cada sessão para AAL2.
+- Com JWT de cada conta, a consulta direta da tabela `Workspace` pela Data API
+  foi negada, como esperado pelos grants de `public`.
+- A API Preview respondeu `/api/v1/health` no navegador autenticado na Vercel.
+  O mesmo endpoint via HTTP não autenticado retornou **302** por Deployment
+  Protection; não foi gerado link público de bypass nem desabilitada a proteção.
+- O verificador completo `verify-live-dev-auth-readonly.ts` permanece **não
+  executado** contra a API Preview por essa barreira. Os testes locais da API
+  com JWTs assinados já foram executados separadamente.
+- As contas foram desconectadas, e os scripts temporários que mantiveram os
+  segredos TOTP em memória foram removidos. Nenhuma senha ou semente TOTP foi
+  persistida em arquivos ou no Git.
+
+**Alvos exatos de limpeza pendente, exclusivamente Dev:**
+
+| Tipo | Identificador |
+| --- | --- |
+| Auth e `public.User` Owner | `5115aa96-691d-4e1d-b829-7507bb89857b` |
+| Auth e `public.User` Viewer | `94688569-47c0-47b4-bfa5-432f2178b1d9` |
+| Espaço compartilhado QA | `76d84687-1c83-44e9-af41-4d95ea25acab` |
+| Espaço privado QA | `14f50f51-0163-44b6-adda-b02b117d678f` |
+
+Preflight de exclusão retornou exatamente **2 `public.User`**, **2 `Workspace`**,
+**3 `WorkspaceMember`**, **0 vínculos a outros espaços** e **0 lançamentos,
+contas mensais ou faturas** nesses espaços. A tentativa de limpeza SQL foi
+recusada pelo fluxo de confirmação do conector; consulta posterior confirmou
+que os dois espaços e os dois usuários `public.User` ainda existiam. **Não
+declarar limpeza concluída** até remover primeiro os vínculos/espaços/usuários
+de `public` e depois as duas contas em Supabase Auth, verificando contagem zero.
