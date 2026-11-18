@@ -4,7 +4,7 @@
  */
 export const LIVE_QA_DEV_REF = 'tvirkrjkgdtybtcundon'
 export const LIVE_QA_AUTH_ORIGIN = `https://${LIVE_QA_DEV_REF}.supabase.co`
-export const LIVE_QA_API_ORIGIN = 'https://farol-api-git-feat-password-safety-free-20261117-farol13.vercel.app'
+export const LIVE_QA_API_ORIGIN = 'https://farol-api-git-qa-owner-viewer-dev-isolation-20261118-farol13.vercel.app'
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
