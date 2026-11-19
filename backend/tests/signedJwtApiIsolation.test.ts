@@ -17,16 +17,19 @@ import type { LegacyConnectionService } from '../src/application/use-cases/Prism
 const userA = '11111111-1111-4111-8111-111111111111'
 const userViewer = '22222222-2222-4222-8222-222222222222'
 const userB = '33333333-3333-4333-8333-333333333333'
+const userEditor = '99999999-9999-4999-8999-999999999999'
 const spaceA = '44444444-4444-4444-8444-444444444444'
 const spaceB = '55555555-5555-4555-8555-555555555555'
 const sessionA = '66666666-6666-4666-8666-666666666666'
 const sessionViewer = '77777777-7777-4777-8777-777777777777'
 const sessionB = '88888888-8888-4888-8888-888888888888'
+const sessionEditor = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
 
-type Subject = 'owner' | 'viewer' | 'other'
+type Subject = 'owner' | 'viewer' | 'editor' | 'other'
 const subjects = {
   owner: { id: userA, session: sessionA },
   viewer: { id: userViewer, session: sessionViewer },
+  editor: { id: userEditor, session: sessionEditor },
   other: { id: userB, session: sessionB },
 }
 
@@ -88,10 +91,11 @@ async function signed(subject: Subject, options: {
 }
 
 function makeApp() {
-  const active = new Set([sessionA, sessionViewer, sessionB])
+  const active = new Set([sessionA, sessionViewer, sessionEditor, sessionB])
   const roles: Record<string, Record<string, 'OWNER'|'EDITOR'|'VIEWER'>> = {
     [userA]: { [spaceA]: 'OWNER' },
     [userViewer]: { [spaceA]: 'VIEWER' },
+    [userEditor]: { [spaceA]: 'EDITOR' },
     [userB]: { [spaceB]: 'OWNER' },
   }
   const records: Record<string, Array<typeof entry & { id: string; workspaceId: string; version: number }>> = {
@@ -252,6 +256,40 @@ describe('JWT RSA assinado + sessão ativa + autorização HTTP por papel', () =
       const connected = await app.inject({ method: 'POST', url: pathA + '/legacy-connect', headers: owner, payload: {} })
       expect(connected.statusCode).toBe(200)
       expect(seen.legacyConnect).toHaveBeenCalledExactlyOnceWith(userA, spaceA)
+    } finally { await app.close() }
+  })
+
+  it('EDITOR com JWT assinado e AAL2 lê e lança, sem migrar ou acessar o espaço privado alheio', async () => {
+    const { app, seen, records } = makeApp()
+    try {
+      const editorAal1 = auth(await signed('editor', { aal: 'aal1' }))
+      const blockedByMfa = await app.inject({ method: 'POST', url: pathA + '/transactions', headers: editorAal1, payload: entry })
+      expect(blockedByMfa.statusCode).toBe(403)
+      expect(seen.member).not.toHaveBeenCalled()
+      expect(seen.write).not.toHaveBeenCalled()
+
+      const editor = auth(await signed('editor'))
+      const sharedRead = await app.inject({ method: 'GET', url: pathA + '/transactions', headers: editor })
+      expect(sharedRead.statusCode).toBe(200)
+      expect(sharedRead.json().data).toHaveLength(1)
+
+      const privateRead = await app.inject({ method: 'GET', url: `/api/v1/workspaces/${spaceB}/transactions`, headers: editor })
+      expect(privateRead.statusCode).toBe(404)
+      expect(seen.read).toHaveBeenCalledTimes(1)
+
+      const privateWrite = await app.inject({ method: 'POST', url: `/api/v1/workspaces/${spaceB}/transactions`, headers: editor, payload: entry })
+      expect(privateWrite.statusCode).toBe(404)
+      expect(seen.write).not.toHaveBeenCalled()
+
+      const sharedWrite = await app.inject({ method: 'POST', url: pathA + '/transactions', headers: editor, payload: entry })
+      expect(sharedWrite.statusCode).toBe(201)
+      expect(records[spaceA]).toHaveLength(2)
+      expect(records[spaceB]).toHaveLength(1)
+      expect(seen.write).toHaveBeenCalledExactlyOnceWith(spaceA)
+
+      const ownerOnly = await app.inject({ method: 'POST', url: pathA + '/legacy-connect', headers: editor, payload: {} })
+      expect(ownerOnly.statusCode).toBe(404)
+      expect(seen.legacyConnect).not.toHaveBeenCalled()
     } finally { await app.close() }
   })
 })
