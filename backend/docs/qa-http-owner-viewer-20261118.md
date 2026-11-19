@@ -56,3 +56,14 @@
 - Configuradas variáveis Vercel exclusivas do Preview da branch QA para Supabase Dev (URL e publishable key), API QA, redirect QA, modo QA-only e writes desabilitados.
 - Ajustado CORS_ORIGIN da API para o alias frontend da branch QA, também exclusivamente no Preview dessa branch.
 - Antes de iniciar o E2E HTTP: publicar novamente os dois projetos e confirmar no bundle distribuído presença exclusiva do Supabase Dev e ausência da referência de produção.
+
+## Teste com identidades descartáveis — 19/11/2026
+
+- Deployments QA da API e frontend `6bb10e1` ficaram READY. Inspeção do bundle público frontend: referência Dev presente, referência de produção ausente, API QA presente.
+- `/api/v1/ready` retornou `ready`; `/api/v1/me` e `/api/v1/workspaces` sem JWT retornaram autenticação necessária.
+- Criadas duas contas Auth estritamente fictícias Owner e Viewer no Dev. Login com senha temporária de ambas foi aceito. Os dados locais antigos permaneceram isolados, sem vínculo/importação.
+- Criados dois espaços financeiros QA sem registros e três memberships: Owner com ambos, Viewer apenas no compartilhado. Consultas estruturais confirmaram 2/3/0 e role DB somente SELECT, sem INSERT nem UPDATE financeiro nem SELECT em `User`.
+- A interface em Preview falhou no `fetch` da API mesmo usando o alias da branch autorizado em CORS; rastreio Vercel mostrou preflight OPTIONS de `/api/v1/me`. Suspeitar de CORS, proteção do deployment ou encaminhamento de preflight, sem assumir causa ainda.
+- A rota `/configurar-2fa` nesta versão redireciona para `/conta` e a tela de perfil não permite inscrição TOTP. Logo não foi possível obter AAL2 e o teste E2E HTTP Owner/Viewer permanece NÃO aprovado.
+- Os dois espaços QA e os respectivos dois registros em `public.User` foram removidos após verificar zero dados financeiros filhos. Consulta pós-limpeza retornou zero desses registros. As duas contas Supabase Auth ainda precisam de exclusão explícita no painel, após confirmação específica do proprietário.
+- **Não liberar dados reais nem promover QA para produção** até corrigir o fluxo TOTP e o teste HTTP com JWT AAL2.
