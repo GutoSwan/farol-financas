@@ -10,8 +10,9 @@ import { MIN_NEW_PASSWORD_LENGTH } from '../../domain/auth/passwordSafety'
 import type { ProfileIcon } from '../../domain/profile/profile'
 import BackNavigation from '../components/BackNavigation.vue'
 import UiIcon from '../components/UiIcon.vue'
+import MfaEnrollmentPanel from '../components/MfaEnrollmentPanel.vue'
 
-type AuthMode = 'login' | 'mfa' | 'forgot' | 'reset' | 'profile' | 'confirmed'
+type AuthMode = 'login' | 'mfa' | 'enroll' | 'forgot' | 'reset' | 'profile' | 'confirmed'
 const props = defineProps<{ mode: AuthMode }>()
 const router = useRouter()
 const { isDark, toggleTheme } = useTheme()
@@ -240,6 +241,12 @@ async function logout(): Promise<void> {
         <button class="auth-mfa-signout" type="button" :disabled="busy" @click="logout">Sair e usar outra conta</button>
       </template>
 
+      <template v-else-if="mode === 'enroll'">
+        <h1>Proteger minha conta</h1>
+        <p class="auth-subtitle">Ative a verificação em duas etapas para proteger seu acesso ao Farol.</p>
+        <MfaEnrollmentPanel />
+      </template>
+
       <template v-else-if="mode === 'profile'">
         <h1>Meu perfil</h1>
         <p class="auth-subtitle">Ajuste seu nome e ícone. As finanças da família ficam em uma área separada.</p>
@@ -270,6 +277,7 @@ async function logout(): Promise<void> {
             <UiIcon name="edit" :size="17" /> Editar nome e ícone
           </button>
           <nav class="profile-quick-links" aria-label="Opções da conta">
+            <RouterLink to="/configurar-2fa"><UiIcon name="shield-check" :size="17" /> Configurar autenticador (2FA)</RouterLink>
             <RouterLink to="/recuperar-senha"><UiIcon name="shield-check" :size="17" /> Alterar senha por e-mail</RouterLink>
             <RouterLink to="/dados-online"><UiIcon name="folder" :size="17" /> Dados da família na nuvem</RouterLink>
             <RouterLink to="/backup-financeiro"><UiIcon name="folder" :size="17" /> Backup dos dados antigos</RouterLink>

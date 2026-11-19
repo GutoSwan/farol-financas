@@ -51,13 +51,13 @@ const router = createRouter({
   { path: '/recuperar-senha', component: AuthPage, props: { mode: 'forgot' }, meta: { title: 'Recuperar senha' } },
   { path: '/redefinir-senha', component: AuthPage, props: { mode: 'reset' }, meta: { title: 'Nova senha' } },
   { path: '/verificar-2fa', component: AuthPage, props: { mode: 'mfa' }, meta: { title: 'Confirmar autenticador' } },
+  { path: '/configurar-2fa', component: AuthPage, props: { mode: 'enroll' }, meta: { title: 'Configurar autenticador' } },
   { path: '/conta', component: AuthPage, props: { mode: 'profile' }, meta: { title: 'Meu perfil' } },
   // Favoritos ou links antigos não podem reabrir recursos aposentados.
   { path: '/cadastro', redirect: '/entrar' },
   { path: '/entrar/celular', redirect: '/entrar' },
   { path: '/cadastro/celular', redirect: '/entrar' },
   { path: '/recuperar-celular', redirect: '/recuperar-senha' },
-  { path: '/configurar-2fa', redirect: '/conta' },
   { path: '/seguranca', redirect: '/conta' },
   ],
 })
