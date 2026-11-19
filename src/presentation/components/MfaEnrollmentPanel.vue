@@ -2,7 +2,8 @@
 import { onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { supabase } from '../../infrastructure/auth/supabase'
-import { allTotpFactors, isTotpCode, safeTotpQrImage, totpSetupAvailability, type TotpSetupAvailability } from '../../domain/auth/totpEnrollment'
+import { allTotpFactors, isTotpCode, totpSetupAvailability, type TotpSetupAvailability } from '../../domain/auth/totpEnrollment'
+import { createTotpQrImage } from '../../infrastructure/auth/totpQr'
 import { useAuth } from '../composables/useAuth'
 
 type SetupPhase = 'loading' | TotpSetupAvailability | 'pending' | 'error'
@@ -88,8 +89,14 @@ async function beginEnrollment(): Promise<void> {
       await auth.mfa.unenroll({ factorId: data.id })
       throw new Error('O Supabase não forneceu a chave de segurança. Tente novamente.')
     }
+    const qrImage = await createTotpQrImage({
+      secret: data.totp.secret,
+      uri: data.totp.uri,
+      serverQr: data.totp.qr_code,
+      accountLabel: ownerId ?? 'Conta',
+    })
     await requireCurrentIdentity()
-    enrollment.value = { id: data.id, secret: data.totp.secret, qrImage: safeTotpQrImage(data.totp.qr_code) }
+    enrollment.value = { id: data.id, secret: data.totp.secret, qrImage }
     phase.value = 'pending'
   } catch (cause) {
     clearSecret()

@@ -116,6 +116,25 @@ describe('Preview QA: somente lançamentos fictícios e privilégio mínimo', ()
     } finally { await app.close() }
   })
 
+  it('VIEWER não consegue criar, editar ou excluir por chamadas diretas à API', async () => {
+    const { app, writes } = setup()
+    try {
+      const requests = [
+        { method: 'POST' as const, url, payload: transactionBody },
+        { method: 'PATCH' as const, url: url + '/' + recordId,
+          headers: { 'if-match': '"1"' }, payload: { description: 'Tentativa indevida' } },
+        { method: 'DELETE' as const, url: url + '/' + recordId,
+          headers: { 'if-match': '"1"' } },
+      ]
+      for (const request of requests) {
+        const denied = await app.inject({ ...request,
+          headers: { ...request.headers, authorization: 'Bearer viewer' } })
+        expect(denied.statusCode).toBe(404)
+      }
+      expect(writes).toEqual([])
+    } finally { await app.close() }
+  })
+
   it('nome QA parecido não autoriza escrita', async () => {
     const { app, writes } = setup('QA - Valora3D parecida')
     try {
