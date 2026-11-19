@@ -2,6 +2,8 @@
 const PREVIEW_DEV_AUTH_ORIGINS = new Set([
   'https://farol-financas-git-feat-v029-admin-standalone-preview-farol13.vercel.app',
   'https://farol-financas-git-feat-password-safety-free-20261117-farol13.vercel.app',
+  // Alias canônico da Preview isolada Owner/Viewer (Supabase Dev).
+  'https://farol-financas-git-qa-owner-viewer-dev-isolation-d00a3f-farol13.vercel.app',
 ])
 
 /**
