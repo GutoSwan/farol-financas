@@ -49,3 +49,10 @@
 - Não reutilizar DATABASE_URL de produção, não registrar senha no Git ou no chat, não criar bypass público da Vercel.
 
 **Situação em 19/11/2026:** conexão Dev e isolamento PostgreSQL confirmados; **Owner/Viewer HTTP ainda pendente**. Nada foi modificado na produção.
+
+## Correção de destino do frontend QA — 19/11/2026
+
+- Inspeção preventiva do bundle do frontend Preview identificou referência ao projeto Supabase de produção, embora a API QA já apontasse ao Dev. Nenhum login, conta ou workspace de teste foi criado nessa condição.
+- Configuradas variáveis Vercel exclusivas do Preview da branch QA para Supabase Dev (URL e publishable key), API QA, redirect QA, modo QA-only e writes desabilitados.
+- Ajustado CORS_ORIGIN da API para o alias frontend da branch QA, também exclusivamente no Preview dessa branch.
+- Antes de iniciar o E2E HTTP: publicar novamente os dois projetos e confirmar no bundle distribuído presença exclusiva do Supabase Dev e ausência da referência de produção.
