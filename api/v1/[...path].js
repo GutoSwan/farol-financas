@@ -4,6 +4,8 @@
  * sessão ativa e a participação do usuário em cada espaço financeiro.
  * Gravação só para lançamento fictício com flag privada, rota exata e JWT.
  */
+import { getVercelOidcToken } from '@vercel/oidc'
+
 const UUID = '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}'
 const SPACE_PATH = new RegExp('^/api/v1/workspaces/' + UUID + '(?:/(?:transactions|recurring-bills|fixed-expenses|budgets))?$')
 const QA_BILL_PATH = '/api/v1/qa-bill-write'
@@ -82,7 +84,6 @@ export default async function handler(req, res) {
   // Credencial privada da Vercel, injetada somente na Function da branch QA.
   // Nunca utilizar cabeçalhos do navegador como autenticação entre projetos.
   const bypass = process.env.FAROL_QA_BACKEND_BYPASS_SECRET ?? ''
-  const oidc = process.env.VERCEL_OIDC_TOKEN ?? ''
   const headers = {}
   let mutationBody
   if (isQaMutation) {
@@ -114,11 +115,17 @@ export default async function handler(req, res) {
   }
   if (/^[A-Za-z0-9._-]{24,512}$/.test(bypass)) {
     headers['x-vercel-protection-bypass'] = bypass
-  } else if (/^[A-Za-z0-9._-]{50,8000}$/.test(oidc)) {
-    headers['x-vercel-trusted-oidc-idp-token'] = oidc
   } else {
-    res.statusCode = 503
-    return res.end(JSON.stringify({ error: 'Identidade da infraestrutura indisponível.' }))
+    // Em Functions o OIDC é temporário e chega pelo contexto confiável da
+    // plataforma, não por process.env.VERCEL_OIDC_TOKEN (só disponível no build).
+    // O helper oficial lê o token sem repassar cabeçalhos arbitrários do cliente.
+    let oidc = ''
+    try { oidc = await getVercelOidcToken() } catch { /* Falha fechada, sem logar credenciais. */ }
+    if (!/^[A-Za-z0-9._-]{50,8000}$/.test(oidc)) {
+      res.statusCode = 503
+      return res.end(JSON.stringify({ error: 'Identidade da infraestrutura indisponível.' }))
+    }
+    headers['x-vercel-trusted-oidc-idp-token'] = oidc
   }
   try {
     if (typeof token === 'string') headers.Authorization = token

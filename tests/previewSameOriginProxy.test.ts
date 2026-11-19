@@ -47,8 +47,9 @@ describe('Proxy protegido do Farol Preview', () => {
   })
 
   it('autentica chamadas entre as duas Previews usando credenciais privadas do servidor', () => {
+    expect(proxy).toContain("import { getVercelOidcToken } from '@vercel/oidc'")
     expect(proxy).toContain('process.env.FAROL_QA_BACKEND_BYPASS_SECRET')
-    expect(proxy).toContain('process.env.VERCEL_OIDC_TOKEN')
+    expect(proxy).toContain('await getVercelOidcToken()')
     expect(proxy).toContain("headers['x-vercel-protection-bypass'] = bypass")
     expect(proxy).toContain("headers['x-vercel-trusted-oidc-idp-token'] = oidc")
     expect(proxy).toContain("headers.Authorization = token")
